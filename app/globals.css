@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      #141b2b,
+      #0d1117
+    );
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+.modal-content {
+  padding: 16px;
+  background-color: white;
+  border-radius: 8px;
+  max-width: 400px;
+  word-wrap: break-word; /* Ensure long words/links break and stay within the container */
+}
+
+.text-box {
+  color: black;
+  white-space: normal; /* Ensure text wraps to the next line */
+  overflow-wrap: break-word; /* Break long words to prevent overflow */
+}
+
+.inscription-details {
+  font-size: 14px; /* Adjust text size */
+  color: black; /* Set text color to black */
+  overflow-y: auto; /* Scroll if content exceeds modal height */
+  max-height: 300px; /* Prevents modal from getting too tall */
+}
+
+.loader {
+  border-top-color: #3498db;
+  animation: spinner 1s ease-in-out infinite;
+}
+@keyframes spinner {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Custom scrollbar for WebKit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Make the track (background) transparent */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3); /* Set a subtle color with transparency */
+  border-radius: 10px; /* Round the scrollbar edges */
+}
+
+/* Scrollbar styles for Firefox */
+.scroll-container {
+  scrollbar-width: thin; /* Thin scrollbar */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent; /* Subtle color */
+}
+
+/* globals.css */
+.sidebar {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Hide scrollbar for Chrome, Safari, and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge, and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+/* Webkit browsers (Chrome, Safari, newer versions of Opera) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;  /* for vertical scrollbars */
+  height: 4px; /* for horizontal scrollbars */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1); /* semi-transparent track */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3); /* semi-transparent thumb */
+  border-radius: 4px;
+}
+
+/* Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1);
+}
+
+/* For Internet Explorer and Edge */
+.custom-scrollbar {
+  -ms-overflow-style: none;
+}
+
+.block-face {
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.block-face:hover {
+  transform: scale(1.05);
+  background-color: rgba(255,165,0, 0.8);
+}
+
+.tooltip {
+  pointer-events: none;
+  z-index: 10;
+}
+
+.op-return-highlight {
+  box-shadow: 0 0 10px #FCD34D, 0 0 20px #FCD34D, 0 0 30px #FCD34D;
+  animation: radiate 1.5s infinite alternate;
+}
+
+@keyframes radiate {
+  from {
+    box-shadow: 0 0 10px #FCD34D;
+  }
+  to {
+    box-shadow: 0 0 30px #FCD34D;
+  }
+}

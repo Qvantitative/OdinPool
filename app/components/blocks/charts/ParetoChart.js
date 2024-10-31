@@ -9,7 +9,7 @@ const ParetoChart = () => {
   useEffect(() => {
     const fetchTopAddresses = async () => {
       try {
-        const response = await fetch('http://68.9.235.71:3001/api/top-addresses');
+        const response = await fetch('http://143.198.17.64:3001/api/top-addresses');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

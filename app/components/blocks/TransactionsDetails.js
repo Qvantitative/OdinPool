@@ -17,7 +17,7 @@ const TransactionDetails = ({ transactionId }) => {
       }
 
       try {
-        const response = await fetch(`http://68.9.235.71:3001/api/transactions/${transactionId}`);
+        const response = await fetch(`http://143.198.17.64:3001/api/transactions/${transactionId}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -31,7 +31,7 @@ const TransactionDetails = ({ transactionId }) => {
 
         // Fetch inscription data
         const inscriptionId = transactionId + 'i0';
-        const inscriptionResponse = await fetch(`http://68.9.235.71:3001/api/ord/inscription/${inscriptionId}`);
+        const inscriptionResponse = await fetch(`http://143.198.17.64:3001/api/ord/inscription/${inscriptionId}`);
         if (inscriptionResponse.ok) {
           const inscription = await inscriptionResponse.json();
           setInscriptionData(inscription);

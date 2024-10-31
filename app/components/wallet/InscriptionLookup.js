@@ -19,7 +19,7 @@ const InscriptionLookup = () => {
    setWalletInfo(null);
 
    try {
-     const response = await fetch(`http://68.9.235.71:3001/api/ord/inscription/${inscriptionId}`);
+     const response = await fetch(`http://143.198.17.64:3001/api/ord/inscription/${inscriptionId}`);
      console.log('Response status:', response.status);
 
      if (!response.ok) {

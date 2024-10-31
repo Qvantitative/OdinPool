@@ -6,7 +6,7 @@ const Ord = () => {
   useEffect(() => {
     const fetchOrdData = async () => {
       try {
-        const res = await fetch('http://68.9.235.71:3001'); // adjust the endpoint as needed
+        const res = await fetch('http://143.198.17.64:3001'); // adjust the endpoint as needed
         const data = await res.json();
         console.log('Fetched data:', data); // Log the fetched data
         setOrdData(data);

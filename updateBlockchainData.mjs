@@ -95,7 +95,7 @@ async function getLatestBlockInDB() {
 
 async function fetchInscriptionCount(height) {
   try {
-    const ordResponse = await axios.get(`http://localhost:3000/block/${height}`, {
+    const ordResponse = await axios.get(`http://68.9.235.71:3000/block/${height}`, {
       headers: {
         'Accept': 'application/json'
       }
@@ -231,7 +231,7 @@ async function updateBlockInscriptions(height) {
       return false; // Indicate that the block was skipped
     }
 
-    const ordResponse = await axios.get(`http://localhost:3000/block/${height}`, {
+    const ordResponse = await axios.get(`http://68.9.235.71:3000/block/${height}`, {
       headers: {
         'Accept': 'application/json'
       }

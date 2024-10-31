@@ -10,7 +10,7 @@ const pool = new pg.Pool({
   max: 20, // Increased pool connections
 });
 
-const ORD_SERVER_URL = 'http://localhost:3000';
+const ORD_SERVER_URL = 'http://68.9.235.71:3000';
 const limit = pLimit(10); // Limit concurrent API calls
 
 function delay(ms) {

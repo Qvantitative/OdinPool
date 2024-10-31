@@ -9,7 +9,7 @@ const FeeEstimateCard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const socket = io('http://localhost:3001');
+    const socket = io('http://68.9.235.71:3001');
 
     const getFeeEstimates = async () => {
       try {

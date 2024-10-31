@@ -55,7 +55,7 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001');
+    socketRef.current = io('http://68.9.235.71:3001');
     fetchInitialData();
 
     socketRef.current.on('new-block', handleNewBlock);
@@ -87,7 +87,7 @@ const AnalyticsPage = () => {
   const fetchBlockData = async () => {
     try {
       const maxBlocks = 144 * 30;
-      const response = await fetch(`http://localhost:3001/api/blocks?limit=${maxBlocks}`);
+      const response = await fetch(`http://68.9.235.71:3001/api/blocks?limit=${maxBlocks}`);
       if (!response.ok) throw new Error('Failed to fetch blocks from the database');
 
       const data = await response.json();
@@ -195,7 +195,7 @@ const AnalyticsPage = () => {
       setExpandedContent({ type: 'Transaction', id: searchInput.trim() });
     } else if (searchType === 'Block Height') {
       try {
-        const response = await fetch(`http://localhost:3001/api/ord/block/${searchInput.trim()}`);
+        const response = await fetch(`http://68.9.235.71:3001/api/ord/block/${searchInput.trim()}`);
         if (!response.ok) throw new Error(`Block not found for height: ${searchInput.trim()}`);
         const blockData = await response.json();
         setExpandedContent({ type: 'Block', block: blockData });
@@ -205,7 +205,7 @@ const AnalyticsPage = () => {
       }
     } else if (searchType === 'Wallet Address') {
       try {
-        const response = await fetch(`http://localhost:3001/api/ord/address/${searchInput.trim()}`);
+        const response = await fetch(`http://68.9.235.71:3001/api/ord/address/${searchInput.trim()}`);
         if (!response.ok) throw new Error(`Address not found: ${searchInput.trim()}`);
         const addressData = await response.json();
         setExpandedContent({ type: 'Wallet', addressData });

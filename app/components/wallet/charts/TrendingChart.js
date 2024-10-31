@@ -17,7 +17,7 @@ const TrendingChart = React.memo(({ collectionName }) => {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:3001/api/trending/${collectionName}`);
+      const response = await fetch(`http://68.9.235.71:3001/api/trending/${collectionName}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch data for ${collectionName}, status: ${response.status}`);
       }

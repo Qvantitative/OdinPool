@@ -12,7 +12,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
     inscriptionsList.map(async (inscriptionId) => {
       try {
         const detailsResponse = await fetch(
-          `http://localhost:3001/api/ord/inscription/${inscriptionId}`
+          `http://68.9.235.71:3001/api/ord/inscription/${inscriptionId}`
         );
         if (!detailsResponse.ok) {
           throw new Error(
@@ -22,7 +22,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
         const details = await detailsResponse.json();
 
         const contentResponse = await fetch(
-          `http://localhost:3000/content/${inscriptionId}`
+          `http://68.9.235.71:3000/content/${inscriptionId}`
         );
         if (!contentResponse.ok) {
           throw new Error(
@@ -66,7 +66,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
 const handleInscriptionClick = async (inscriptionId, setInscriptionData) => {
   try {
     const response = await fetch(
-      `http://localhost:3001/api/ord/inscription/${inscriptionId}`
+      `http://68.9.235.71:3001/api/ord/inscription/${inscriptionId}`
     );
     if (!response.ok) {
       throw new Error(

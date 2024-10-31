@@ -18,7 +18,7 @@ const client = new BitcoinCore({
   network: 'mainnet',
   username: process.env.BITCOIN_RPC_USER,
   password: process.env.BITCOIN_RPC_PASSWORD,
-  host: '127.0.0.1',
+  host: '68.9.235.71',
   port: 8332,
 });
 

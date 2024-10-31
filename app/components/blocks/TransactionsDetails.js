@@ -17,7 +17,7 @@ const TransactionDetails = ({ transactionId }) => {
       }
 
       try {
-        const response = await fetch(`http://localhost:3001/api/transactions/${transactionId}`);
+        const response = await fetch(`http://68.9.235.71:3001/api/transactions/${transactionId}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -31,7 +31,7 @@ const TransactionDetails = ({ transactionId }) => {
 
         // Fetch inscription data
         const inscriptionId = transactionId + 'i0';
-        const inscriptionResponse = await fetch(`http://localhost:3001/api/ord/inscription/${inscriptionId}`);
+        const inscriptionResponse = await fetch(`http://68.9.235.71:3001/api/ord/inscription/${inscriptionId}`);
         if (inscriptionResponse.ok) {
           const inscription = await inscriptionResponse.json();
           setInscriptionData(inscription);
@@ -54,7 +54,7 @@ const TransactionDetails = ({ transactionId }) => {
     } else {
       setExpandedOpReturn(index);
       try {
-        const response = await fetch(`http://localhost:3001/api/rune/${transactionId}`);
+        const response = await fetch(`http://68.9.235.71:3001/api/rune/${transactionId}`);
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch rune data');
@@ -138,7 +138,7 @@ const TransactionDetails = ({ transactionId }) => {
                           {inscriptionData.content_type.startsWith('image/') && (
                             <div className="mt-2 flex justify-center">
                               <img
-                                src={`http://localhost:3000/content/${inscriptionData.id}`}
+                                src={`http://68.9.235.71:3000/content/${inscriptionData.id}`}
                                 alt={`Inscription ${inscriptionData.id}`}
                                 className="w-24 h-24 object-cover rounded border border-gray-600"
                               />

@@ -54,36 +54,34 @@ const AnalyticsPage = () => {
     // Add other tables/cards if any
   ];
 
-  // Determine the WebSocket protocol based on the page's protocol
-  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const socketUrl = `${wsProtocol}://143.198.17.64:3001/socket.io`;
-
-  // Initialize the WebSocket
   useEffect(() => {
-    socketRef.current = io(socketUrl, {
-      transports: ["websocket", "polling"],
-      path: "/socket.io", // Ensure the path matches your Nginx configuration
-    });
-    fetchInitialData();
+    if (typeof window !== 'undefined') { // Ensure this only runs in the client
+      const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const socketUrl = `${wsProtocol}://odinpool.ai/socket.io`;
 
-    socketRef.current.on('new-block', handleNewBlock);
+      socketRef.current = io(socketUrl, {
+        transports: ["websocket", "polling"],
+        path: "/socket.io", // Ensure the path matches your Nginx configuration
+      });
 
-    // Horizontal scroll handler
-    const handleWheel = (e) => {
-      if (scrollContainerRef.current) {
-        e.preventDefault();
-        scrollContainerRef.current.scrollLeft += e.deltaY;
-      }
-    };
+      socketRef.current.on('new-block', handleNewBlock);
 
-    const container = scrollContainerRef.current;
-    container?.addEventListener('wheel', handleWheel, { passive: false });
+      // Horizontal scroll handler
+      const handleWheel = (e) => {
+        if (scrollContainerRef.current) {
+          e.preventDefault();
+          scrollContainerRef.current.scrollLeft += e.deltaY;
+        }
+      };
 
-    return () => {
-      socketRef.current.disconnect();
-      container?.removeEventListener('wheel', handleWheel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      const container = scrollContainerRef.current;
+      container?.addEventListener('wheel', handleWheel, { passive: false });
+
+      return () => {
+        socketRef.current.disconnect();
+        container?.removeEventListener('wheel', handleWheel);
+      };
+    }
   }, []);
 
   // Fetch initial block data and upcoming block

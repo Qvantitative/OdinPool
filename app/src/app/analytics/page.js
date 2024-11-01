@@ -54,34 +54,29 @@ const AnalyticsPage = () => {
     // Add other tables/cards if any
   ];
 
+  // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    if (typeof window !== 'undefined') { // Ensure this only runs in the client
-      const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-      const socketUrl = `${wsProtocol}://143.198.17.64:3001/socket.io`;
+    socketRef.current = io('/');
+    fetchInitialData();
 
-      socketRef.current = io(socketUrl, {
-        transports: ["websocket", "polling"],
-        path: "/socket.io", // Ensure the path matches your Nginx configuration
-      });
+    socketRef.current.on('new-block', handleNewBlock);
 
-      socketRef.current.on('new-block', handleNewBlock);
+    // Horizontal scroll handler
+    const handleWheel = (e) => {
+      if (scrollContainerRef.current) {
+        e.preventDefault();
+        scrollContainerRef.current.scrollLeft += e.deltaY;
+      }
+    };
 
-      // Horizontal scroll handler
-      const handleWheel = (e) => {
-        if (scrollContainerRef.current) {
-          e.preventDefault();
-          scrollContainerRef.current.scrollLeft += e.deltaY;
-        }
-      };
+    const container = scrollContainerRef.current;
+    container?.addEventListener('wheel', handleWheel, { passive: false });
 
-      const container = scrollContainerRef.current;
-      container?.addEventListener('wheel', handleWheel, { passive: false });
-
-      return () => {
-        socketRef.current.disconnect();
-        container?.removeEventListener('wheel', handleWheel);
-      };
-    }
+    return () => {
+      socketRef.current.disconnect();
+      container?.removeEventListener('wheel', handleWheel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch initial block data and upcoming block

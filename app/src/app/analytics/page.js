@@ -57,7 +57,7 @@ const AnalyticsPage = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') { // Ensure this only runs in the client
       const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-      const socketUrl = `${wsProtocol}://odinpool.ai/socket.io`;
+      const socketUrl = `${wsProtocol}://143.198.17.64:3001/socket.io`;
 
       socketRef.current = io(socketUrl, {
         transports: ["websocket", "polling"],

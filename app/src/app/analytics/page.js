@@ -6,19 +6,20 @@ import React, { useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
 
 // Components
-import BlockChart from '@/components/blocks/charts/BlockChart';
-import FeeEstimateCard from '@/components/blocks/FeeEstimateCard';
-import BlockRewardsCard from '@/components/blocks/BlockRewardsCard';
-import BlockDisplay from '@/components/blocks/BlockDisplay';
-import UpcomingBlockDisplay from '@/components/blocks/UpcomingBlockDisplay';
-import BitcoinBlockTable from '@/components/blocks/BitcoinBlockTable';
-import MiningPoolBarChart from '@/components/blocks/charts/MiningPoolBarChart';
-import MiningPoolPieChart from '@/components/blocks/charts/MiningPoolPieChart';
-import CorrelationHeatmap from '@/components/blocks/charts/CorrelationHeatmap';
-import TransactionsDetails from '@/components/blocks/TransactionsDetails';
-import TopAddresses from '@/components/blocks/TopAddresses';
-import ParetoChart from '@/components/blocks/charts/ParetoChart';
-import BlockDataTable from '@/components/blocks/BlockDataTable';
+import BlockChart from '../../components/blocks/charts/BlockChart';
+
+import FeeEstimateCard from '../../components/blocks/FeeEstimateCard';
+import BlockRewardsCard from '../../components/blocks/BlockRewardsCard';
+import BlockDisplay from '../../components/blocks/BlockDisplay';
+import UpcomingBlockDisplay from '../../components/blocks/UpcomingBlockDisplay';
+import BitcoinBlockTable from '../../components/blocks/BitcoinBlockTable';
+import MiningPoolBarChart from '../../components/blocks/charts/MiningPoolBarChart';
+import MiningPoolPieChart from '../../components/blocks/charts/MiningPoolPieChart';
+import CorrelationHeatmap from '../../components/blocks/charts/CorrelationHeatmap';
+import TransactionsDetails from '../../components/blocks/TransactionsDetails';
+import TopAddresses from '../../components/blocks/TopAddresses';
+import ParetoChart from '../../components/blocks/charts/ParetoChart';
+import BlockDataTable from '../../components/blocks/BlockDataTable';
 
 const AnalyticsPage = () => {
   // State Variables

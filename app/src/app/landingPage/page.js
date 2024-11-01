@@ -164,7 +164,7 @@ export default function Example() {
             <a href="#" className="-m-1.5 p-1.5">
               <span className="sr-only">Prism</span>
               {/* Updated SVG logo with orange color scheme */}
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="150" height="150">
+              <svg xmlns="https://www.w3.org/2000/svg" viewBox="0 0 300 300" width="150" height="150">
                 <defs>
                   <linearGradient id="outerOrange" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" style={{ stopColor: '#ff7f00', stopOpacity: 1 }} />
@@ -569,7 +569,7 @@ export default function Example() {
           </h2>
           <div className="xl:grid xl:grid-cols-3 xl:gap-8">
               {/* Updated SVG logo with orange color scheme */}
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100" height="100">
+              <svg xmlns="https://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100" height="100">
                 <defs>
                   <linearGradient id="outerOrange" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" style={{ stopColor: '#ff7f00', stopOpacity: 1 }} />

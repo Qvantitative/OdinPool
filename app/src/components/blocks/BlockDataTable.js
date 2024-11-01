@@ -17,7 +17,7 @@ const BlockDataTable = ({ block }) => {
     const fetchBlockDetails = async () => {
       try {
         const response = await fetch(
-          `http://143.198.17.64:3001/api/ord/block/${block_height}`
+          `https://143.198.17.64:3001/api/ord/block/${block_height}`
         );
         console.log('Response:', response)
         if (!response.ok) {
@@ -30,7 +30,7 @@ const BlockDataTable = ({ block }) => {
         setBlockDetails(blockData);
 
         const transactionResponse = await fetch(
-          `http://143.198.17.64:3001/api/transactions?block_height=${block_height}`
+          `https://143.198.17.64:3001/api/transactions?block_height=${block_height}`
         );
         if (!transactionResponse.ok) {
           throw new Error(

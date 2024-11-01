@@ -9,7 +9,7 @@ const BitcoinBlockTable = () => {
   useEffect(() => {
     const fetchBlockData = async () => {
       try {
-        const response = await fetch('http://143.198.17.64:3001/api/blocks');
+        const response = await fetch('https://143.198.17.64:3001/api/blocks');
         if (!response.ok) {
           throw new Error('Failed to fetch block data');
         }

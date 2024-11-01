@@ -385,7 +385,7 @@ app.post('/api/ord/fetch-block', async (req, res) => {
 
     try {
         // Fetch data from your ord endpoint
-        const response = await axios.get(`https://68.9.235.71/api/ord/block/${block_height}`);
+        const response = await axios.get(`https://68.9.235.71:3001/api/ord/block/${block_height}`);
         const { height, inscriptions, runes, transactions } = response.data;
 
         // Insert the data into the database

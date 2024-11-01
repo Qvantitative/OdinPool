@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { CheckIcon } from '@heroicons/react/20/solid'
 import React from 'react';
-import XverseLogin from '@/components/wallet/XverseLogin';
+import XverseLogin from '../../components/wallet/XverseLogin';
 
 const navigation = [
   { name: 'Product', href: '#' },

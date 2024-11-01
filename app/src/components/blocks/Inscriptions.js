@@ -1,8 +1,21 @@
 // app/components/blocks/Inscriptions
 
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import https from 'https';
 
-// Move fetchInscriptionImages here
+// Create axios instances with base URLs
+const axiosInstanceWithSSL = axios.create({
+  baseURL: 'http://68.9.235.71:3000', // Switched to HTTP
+  httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+});
+
+const axiosInstanceWithoutSSL = axios.create({
+  baseURL: 'http://143.198.17.64:3001/api/ord', // Switched to HTTP
+  httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+});
+
+// Function to fetch inscription images with retry mechanism
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) => {
   if (!inscriptionsList || inscriptionsList.length === 0) return;
 
@@ -11,28 +24,16 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
   await Promise.all(
     inscriptionsList.map(async (inscriptionId) => {
       try {
-        const detailsResponse = await fetch(
-          `https://143.198.17.64:3001/api/ord/inscription/${inscriptionId}`
-        );
-        if (!detailsResponse.ok) {
-          throw new Error(
-            `Failed to fetch inscription details: ${detailsResponse.statusText}`
-          );
-        }
-        const details = await detailsResponse.json();
+        const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+        const details = detailsResponse.data;
 
-        const contentResponse = await fetch(
-          `https://68.9.235.71:3000/content/${inscriptionId}`
-        );
-        if (!contentResponse.ok) {
-          throw new Error(
-            `Failed to fetch inscription content: ${contentResponse.statusText}`
-          );
-        }
-        const contentType = contentResponse.headers.get('Content-Type');
+        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
+          responseType: 'blob',
+        });
+        const contentType = contentResponse.headers['content-type'];
 
         if (contentType.startsWith('image/')) {
-          const blob = await contentResponse.blob();
+          const blob = new Blob([contentResponse.data]);
           const imageUrl = URL.createObjectURL(blob);
           images[inscriptionId] = {
             url: imageUrl,
@@ -40,7 +41,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
             rune: details.rune,
           };
         } else if (contentType.startsWith('text/')) {
-          const textContent = await contentResponse.text();
+          const textContent = await contentResponse.data.text();
           images[inscriptionId] = {
             content: textContent,
             type: 'text',
@@ -50,10 +51,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
           images[inscriptionId] = { type: 'unsupported', rune: details.rune };
         }
       } catch (err) {
-        console.error(
-          `Error fetching data for inscription ${inscriptionId}:`,
-          err
-        );
+        console.error(`Error fetching data for inscription ${inscriptionId}:`, err);
         images[inscriptionId] = null;
       }
     })
@@ -62,19 +60,11 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
   setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
 };
 
-// Move handleInscriptionClick here
+// Function to handle click events on inscriptions
 const handleInscriptionClick = async (inscriptionId, setInscriptionData) => {
   try {
-    const response = await fetch(
-      `https://143.198.17.64:3001/api/ord/inscription/${inscriptionId}`
-    );
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch inscription data: ${response.statusText}`
-      );
-    }
-    const data = await response.json();
-    setInscriptionData(data);
+    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+    setInscriptionData(response.data);
   } catch (error) {
     console.error('Error fetching inscription data:', error);
   }

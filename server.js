@@ -17,6 +17,13 @@ import { updateRawTransactionData } from './updateRawTransaction.mjs';
 import BitcoinCore from 'bitcoin-core';
 import { Parser } from 'binary-parser';
 
+// Add this after your other imports and configurations
+const axiosInstance = axios.create({
+  baseURL: 'http://localhost:3001',
+  // or if you prefer to use the IP
+  // baseURL: 'http://68.9.235.71:3001',
+});
+
 // Constants
 const RESERVED_RUNE_NAME_VALUE = BigInt('6402364363415443603228541259936211926');
 const MAX_RUNE_NAME_LENGTH = 26;
@@ -375,7 +382,7 @@ app.post('/api/ord/fetch-block', async (req, res) => {
 
     try {
         // Fetch data from your ord endpoint
-        const response = await axios.get(`https://68.9.235.71:3001/api/ord/block/${block_height}`);
+        const response = await axiosInstance.get(`https://68.9.235.71:3001/api/ord/block/${block_height}`);
         const { height, inscriptions, runes, transactions } = response.data;
 
         // Insert the data into the database
@@ -611,7 +618,7 @@ app.get('/api/ord/block/:height', async (req, res) => {
 
   try {
     // Fetch block data from the ord server
-    const response = await axios.get(`/block/${height}`, {
+    const response = await axiosInstance.get(`/block/${height}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -634,7 +641,7 @@ app.get('/api/ord/inscription/:id', async (req, res) => {
   console.log(`Received request for inscription ID: ${id}`);  // Log the inscription ID
 
   try {
-    const response = await axios.get(`/inscription/${id}`, {
+    const response = await axiosInstance.get(`/inscription/${id}`, {
       headers: { Accept: 'application/json' },
     });
 
@@ -660,7 +667,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
   const { address } = req.params;
   try {
     // Fetch the list of outputs for the address
-    const outputsResponse = await axios.get(`/address/${address}`, {
+    const outputsResponse = await axiosInstance.get(`/address/${address}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -675,7 +682,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
     // Fetch detailed output data for each output
     const outputsData = await Promise.all(
       outputIdentifiers.map(async (outputId) => {
-        const outputResponse = await axios.get(`/output/${outputId}`, {
+        const outputResponse = await axiosInstance.get(`/output/${outputId}`, {
           headers: {
             Accept: 'application/json',
           },

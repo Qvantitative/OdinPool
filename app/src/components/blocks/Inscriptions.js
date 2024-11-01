@@ -6,11 +6,10 @@ import https from 'https';
 
 // Create axios instances with base URLs
 const axiosInstanceWithSSL = axios.create({
-  baseURL: process.env.NODE_ENV === 'production'
-    ? '/'
-    : '/',
+  baseURL: process.env.BASE_URL || 'http://68.9.235.71:3000',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
+
 
 const axiosInstanceWithoutSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'production'

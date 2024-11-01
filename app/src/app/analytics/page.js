@@ -56,9 +56,8 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('https://odinpool.ai', {
-      transports: ['websocket', 'polling'],
-      path: '/socket.io' // Ensure the path matches your Nginx configuration
+    socketRef.current = io('http://143.198.17.64:3001', {
+      transports: ['websocket', 'polling']
     });
     fetchInitialData();
 

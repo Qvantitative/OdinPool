@@ -619,10 +619,12 @@ app.get('/api/top-addresses', async (req, res) => {
 app.get('/api/ord/block/:height', async (req, res) => {
   const { height } = req.params;
   try {
-    const response = await ordInstance.get(`/block/${height}`);  // Remove extra headers block
+    const response = await ordInstance.get(`/block/${height}`);
+
     if (response.status !== 200) {
       throw new Error(`Ord server responded with status ${response.status}`);
     }
+
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching block data from ord server:`, error.message);
@@ -633,16 +635,24 @@ app.get('/api/ord/block/:height', async (req, res) => {
 // New endpoint to fetch inscription data
 app.get('/api/ord/inscription/:id', async (req, res) => {
   const { id } = req.params;
+  console.log(`Received request for inscription ID: ${id}`);  // Log the inscription ID
+
   try {
-    const response = await ordInstance.get(`/inscription/${id}`);  // Remove opening bracket
+    const response = await ordInstance.get(`/inscription/${id}`);
+
     if (response.status === 404) {
       console.warn(`Inscription with id ${id} not found.`);
       return res.status(404).json({ error: `Inscription with id ${id} not found` });
     }
+
+    if (response.status !== 200) {
+      throw new Error(`Ord server responded with status ${response.status}`);
+    }
+
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching inscription data for ID: ${id}`);
-    console.error(error.stack);
+    console.error(error.stack);  // Log the full error stack trace
     res.status(500).json({ error: 'Failed to fetch inscription data from ord server' });
   }
 });
@@ -1012,4 +1022,3 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
-

@@ -17,11 +17,14 @@ import { updateRawTransactionData } from './updateRawTransaction.mjs';
 import BitcoinCore from 'bitcoin-core';
 import { Parser } from 'binary-parser';
 
-// Add this after your other imports and configurations
-const axiosInstance = axios.create({
-  baseURL: 'http://localhost:3001',
-  // or if you prefer to use the IP
-  // baseURL: 'http://68.9.235.71:3001',
+// For Ord server requests
+const ordInstance = axios.create({
+  baseURL: 'http://68.9.235.71:3000'
+});
+
+// For your own server requests (if needed)
+const localInstance = axios.create({
+  baseURL: 'http://68.9.235.71:3001'
 });
 
 // Constants
@@ -379,10 +382,10 @@ app.post('/api/update-inscriptions', async (req, res) => {
 
 app.post('/api/ord/fetch-block', async (req, res) => {
     const { block_height } = req.body;
-
     try {
-        // Fetch data from your ord endpoint
-        const response = await axiosInstance.get(`https://68.9.235.71:3001/api/ord/block/${block_height}`);
+        // Use ordInstance instead of axiosInstance
+        const response = await ordInstance.get(`/block/${block_height}`);
+
         const { height, inscriptions, runes, transactions } = response.data;
 
         // Insert the data into the database
@@ -615,19 +618,11 @@ app.get('/api/top-addresses', async (req, res) => {
 // New endpoint to fetch block details including inscriptions and runes
 app.get('/api/ord/block/:height', async (req, res) => {
   const { height } = req.params;
-
   try {
-    // Fetch block data from the ord server
-    const response = await axiosInstance.get(`/block/${height}`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-
+    const response = await ordInstance.get(`/block/${height}`);  // Remove extra headers block
     if (response.status !== 200) {
       throw new Error(`Ord server responded with status ${response.status}`);
     }
-
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching block data from ord server:`, error.message);
@@ -638,26 +633,16 @@ app.get('/api/ord/block/:height', async (req, res) => {
 // New endpoint to fetch inscription data
 app.get('/api/ord/inscription/:id', async (req, res) => {
   const { id } = req.params;
-  console.log(`Received request for inscription ID: ${id}`);  // Log the inscription ID
-
   try {
-    const response = await axiosInstance.get(`/inscription/${id}`, {
-      headers: { Accept: 'application/json' },
-    });
-
+    const response = await ordInstance.get(`/inscription/${id}`);  // Remove opening bracket
     if (response.status === 404) {
       console.warn(`Inscription with id ${id} not found.`);
       return res.status(404).json({ error: `Inscription with id ${id} not found` });
     }
-
-    if (response.status !== 200) {
-      throw new Error(`Ord server responded with status ${response.status}`);
-    }
-
     res.json(response.data);
   } catch (error) {
     console.error(`Error fetching inscription data for ID: ${id}`);
-    console.error(error.stack);  // Log the full error stack trace
+    console.error(error.stack);
     res.status(500).json({ error: 'Failed to fetch inscription data from ord server' });
   }
 });
@@ -667,11 +652,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
   const { address } = req.params;
   try {
     // Fetch the list of outputs for the address
-    const outputsResponse = await axiosInstance.get(`/address/${address}`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
+    const outputsResponse = await ordInstance.get(`/address/${address}`);
 
     if (outputsResponse.status !== 200) {
       throw new Error(`Ord server responded with status ${outputsResponse.status}`);
@@ -682,11 +663,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
     // Fetch detailed output data for each output
     const outputsData = await Promise.all(
       outputIdentifiers.map(async (outputId) => {
-        const outputResponse = await axiosInstance.get(`/output/${outputId}`, {
-          headers: {
-            Accept: 'application/json',
-          },
-        });
+        const outputResponse = await ordInstance.get(`/output/${outputId}`);
         return outputResponse.data;
       })
     );

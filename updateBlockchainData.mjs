@@ -95,7 +95,7 @@ async function getLatestBlockInDB() {
 
 async function fetchInscriptionCount(height) {
   try {
-    const ordResponse = await axios.get(`http://68.9.235.71:3000/block/${height}`, {
+    const ordResponse = await ordInstance.get(`/block/${height}`), {
       headers: {
         'Accept': 'application/json'
       }

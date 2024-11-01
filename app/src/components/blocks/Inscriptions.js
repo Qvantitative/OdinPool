@@ -6,12 +6,12 @@ import https from 'https';
 
 // Create axios instances with base URLs
 const axiosInstanceWithSSL = axios.create({
-  baseURL: 'https://68.9.235.71:3000', // Switched to HTTPS
+  baseURL: 'http://68.9.235.71:3000', // HTTP, ensure it should not be HTTPS
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const axiosInstanceWithoutSSL = axios.create({
-  baseURL: 'https://143.198.17.64:3001/api/ord', // Switched to HTTPS
+  baseURL: '/api/ord', // Switched to HTTPS
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 

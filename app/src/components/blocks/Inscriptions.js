@@ -6,14 +6,19 @@ import https from 'https';
 
 // Create axios instances with base URLs
 const axiosInstanceWithSSL = axios.create({
-  baseURL: 'http://68.9.235.71:3000', // Switched to HTTP
+  baseURL: process.env.NODE_ENV === 'production'
+    ? 'https://68.9.235.71:3000'
+    : 'http://68.9.235.71:3000',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const axiosInstanceWithoutSSL = axios.create({
-  baseURL: 'http://143.198.17.64:3001/api/ord', // Switched to HTTP
+  baseURL: process.env.NODE_ENV === 'production'
+    ? 'https://143.198.17.64:3001/api/ord'
+    : 'http://143.198.17.64:3001/api/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
+
 
 // Function to fetch inscription images with retry mechanism
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) => {

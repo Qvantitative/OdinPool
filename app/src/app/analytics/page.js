@@ -54,10 +54,15 @@ const AnalyticsPage = () => {
     // Add other tables/cards if any
   ];
 
-  // Effect: Initialize WebSocket and fetch initial data
+  // Determine the WebSocket protocol based on the page's protocol
+  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const socketUrl = `${wsProtocol}://odinpool.ai/socket.io`;
+
+  // Initialize the WebSocket
   useEffect(() => {
-    socketRef.current = io('http://143.198.17.64:3001', {
-      transports: ['websocket', 'polling']
+    socketRef.current = io(socketUrl, {
+      transports: ["websocket", "polling"],
+      path: "/socket.io", // Ensure the path matches your Nginx configuration
     });
     fetchInitialData();
 

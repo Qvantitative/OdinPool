@@ -19,7 +19,11 @@ import { Parser } from 'binary-parser';
 
 // For Ord server requests
 const ordInstance = axios.create({
-  baseURL: 'http://68.9.235.71:3000'
+  baseURL: 'http://68.9.235.71:3000',
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
 });
 
 // For your own server requests (if needed)

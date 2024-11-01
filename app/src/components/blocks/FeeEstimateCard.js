@@ -9,11 +9,11 @@ const FeeEstimateCard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const socket = io('http://143.198.17.64:3001');
+    const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL);
 
     const getFeeEstimates = async () => {
       try {
-        const response = await fetch('/api/fee-estimate');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/fee-estimate`);
         if (!response.ok) {
           throw new Error('Failed to fetch fee estimates');
         }

@@ -12,7 +12,7 @@ const FeesEstimate = ({ onFeeSpanUpdate, onAverageFeeUpdate }) => {
     // Fetch fee estimate data
     const fetchFeeData = async () => {
       try {
-        const response = await fetch('/api/fee-estimate');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/fee-estimate`);
         if (!response.ok) {
           throw new Error('Failed to fetch fee data');
         }

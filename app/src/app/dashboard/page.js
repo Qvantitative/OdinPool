@@ -7,14 +7,14 @@ import { useRouter } from 'next/navigation';
 import { request } from 'sats-connect';
 import dynamic from 'next/dynamic';
 
-const Navbar = dynamic(() => import('@/components/wallet/Navbar'), { ssr: false });
-const TrendingCollections = dynamic(() => import('@/components/wallet/TrendingCollections'), { ssr: false });
-const RunesBalance = dynamic(() => import('@/components/wallet/RunesBalance'), { ssr: false });
-const InscriptionsGrid = dynamic(() => import('@/components/wallet/InscriptionsGrid'), { ssr: false });
-const InscriptionModal = dynamic(() => import('@/components/wallet/InscriptionModal'), { ssr: false });
-const TrendingChart = dynamic(() => import('@/components/wallet/charts/TrendingChart'), { ssr: false });
-const InscriptionLookup = dynamic(() => import('@/components/wallet/InscriptionLookup'), { ssr: false });
-const BubbleMaps = dynamic(() => import('@/components/wallet/BubbleMaps'), { ssr: false });  // <-- Changed from BubbleChart to BubbleMaps
+const Navbar = dynamic(() => import('../../components/wallet/Navbar'), { ssr: false });
+const TrendingCollections = dynamic(() => import('../../components/wallet/TrendingCollections'), { ssr: false });
+const RunesBalance = dynamic(() => import('../../components/wallet/RunesBalance'), { ssr: false });
+const InscriptionsGrid = dynamic(() => import('../../components/wallet/InscriptionsGrid'), { ssr: false });
+const InscriptionModal = dynamic(() => import('../../components/wallet/InscriptionModal'), { ssr: false });
+const TrendingChart = dynamic(() => import('../../components/wallet/charts/TrendingChart'), { ssr: false });
+const InscriptionLookup = dynamic(() => import('../../components/wallet/InscriptionLookup'), { ssr: false });
+const BubbleMaps = dynamic(() => import('../../components/wallet/BubbleMaps'), { ssr: false });  // <-- Changed from BubbleChart to BubbleMaps
 
 
 const ErrorMessage = ({ message }) => <div className="error">{message}</div>;

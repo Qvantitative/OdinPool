@@ -1029,7 +1029,7 @@ async function testDatabaseConnection() {
   await testDatabaseConnection();
   setInterval(updateBlockchainDataWithEmit, 60000); // Every minute
 
-  const PORT = process.env.PORT || 3001;
+  const PORT = 3001;
   httpsServer.listen(PORT, () => console.log(`HTTPS server is running on port ${PORT}`));
   httpServer.listen(80, () => console.log('HTTP server is redirecting to HTTPS'));
 })();

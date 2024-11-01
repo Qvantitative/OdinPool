@@ -320,16 +320,6 @@ function decodeRuneData(asm) {
 
 export { decodeRuneData, bigIntReplacer };
 
-// Database connection test
-async function testDatabaseConnection() {
-  try {
-    const res = await pool.query('SELECT NOW()');
-    console.log('Connected to the database at:', res.rows[0].now);
-  } catch (err) {
-    console.error('Error connecting to the database:', err);
-  }
-}
-
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('A client connected');

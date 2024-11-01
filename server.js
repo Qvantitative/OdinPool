@@ -1002,6 +1002,29 @@ app.get('/api/project-rankings', async (req, res) => {
   }
 });
 
+app.get('/proxy', async (req, res) => {
+  const { url } = req.query;
+
+  // Allowlist URLs to only trusted domains (modify based on your needs)
+  const allowedDomains = ['https://api-mainnet.magiceden.dev'];
+  const isAllowed = allowedDomains.some(domain => url.startsWith(domain));
+
+  if (!isAllowed) {
+    return res.status(403).json({ error: 'Forbidden: Untrusted URL' });
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Network response was not ok');
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error in proxy request:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+
 // Database connection test
 async function testDatabaseConnection() {
   try {

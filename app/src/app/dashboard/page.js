@@ -183,7 +183,7 @@ const Portfolio = () => {
   const fetchInscriptionStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const response = await fetch('https://143.198.17.64:3001/api/wallets/stats');
+      const response = await fetch('/api/wallets/stats');
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -214,7 +214,7 @@ const Portfolio = () => {
     setMetricsLoading(true);
     setMetricsError(null);
     try {
-      const response = await fetch('https://143.198.17.64:3001/api/wallet-metrics');
+      const response = await fetch('/api/wallet-metrics');
       if (!response.ok) {
         throw new Error('Failed to fetch wallet metrics');
       }
@@ -235,7 +235,7 @@ const Portfolio = () => {
     setRankingsLoading(true);
     setRankingsError(null);
     try {
-      const url = new URL('https://143.198.17.64:3001/api/project-rankings', window.location.origin);
+      const url = new URL('/api/project-rankings', window.location.origin);
       if (projectSlug) {
         url.searchParams.append('project', projectSlug);
       }

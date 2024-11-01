@@ -621,7 +621,7 @@ app.get('/api/ord/block/:height', async (req, res) => {
 
   try {
     // Fetch block data from the ord server
-    const response = await axios.get(`https://68.9.235.71:3000/block/${height}`, {
+    const response = await axios.get(`/block/${height}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -670,7 +670,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
   const { address } = req.params;
   try {
     // Fetch the list of outputs for the address
-    const outputsResponse = await axios.get(`https://68.9.235.71:3000/address/${address}`, {
+    const outputsResponse = await axios.get(`/address/${address}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -685,7 +685,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
     // Fetch detailed output data for each output
     const outputsData = await Promise.all(
       outputIdentifiers.map(async (outputId) => {
-        const outputResponse = await axios.get(`https://68.9.235.71:3000/output/${outputId}`, {
+        const outputResponse = await axios.get(`/output/${outputId}`, {
           headers: {
             Accept: 'application/json',
           },

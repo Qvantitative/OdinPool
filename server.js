@@ -29,13 +29,13 @@ dotenv.config({ path: `${__dirname}/.env` });
 const app = express();
 
 // Load SSL certificate files
-const sslOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem')
-};
+//const sslOptions = {
+//  key: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/privkey.pem'),
+//  cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem')
+//};
 
-// Create HTTPS server
-//const httpsServer = https.createServer(sslOptions, app);
+// Create HTTP server
+const server = http.createServer(app);
 
 // Create HTTP server that redirects to HTTPS
 //const httpServer = http.createServer((req, res) => {
@@ -44,7 +44,7 @@ const sslOptions = {
 //});
 
 // Setup Socket.io for HTTPS server
-const io = new Server(httpsServer, {
+const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
@@ -611,7 +611,7 @@ app.get('/api/ord/block/:height', async (req, res) => {
 
   try {
     // Fetch block data from the ord server
-    const response = await axios.get(`https://68.9.235.71/block/${height}`, {
+    const response = await axios.get(`/block/${height}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -634,7 +634,7 @@ app.get('/api/ord/inscription/:id', async (req, res) => {
   console.log(`Received request for inscription ID: ${id}`);  // Log the inscription ID
 
   try {
-    const response = await axios.get(`https://68.9.235.71/inscription/${id}`, {
+    const response = await axios.get(`/inscription/${id}`, {
       headers: { Accept: 'application/json' },
     });
 
@@ -660,7 +660,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
   const { address } = req.params;
   try {
     // Fetch the list of outputs for the address
-    const outputsResponse = await axios.get(`https://68.9.235.71/address/${address}`, {
+    const outputsResponse = await axios.get(`/address/${address}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -675,7 +675,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
     // Fetch detailed output data for each output
     const outputsData = await Promise.all(
       outputIdentifiers.map(async (outputId) => {
-        const outputResponse = await axios.get(`https://68.9.235.71/output/${outputId}`, {
+        const outputResponse = await axios.get(`/output/${outputId}`, {
           headers: {
             Accept: 'application/json',
           },
@@ -1017,10 +1017,10 @@ async function testDatabaseConnection() {
 // Initialization
 (async function init() {
   await testDatabaseConnection();
-  setInterval(updateBlockchainDataWithEmit, 60000); // Every minute
+  setInterval(updateBlockchainDataWithEmit, 60000);
 
   const PORT = process.env.PORT || 3001;
-  httpsServer.listen(PORT, () => console.log(`HTTPS server is running on port ${PORT}`));
+  server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 })();
 
 // Error handling for unexpected database errors

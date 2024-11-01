@@ -385,7 +385,7 @@ app.post('/api/ord/fetch-block', async (req, res) => {
 
     try {
         // Fetch data from your ord endpoint
-        const response = await axios.get(`https://68.9.235.71:3001/api/ord/block/${block_height}`);
+        const response = await axios.get(`https://68.9.235.71/api/ord/block/${block_height}`);
         const { height, inscriptions, runes, transactions } = response.data;
 
         // Insert the data into the database
@@ -621,7 +621,7 @@ app.get('/api/ord/block/:height', async (req, res) => {
 
   try {
     // Fetch block data from the ord server
-    const response = await axios.get(`/block/${height}`, {
+    const response = await axios.get(`https://68.9.235.71/block/${height}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -644,7 +644,7 @@ app.get('/api/ord/inscription/:id', async (req, res) => {
   console.log(`Received request for inscription ID: ${id}`);  // Log the inscription ID
 
   try {
-    const response = await axios.get(`https://68.9.235.71:3000/inscription/${id}`, {
+    const response = await axios.get(`https://68.9.235.71/inscription/${id}`, {
       headers: { Accept: 'application/json' },
     });
 
@@ -670,7 +670,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
   const { address } = req.params;
   try {
     // Fetch the list of outputs for the address
-    const outputsResponse = await axios.get(`/address/${address}`, {
+    const outputsResponse = await axios.get(`https://68.9.235.71/address/${address}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -685,7 +685,7 @@ app.get('/api/ord/address/:address', async (req, res) => {
     // Fetch detailed output data for each output
     const outputsData = await Promise.all(
       outputIdentifiers.map(async (outputId) => {
-        const outputResponse = await axios.get(`/output/${outputId}`, {
+        const outputResponse = await axios.get(`https://68.9.235.71/output/${outputId}`, {
           headers: {
             Accept: 'application/json',
           },
@@ -1029,7 +1029,7 @@ async function testDatabaseConnection() {
   await testDatabaseConnection();
   setInterval(updateBlockchainDataWithEmit, 60000); // Every minute
 
-  const PORT = 3001;
+  const PORT = process.env.PORT || 3001;
   httpsServer.listen(PORT, () => console.log(`HTTPS server is running on port ${PORT}`));
   httpServer.listen(80, () => console.log('HTTP server is redirecting to HTTPS'));
 })();

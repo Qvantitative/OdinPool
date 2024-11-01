@@ -30,8 +30,8 @@ const app = express();
 
 // Load SSL certificate files
 const sslOptions = {
-  key: fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/yourdomain.com/fullchain.pem')
+  key: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem')
 };
 
 // Create HTTPS server

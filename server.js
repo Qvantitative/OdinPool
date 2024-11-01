@@ -35,13 +35,13 @@ const sslOptions = {
 };
 
 // Create HTTPS server
-const httpsServer = https.createServer(sslOptions, app);
+//const httpsServer = https.createServer(sslOptions, app);
 
 // Create HTTP server that redirects to HTTPS
-const httpServer = http.createServer((req, res) => {
-  res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
-  res.end();
-});
+//const httpServer = http.createServer((req, res) => {
+//  res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
+//  res.end();
+//});
 
 // Setup Socket.io for HTTPS server
 const io = new Server(httpsServer, {
@@ -1021,7 +1021,6 @@ async function testDatabaseConnection() {
 
   const PORT = process.env.PORT || 3001;
   httpsServer.listen(PORT, () => console.log(`HTTPS server is running on port ${PORT}`));
-  httpServer.listen(80, () => console.log('HTTP server is redirecting to HTTPS'));
 })();
 
 // Error handling for unexpected database errors

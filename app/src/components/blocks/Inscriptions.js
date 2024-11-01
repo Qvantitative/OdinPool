@@ -14,8 +14,8 @@ const axiosInstanceWithSSL = axios.create({
 
 const axiosInstanceWithoutSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'production'
-    ? 'https://143.198.17.64:3001/api/ord'
-    : 'http://143.198.17.64:3001/api/ord',
+    ? '/api/ord'
+    : '/api/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 

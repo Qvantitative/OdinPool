@@ -56,7 +56,7 @@ const AnalyticsPage = () => {
 
   // Determine the WebSocket protocol based on the page's protocol
   const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const socketUrl = `${wsProtocol}://odinpool.ai/socket.io`;
+  const socketUrl = `${wsProtocol}://143.198.17.64:3001/socket.io`;
 
   // Initialize the WebSocket
   useEffect(() => {

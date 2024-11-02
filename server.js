@@ -1051,13 +1051,13 @@ async function testDatabaseConnection() {
   setInterval(updateBlockchainDataWithEmit, 60000);
 
   // Start HTTP server (redirect server)
-  const HTTP_PORT = 80;
+  const HTTP_PORT = 3000; // Changed from 80
   httpServer.listen(HTTP_PORT, () => {
     console.log(`HTTP Server running on port ${HTTP_PORT}`);
   });
 
   // Start HTTPS server
-  const HTTPS_PORT = 443;
+  const HTTPS_PORT = 3001; // Changed from 443
   httpsServer.listen(HTTPS_PORT, () => {
     console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
   });

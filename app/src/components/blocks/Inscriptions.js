@@ -6,15 +6,16 @@ import https from 'https';
 
 // Create axios instances with base URLs
 const axiosInstanceWithSSL = axios.create({
-  baseURL: process.env.BASE_URL || 'http://68.9.235.71:3000',
+  baseURL: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'  // Local development
+    : '/ord',  // Production (using Next.js rewrites)
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
-
 const axiosInstanceWithoutSSL = axios.create({
-  baseURL: process.env.NODE_ENV === 'production'
-    ? '/api/ord'
-    : '/api/ord',
+  baseURL: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'  // Local development
+    : '/ord',  // Production (using Next.js rewrites)
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 

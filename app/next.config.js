@@ -6,7 +6,7 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      // Digital Ocean routes (keep these as they are)
+      // Digital Ocean routes
       {
         source: '/api/:path*',
         destination: 'http://143.198.17.64:3001/api/:path*',
@@ -15,18 +15,18 @@ const nextConfig = {
         source: '/socket.io/:path*',
         destination: 'http://143.198.17.64:3001/socket.io/:path*',
       },
-      // Local ord server routes (new)
+      // Ord server routes
       {
-        source: '/ord/api/:path*',
-        destination: 'http://localhost:3000/:path*',  // Local ord server
+        source: '/ord/inscription/:path*',
+        destination: process.env.NODE_ENV === 'development'
+          ? 'http://localhost:3000/inscription/:path*'  // Development
+          : 'http://68.9.235.71:3000/inscription/:path*',  // Production
       },
       {
         source: '/ord/content/:path*',
-        destination: 'http://localhost:3000/content/:path*',  // For inscription content
-      },
-      {
-        source: '/ord/inscription/:path*',
-        destination: 'http://localhost:3000/inscription/:path*', // For inscription metadata
+        destination: process.env.NODE_ENV === 'development'
+          ? 'http://localhost:3000/content/:path*'  // Development
+          : 'http://68.9.235.71:3000/content/:path*',  // Production
       }
     ];
   },

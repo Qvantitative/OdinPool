@@ -25,19 +25,27 @@ const TrendingCollections = ({
   const fetchCollectionStats = useCallback(async () => {
     setLoading(true);
     try {
-      const targetUrl = 'https://api-mainnet.magiceden.dev/v2/collections/search/bitcoin';
-      const response = await fetch(
-        `/api/proxy?url=${encodeURIComponent(targetUrl)}`
-      );
+      // First, construct the full MagicEden API URL
+      const magicEdenUrl = 'https://api-mainnet.magiceden.dev/collection_stats/search/bitcoin';
+
+      // Properly encode it for the proxy
+      const proxyUrl = `/api/proxy?url=${encodeURIComponent(magicEdenUrl)}`;
+
+      console.log('Requesting URL:', proxyUrl); // Debug log
+
+      const response = await fetch(proxyUrl);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Network response was not ok');
+        // Try to get the error message
+        const text = await response.text();
+        console.error('Response text:', text); // Debug log
+        throw new Error(`Network response was not ok: ${response.status}`);
       }
 
       const data = await response.json();
       setCollections(data);
     } catch (error) {
+      console.error('Fetch error:', error); // Debug log
       setError((prev) => ({
         ...prev,
         collections: `Error fetching collection statistics: ${error.message}`

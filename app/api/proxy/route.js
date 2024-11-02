@@ -8,30 +8,24 @@ const ALLOWED_DOMAINS = [
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const targetUrl = searchParams.get('url');
+    // Get the full URL of the request
+    const fullUrl = new URL(request.url);
+    console.log('Full request URL:', fullUrl.toString()); // Debug log
 
-    // Add debug logging
-    console.log('Incoming request URL:', request.url);
-    console.log('Target URL:', targetUrl);
+    const targetUrl = fullUrl.searchParams.get('url');
+    console.log('Target URL:', targetUrl); // Debug log
 
     if (!targetUrl) {
       return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
     }
 
-    // Validate URL domain
     const urlObj = new URL(targetUrl);
-    console.log('URL hostname:', urlObj.hostname); // Debug logging
-
     if (!ALLOWED_DOMAINS.includes(urlObj.hostname)) {
       return NextResponse.json(
         { error: `Domain ${urlObj.hostname} not allowed` },
         { status: 403 }
       );
     }
-
-    // Add debug logging for fetch request
-    console.log('Fetching from:', targetUrl);
 
     const response = await fetch(targetUrl, {
       headers: {
@@ -41,7 +35,7 @@ export async function GET(request) {
     });
 
     if (!response.ok) {
-      throw new Error(`Proxy request failed with status ${response.status}`);
+      throw new Error(`Upstream request failed with status ${response.status}`);
     }
 
     const data = await response.json();
@@ -55,7 +49,7 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('Proxy error:', error); // Debug log
     return NextResponse.json(
       { error: `Proxy request failed: ${error.message}` },
       { status: 500 }

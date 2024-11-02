@@ -105,16 +105,9 @@ const AnalyticsPage = () => {
   const fetchUpcomingBlock = async () => {
     try {
       const response = await fetch('/api/bitcoin-blocks');
-      console.log('Response status:', response.status); // Debug log
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error response:', errorData); // Debug log
-        throw new Error(`HTTP error! status: ${response.status} - ${errorData.error}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      console.log('Received data:', data); // Debug log
 
       if (data && Object.keys(data).length > 0) {
         const upcomingBlockData = {

@@ -17,20 +17,6 @@ import { updateRawTransactionData } from './updateRawTransaction.mjs';
 import BitcoinCore from 'bitcoin-core';
 import { Parser } from 'binary-parser';
 
-// For Ord server requests
-const ordInstance = axios.create({
-  baseURL: 'http://68.9.235.71:3000',
-  headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  },
-});
-
-// For your own server requests (if needed)
-const localInstance = axios.create({
-  baseURL: 'http://68.9.235.71:3001'
-});
-
 // Constants
 const RESERVED_RUNE_NAME_VALUE = BigInt('6402364363415443603228541259936211926');
 const MAX_RUNE_NAME_LENGTH = 26;
@@ -42,28 +28,52 @@ dotenv.config({ path: `${__dirname}/.env` });
 
 const app = express();
 
-// Load SSL certificate files
-//const sslOptions = {
-//  key: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/privkey.pem'),
-//  cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem')
-//};
+// SSL configuration
+const sslOptions = {
+  key: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem')
+};
 
-// Create HTTP server
-const server = http.createServer(app);
+// Create HTTPS server
+const httpsServer = https.createServer(sslOptions, app);
 
 // Create HTTP server that redirects to HTTPS
-//const httpServer = http.createServer((req, res) => {
-//  res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
-//  res.end();
-//});
+const httpServer = http.createServer((req, res) => {
+  res.writeHead(301, {
+    Location: `https://${req.headers.host}${req.url}`
+  });
+  res.end();
+});
 
 // Setup Socket.io for HTTPS server
-const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+const io = new Server(httpsServer, {
+  cors: {
+    origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
+    methods: ['GET', 'POST']
+  },
+});
+
+// For Ord server requests (local)
+const ordInstance = axios.create({
+  baseURL: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'  // Local development
+    : 'http://68.9.235.71:3000',  // Production
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  }
+});
+
+// For your Digital Ocean server requests
+const localInstance = axios.create({
+  baseURL: 'http://143.198.17.64:3001'  // Keep this as is
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
+  credentials: true
+}));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // Database
@@ -1040,8 +1050,17 @@ async function testDatabaseConnection() {
   await testDatabaseConnection();
   setInterval(updateBlockchainDataWithEmit, 60000);
 
-  const PORT = process.env.PORT || 3001;
-  server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+  // Start HTTP server (redirect server)
+  const HTTP_PORT = 80;
+  httpServer.listen(HTTP_PORT, () => {
+    console.log(`HTTP Server running on port ${HTTP_PORT}`);
+  });
+
+  // Start HTTPS server
+  const HTTPS_PORT = 443;
+  httpsServer.listen(HTTPS_PORT, () => {
+    console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
+  });
 })();
 
 // Error handling for unexpected database errors

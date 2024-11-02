@@ -25,12 +25,16 @@ const TrendingCollections = ({
   const fetchCollectionStats = useCallback(async () => {
     setLoading(true);
     try {
+      const targetUrl = 'https://api-mainnet.magiceden.dev/v2/collections/search/bitcoin';
       const response = await fetch(
-        `/api/proxy?url=${encodeURIComponent(
-          'https://api-mainnet.magiceden.dev/v2/collections'
-        )}`
+        `/api/proxy?url=${encodeURIComponent(targetUrl)}`
       );
-      if (!response.ok) throw new Error('Network response was not ok');
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Network response was not ok');
+      }
+
       const data = await response.json();
       setCollections(data);
     } catch (error) {

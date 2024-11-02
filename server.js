@@ -91,6 +91,18 @@ const bitcoinClient = new BitcoinCore({
   port: 8332,
 });
 
+// Helper functions for fee calculations
+function calculateFeeStats(transactions) {
+  if (!transactions || transactions.length === 0) return { min: 0, max: 0, avg: 0 };
+
+  const fees = transactions.map(tx => tx.fee / tx.vsize); // fee rate in sat/vB
+  return {
+    min: Math.min(...fees),
+    max: Math.max(...fees),
+    avg: fees.reduce((a, b) => a + b, 0) / fees.length
+  };
+}
+
 // Helper function to chunk data into smaller batches
 function chunkArray(array, chunkSize) {
   const chunks = [];
@@ -1012,25 +1024,41 @@ app.get('/api/project-rankings', async (req, res) => {
   }
 });
 
-app.get('/proxy', async (req, res) => {
-  const { url } = req.query;
-
-  // Allowlist URLs to only trusted domains (modify based on your needs)
-  const allowedDomains = ['https://api-mainnet.magiceden.dev'];
-  const isAllowed = allowedDomains.some(domain => url.startsWith(domain));
-
-  if (!isAllowed) {
-    return res.status(403).json({ error: 'Forbidden: Untrusted URL' });
-  }
-
+// Upcoming-Block endpoint
+app.get('/api/upcoming-block', async (req, res) => {
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
-    res.json(data);
+    // Get mempool transactions
+    const mempoolTxids = await bitcoinClient.getRawMempool(true); // true for verbose output
+    const transactions = Object.values(mempoolTxids);
+
+    // Get current blockchain info
+    const blockchainInfo = await bitcoinClient.getBlockchainInfo();
+    const currentHeight = blockchainInfo.blocks;
+
+    // Calculate fee statistics
+    const feeStats = calculateFeeStats(transactions);
+
+    // Estimate next block's timestamp (roughly 10 minutes from latest block)
+    const latestBlock = await bitcoinClient.getBlock(await bitcoinClient.getBlockHash(currentHeight));
+    const estimatedTimestamp = (latestBlock.time + 600) * 1000; // Convert to milliseconds
+
+    const upcomingBlockData = {
+      block_height: currentHeight + 1,
+      fees_estimate: Math.round(feeStats.avg),
+      min_fee: Math.round(feeStats.min),
+      max_fee: Math.round(feeStats.max),
+      feeSpan: {
+        min: Math.round(feeStats.min),
+        max: Math.round(feeStats.max)
+      },
+      transactions: transactions.length,
+      timestamp: estimatedTimestamp
+    };
+
+    res.json(upcomingBlockData);
   } catch (error) {
-    console.error('Error in proxy request:', error);
-    res.status(500).json({ error: 'Failed to fetch data' });
+    console.error('Error getting upcoming block data:', error);
+    res.status(500).json({ error: 'Failed to fetch upcoming block data' });
   }
 });
 

@@ -104,23 +104,11 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/bitcoin-blocks');
+      const response = await fetch('/api/upcoming-block');
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const data = await response.json();
-
-      if (data && Object.keys(data).length > 0) {
-        const upcomingBlockData = {
-          block_height: data.blockHeight + 1,
-          fees_estimate: data.feeEstimate,
-          feeSpan: data.feeSpan,
-          transactions: 0,
-          timestamp: new Date(data.timestamp).getTime(),
-        };
-        setUpcomingBlock(upcomingBlockData);
-      } else {
-        setUpcomingBlock(null);
-      }
+      const upcomingBlockData = await response.json();
+      setUpcomingBlock(upcomingBlockData);
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
       setUpcomingBlock(null);

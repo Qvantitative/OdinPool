@@ -34,19 +34,11 @@ const sslOptions = {
   cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem')
 };
 
-// Create HTTPS server
-const httpsServer = https.createServer(sslOptions, app);
+// Create single HTTPS server
+const server = https.createServer(sslOptions, app);
 
-// Create HTTP server that redirects to HTTPS
-const httpServer = http.createServer((req, res) => {
-  res.writeHead(301, {
-    Location: `https://${req.headers.host}${req.url}`
-  });
-  res.end();
-});
-
-// Setup Socket.io for HTTPS server
-const io = new Server(httpsServer, {
+// Setup Socket.io
+const io = new Server(server, {
   cors: {
     origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
     methods: ['GET', 'POST']
@@ -1034,8 +1026,13 @@ app.get('/proxy', async (req, res) => {
   }
 });
 
+// Start server
+const PORT = 3001; // Changed to match your next.config.js routing
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
-// Database connection test
+// Database connection test and initialization remain the same
 async function testDatabaseConnection() {
   try {
     const res = await pool.query('SELECT NOW()');
@@ -1045,22 +1042,10 @@ async function testDatabaseConnection() {
   }
 }
 
-// Initialization
+// Initialize
 (async function init() {
   await testDatabaseConnection();
   setInterval(updateBlockchainDataWithEmit, 60000);
-
-  // Start HTTP server (redirect server)
-  const HTTP_PORT = 80;
-  httpServer.listen(HTTP_PORT, () => {
-    console.log(`HTTP Server running on port ${HTTP_PORT}`);
-  });
-
-  // Start HTTPS server
-  const HTTPS_PORT = 443;
-  httpsServer.listen(HTTPS_PORT, () => {
-    console.log(`HTTPS Server running on port ${HTTPS_PORT}`);
-  });
 })();
 
 // Error handling for unexpected database errors

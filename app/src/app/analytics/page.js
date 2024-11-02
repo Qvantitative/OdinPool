@@ -88,8 +88,7 @@ const AnalyticsPage = () => {
   const fetchBlockData = async () => {
     try {
       const maxBlocks = 144 * 30;
-      // Use the Digital Ocean API endpoint
-      const response = await fetch(`http://143.198.17.64:3001/api/blocks?limit=${maxBlocks}`);
+      const response = await fetch(`/api/blocks?limit=${maxBlocks}`);
       if (!response.ok) throw new Error('Failed to fetch blocks from the database');
 
       const data = await response.json();
@@ -105,18 +104,30 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      // Use the Digital Ocean API endpoint
-      const response = await fetch('http://143.198.17.64:3001/api/bitcoin-blocks');
-      console.log('Response status:', response.status);
+      const response = await fetch('/api/bitcoin-blocks');
+      console.log('Response status:', response.status); // Debug log
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error response:', errorData);
+        console.error('Error response:', errorData); // Debug log
         throw new Error(`HTTP error! status: ${response.status} - ${errorData.error}`);
       }
 
       const data = await response.json();
-      // ... rest of your code
+      console.log('Received data:', data); // Debug log
+
+      if (data && Object.keys(data).length > 0) {
+        const upcomingBlockData = {
+          block_height: data.blockHeight + 1,
+          fees_estimate: data.feeEstimate,
+          feeSpan: data.feeSpan,
+          transactions: 0,
+          timestamp: new Date(data.timestamp).getTime(),
+        };
+        setUpcomingBlock(upcomingBlockData);
+      } else {
+        setUpcomingBlock(null);
+      }
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
       setUpcomingBlock(null);

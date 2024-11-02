@@ -475,15 +475,13 @@ app.get('/inscription/:inscriptionId/:project_slug', async (req, res) => {
 });
 
 app.get('/api/blocks', async (req, res) => {
-  console.log('Received request to /api/blocks');  // Add this line
+  console.log('GET /api/blocks route hit');  // Add this line
   try {
     const limit = parseInt(req.query.limit, 10) || 144;
-    console.log('Querying database with limit:', limit);  // Add this line
     const { rows } = await pool.query(
       'SELECT block_height, transactions, timestamp, fees_estimate, min_fee, max_fee, mining_pool, inscriptions FROM blocks ORDER BY block_height DESC LIMIT $1',
       [limit]
     );
-    console.log('Got database response, rows:', rows.length);  // Add this line
     res.json(rows);
   } catch (error) {
     console.error('Database Error:', error);
@@ -1026,6 +1024,13 @@ app.get('/proxy', async (req, res) => {
   } catch (error) {
     console.error('Error in proxy request:', error);
     res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+console.log('Available routes:');
+app._router.stack.forEach(r => {
+  if (r.route && r.route.path) {
+    console.log(`${r.route.stack[0].method.toUpperCase()} ${r.route.path}`);
   }
 });
 

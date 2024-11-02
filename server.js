@@ -475,12 +475,15 @@ app.get('/inscription/:inscriptionId/:project_slug', async (req, res) => {
 });
 
 app.get('/api/blocks', async (req, res) => {
+  console.log('Received request to /api/blocks');  // Add this line
   try {
     const limit = parseInt(req.query.limit, 10) || 144;
+    console.log('Querying database with limit:', limit);  // Add this line
     const { rows } = await pool.query(
       'SELECT block_height, transactions, timestamp, fees_estimate, min_fee, max_fee, mining_pool, inscriptions FROM blocks ORDER BY block_height DESC LIMIT $1',
       [limit]
     );
+    console.log('Got database response, rows:', rows.length);  // Add this line
     res.json(rows);
   } catch (error) {
     console.error('Database Error:', error);
@@ -1027,9 +1030,16 @@ app.get('/proxy', async (req, res) => {
 });
 
 // Start server
-const PORT = 3001; // Changed to match your next.config.js routing
+const PORT = 3001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  // Log all registered routes
+  console.log('Registered routes:');
+  app._router.stack.forEach(function(r){
+    if (r.route && r.route.path){
+      console.log(r.route.path)
+    }
+  });
 });
 
 // Database connection test and initialization remain the same

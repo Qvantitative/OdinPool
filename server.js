@@ -334,8 +334,6 @@ function decodeRuneData(asm) {
   }
 }
 
-export { decodeRuneData, bigIntReplacer };
-
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('A client connected');
@@ -417,6 +415,7 @@ app.post('/api/ord/fetch-block', async (req, res) => {
 
 // API Endpoints
 app.post('/api/blocks', async (req, res) => {
+  console.log('POST /api/blocks route hit');
   const { block_height, transactions, timestamp, mining_pool } = req.body;
   try {
     const { rows } = await pool.query('SELECT * FROM blocks WHERE block_height = $1', [block_height]);
@@ -475,7 +474,7 @@ app.get('/inscription/:inscriptionId/:project_slug', async (req, res) => {
 });
 
 app.get('/api/blocks', async (req, res) => {
-  console.log('GET /api/blocks route hit');  // Add this line
+  console.log('GET /api/blocks route hit');
   try {
     const limit = parseInt(req.query.limit, 10) || 144;
     const { rows } = await pool.query(
@@ -1033,6 +1032,8 @@ app._router.stack.forEach(r => {
     console.log(`${r.route.stack[0].method.toUpperCase()} ${r.route.path}`);
   }
 });
+
+export { decodeRuneData, bigIntReplacer };
 
 // Start server
 const PORT = 3001;

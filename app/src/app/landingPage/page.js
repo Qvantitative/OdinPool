@@ -31,10 +31,10 @@ const features = [
     icon: CloudArrowUpIcon,
   },
   {
-    name: 'Smart Contract Analysis',
+    name: 'Smart Wallet Tracking',
     description:
-      'Analyze smart contracts for vulnerabilities, performance, and efficiency. Get detailed reports on contract behavior and risks.',
-    icon: LockClosedIcon,
+      'Monitor smart wallet activities, including transaction history, asset balances, and movement patterns. Get insights into wallet behaviors and track changes in holdings over time.',
+    icon: WalletIcon,
   },
   {
     name: 'On-Chain Data Visualization',

@@ -34,7 +34,7 @@ const features = [
     name: 'Smart Wallet Tracking',
     description:
       'Monitor smart wallet activities, including transaction history, asset balances, and movement patterns. Get insights into wallet behaviors and track changes in holdings over time.',
-    icon: WalletIcon,
+    icon: LockClosedIcon,
   },
   {
     name: 'On-Chain Data Visualization',

@@ -7,7 +7,6 @@ import io from 'socket.io-client';
 
 // Components
 import BlockChart from '../../components/blocks/charts/BlockChart';
-
 import FeeEstimateCard from '../../components/blocks/FeeEstimateCard';
 import BlockRewardsCard from '../../components/blocks/BlockRewardsCard';
 import BlockDisplay from '../../components/blocks/BlockDisplay';
@@ -31,7 +30,7 @@ const AnalyticsPage = () => {
   const [selectedChart, setSelectedChart] = useState('BlockChart');
   const [selectedTableCard, setSelectedTableCard] = useState('BitcoinBlockTable');
   const [searchType, setSearchType] = useState('Transaction ID');
-  const [selectedBlock, setSelectedBlock] = useState(null); // New state variable
+  const [selectedBlock, setSelectedBlock] = useState(null);
 
   // Refs
   const socketRef = useRef(null);
@@ -236,9 +235,9 @@ const AnalyticsPage = () => {
   // Render error state
   if (error) {
     return (
-      <div className="container mx-auto p-6 bg-gray min-h-screen">
-        <h1 className="text-4xl font-bold text-red-600">Error</h1>
-        <p className="text-white mt-4">{error}</p>
+      <div className="container mx-auto p-6 bg-gray-900 min-h-screen">
+        <h1 className="text-4xl font-bold text-red-500">Error</h1>
+        <p className="text-gray-300 mt-4">{error}</p>
       </div>
     );
   }
@@ -250,7 +249,7 @@ const AnalyticsPage = () => {
 
   // Main render
   return (
-    <div className="bg-gray min-h-screen relative">
+    <div className="bg-gray-900 min-h-screen relative">
       {/* Fixed Header with BlockDisplay */}
       <header className="fixed top-0 left-0 right-0 bg-gray-800 p-4 z-50">
         <div className="flex justify-between items-stretch">
@@ -261,7 +260,7 @@ const AnalyticsPage = () => {
           <div
             ref={scrollContainerRef}
             className="flex overflow-x-auto custom-scrollbar flex-grow"
-            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }} // Removed overflowX: 'hidden'
+            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}
           >
             {sortedBlockData.map((block) => (
               <BlockDisplay key={block.block_height} block={block} onBlockClick={handleBlockClick} />
@@ -274,8 +273,12 @@ const AnalyticsPage = () => {
       <main className="container mx-auto p-8 pt-64">
         {/* Page Header */}
         <section className="mb-10">
-          <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Onchain Data Analytics</h1>
-          <p className="text-center text-white">Real-time blockchain data and analytics dashboard</p>
+          <h1 className="text-5xl font-extrabold text-center pt-20 text-white mb-2">
+            Onchain Data Analytics
+          </h1>
+          <p className="text-center text-gray-300">
+            Real-time blockchain data and analytics dashboard
+          </p>
         </section>
 
         {/* Search Bar Section */}
@@ -292,7 +295,7 @@ const AnalyticsPage = () => {
                 <option value="Wallet Address">Wallet Address</option>
               </select>
               <input
-                className="appearance-none bg-transparent border-none w-full text-white mr-3 py-1 px-2 leading-tight focus:outline-none"
+                className="appearance-none bg-gray-800 border-none w-full text-white mr-3 py-1 px-2 leading-tight focus:outline-none"
                 type="text"
                 placeholder={`Enter ${searchType}`}
                 aria-label={searchType}
@@ -300,7 +303,7 @@ const AnalyticsPage = () => {
                 onChange={handleSearchChange}
               />
               <button
-                className="flex-shrink-0 bg-teal-500 hover:bg-teal-700 text-sm text-white py-1 px-2 rounded-r"
+                className="flex-shrink-0 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-sm text-white py-2 px-4 rounded-r"
                 type="submit"
               >
                 Search
@@ -314,7 +317,7 @@ const AnalyticsPage = () => {
           <section className="container mx-auto p-8 pt-10">
             <button
               onClick={handleBackClick}
-              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              className="mb-4 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold py-2 px-4 rounded"
             >
               Back to Analytics
             </button>
@@ -325,13 +328,12 @@ const AnalyticsPage = () => {
               <BlockDataTable block={expandedContent.block} />
             ) : expandedContent.type === 'Wallet' ? (
               <div>
-                {/* Display the same UI as handleAddressClick in BlockDataTable */}
-                <h2 className="text-2xl font-bold mb-4">Address Details</h2>
+                <h2 className="text-2xl font-bold text-white mb-4">Address Details</h2>
                 <div className="flex flex-wrap -mx-2">
                   {/* Inscriptions */}
                   {expandedContent.addressData.inscriptions && (
                     <div className="w-full lg:w-1/2 px-2">
-                      <h3 className="text-xl font-semibold mb-4">Inscriptions</h3>
+                      <h3 className="text-xl font-semibold text-white mb-4">Inscriptions</h3>
                       {/* Render inscriptions as in BlockDataTable */}
                     </div>
                   )}
@@ -339,7 +341,7 @@ const AnalyticsPage = () => {
                   {/* Outputs */}
                   {expandedContent.addressData.outputs && (
                     <div className="w-full lg:w-1/2 px-2">
-                      <h3 className="text-xl font-semibold mb-4">Outputs</h3>
+                      <h3 className="text-xl font-semibold text-white mb-4">Outputs</h3>
                       {/* Render outputs as in BlockDataTable */}
                     </div>
                   )}
@@ -352,7 +354,7 @@ const AnalyticsPage = () => {
           <section className="container mx-auto p-8 pt-10">
             <button
               onClick={handleBackFromBlockClick}
-              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              className="mb-4 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold py-2 px-4 rounded"
             >
               Back to Analytics
             </button>
@@ -379,7 +381,7 @@ const AnalyticsPage = () => {
                 </select>
               </div>
               {/* Selected Chart */}
-              <section className="p-6 bg-gray-500 rounded-lg shadow-lg transition duration-300">
+              <section className="p-6 bg-gray-800 rounded-lg shadow-lg transition duration-300">
                 {charts.find((chart) => chart.value === selectedChart)?.component}
               </section>
             </div>
@@ -402,7 +404,7 @@ const AnalyticsPage = () => {
                 </select>
               </div>
               {/* Selected Table/Card */}
-              <section className="p-6 bg-gray-500 rounded-lg shadow-lg transition duration-300">
+              <section className="p-6 bg-gray-800 rounded-lg shadow-lg transition duration-300">
                 {tablesCards.find((item) => item.value === selectedTableCard)?.component}
               </section>
             </div>
@@ -412,7 +414,7 @@ const AnalyticsPage = () => {
         {/* Return to Landing Page Link */}
         <a
           href="/landingPage"
-          className="fixed bottom-4 right-4 bg-blue-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-blue-400"
+          className="fixed bottom-4 right-4 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white py-2 px-4 rounded-md shadow-lg"
         >
           Return to Landing Page
         </a>

@@ -250,26 +250,8 @@ const AnalyticsPage = () => {
   // Main render
   return (
     <div className="bg-gray-900 min-h-screen relative">
-      {/* Background */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10 transform-gpu overflow-hidden"
-      >
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900 opacity-80"
-        />
-        <div
-          style={{
-            backgroundImage: 'url(/Images/crypto-background.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-          className="absolute inset-0 opacity-20"
-        />
-      </div>
-
       {/* Fixed Header with BlockDisplay */}
-      <header className="fixed top-0 left-0 right-0 bg-gray-800 bg-opacity-90 p-4 z-50">
+      <header className="fixed top-0 left-0 right-0 bg-gray-800 p-4 z-50">
         <div className="flex justify-between items-stretch">
           <div className="flex custom-scrollbar" style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}>
             {upcomingBlock && <UpcomingBlockDisplay block={upcomingBlock} />}
@@ -399,7 +381,7 @@ const AnalyticsPage = () => {
                 </select>
               </div>
               {/* Selected Chart */}
-              <section className="p-6 bg-gray-800 bg-opacity-90 rounded-lg shadow-lg transition duration-300">
+              <section className="p-6 bg-gray-800 rounded-lg shadow-lg transition duration-300">
                 {charts.find((chart) => chart.value === selectedChart)?.component}
               </section>
             </div>
@@ -422,7 +404,7 @@ const AnalyticsPage = () => {
                 </select>
               </div>
               {/* Selected Table/Card */}
-              <section className="p-6 bg-gray-800 bg-opacity-90 rounded-lg shadow-lg transition duration-300">
+              <section className="p-6 bg-gray-800 rounded-lg shadow-lg transition duration-300">
                 {tablesCards.find((item) => item.value === selectedTableCard)?.component}
               </section>
             </div>

@@ -274,7 +274,7 @@ const AnalyticsPage = () => {
       <main className="container mx-auto p-8 pt-64">
         {/* Page Header */}
         <section className="mb-10">
-          <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Bitcoin Taproot Analytics</h1>
+          <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Onchain Data Analytics</h1>
           <p className="text-center text-white">Real-time blockchain data and analytics dashboard</p>
         </section>
 

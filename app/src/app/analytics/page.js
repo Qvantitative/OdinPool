@@ -56,36 +56,27 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    // Initialize socket with the proxy path
-    socketRef.current = io('/', {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
-    });
-
-    // Socket event handlers
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected');
-    });
-
-    socketRef.current.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
+    socketRef.current = io('/');
+    fetchInitialData();
 
     socketRef.current.on('new-block', handleNewBlock);
 
-    // Add error handling for failed connections
-    socketRef.current.on('error', (error) => {
-      console.error('Socket error:', error);
-    });
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+    // Horizontal scroll handler
+    const handleWheel = (e) => {
+      if (scrollContainerRef.current) {
+        e.preventDefault();
+        scrollContainerRef.current.scrollLeft += e.deltaY;
       }
     };
+
+    const container = scrollContainerRef.current;
+    container?.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      socketRef.current.disconnect();
+      container?.removeEventListener('wheel', handleWheel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch initial block data and upcoming block
@@ -119,26 +110,22 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/upcoming-block', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
+      // Use the correct API endpoint
+      const response = await fetch(`${window.location.origin}/api/upcoming-block`);
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.warn('Upcoming block data not yet available');
-          return;
+          console.warn('Upcoming block data not available yet');
+          return null;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      setUpcomingBlock(data);
+      const upcomingBlockData = await response.json();
+      setUpcomingBlock(upcomingBlockData);
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
+      // Set a null state but don't throw an error to prevent UI breakage
       setUpcomingBlock(null);
     }
   };
@@ -250,30 +237,6 @@ const AnalyticsPage = () => {
   const handleBackFromBlockClick = () => {
     setSelectedBlock(null);
   };
-
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        await Promise.all([
-          fetchBlockData(),
-          fetchUpcomingBlock()
-        ]);
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-        setError('Failed to load initial data');
-      }
-    };
-
-    fetchInitialData();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchUpcomingBlock();
-    }, 30000); // Fetch every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Render error state
   if (error) {

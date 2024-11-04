@@ -104,11 +104,23 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/upcoming-block');
+      const response = await fetch('/api/bitcoin-blocks');
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const upcomingBlockData = await response.json();
-      setUpcomingBlock(upcomingBlockData);
+      const data = await response.json();
+
+      if (data && Object.keys(data).length > 0) {
+        const upcomingBlockData = {
+          block_height: data.blockHeight + 1,
+          fees_estimate: data.feeEstimate,
+          feeSpan: data.feeSpan,
+          transactions: 0,
+          timestamp: new Date(data.timestamp).getTime(),
+        };
+        setUpcomingBlock(upcomingBlockData);
+      } else {
+        setUpcomingBlock(null);
+      }
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
       setUpcomingBlock(null);
@@ -117,7 +129,7 @@ const AnalyticsPage = () => {
 
   // Process block data
   const processBlockData = (data) => {
-    return data
+    const processedData = data
       .map((block) => ({
         id: block.block_height,
         block_height: block.block_height,
@@ -128,7 +140,11 @@ const AnalyticsPage = () => {
         mining_pool: block.mining_pool || 'Unknown',
         inscriptions: block.inscriptions,
       }))
-      .sort((a, b) => b.block_height - a.block_height); // Sort by block height descending
+      .sort((a, b) => b.block_height - a.block_height);
+
+    console.log('Processed blockData:', processedData.map((block) => block.inscriptions));
+
+    return processedData;
   };
 
   // Generate upcoming block data
@@ -144,31 +160,32 @@ const AnalyticsPage = () => {
   const handleNewBlock = (newBlock) => {
     console.log('New block received:', newBlock.block_height);
     const processedNewBlock = {
-      id: newBlock.block_height,
-      block_height: newBlock.block_height,
-      transactions: newBlock.transactions,
-      timestamp: newBlock.timestamp * 1000, // Convert to milliseconds
-      fees_estimate: newBlock.fees_estimate,
-      feeSpan: {
-        min: newBlock.min_fee,
-        max: newBlock.max_fee
-      },
+      ...newBlock,
+      timestamp: newBlock.timestamp * 1000,
       mining_pool: newBlock.mining_pool || 'Unknown',
-      inscriptions: newBlock.inscriptions
     };
 
     setBlockData((prevBlocks) => {
-      // Check if block already exists
-      if (prevBlocks.some(block => block.block_height === newBlock.block_height)) {
+      console.log('Previous blockData:', prevBlocks.map((block) => block.block_height));
+
+      const blockExists = prevBlocks.some((block) => block.block_height === newBlock.block_height);
+      if (blockExists) {
+        console.log('Block already exists, no update necessary');
         return prevBlocks;
       }
 
-      // Create new array and sort by block height
-      const updatedBlocks = [...prevBlocks, processedNewBlock]
-        .sort((a, b) => b.block_height - a.block_height)
-        .slice(0, 100); // Keep only last 100 blocks
+      // Insert the block in the correct position based on block height
+      const updatedBlocks = [...prevBlocks];
+      const insertIndex = updatedBlocks.findIndex(block => block.block_height < newBlock.block_height);
 
-      return updatedBlocks;
+      if (insertIndex === -1) {
+        updatedBlocks.push(processedNewBlock);
+      } else {
+        updatedBlocks.splice(insertIndex, 0, processedNewBlock);
+      }
+
+      // Keep only the last 100 blocks
+      return updatedBlocks.slice(0, 100);
     });
 
     setUpcomingBlock(generateUpcomingBlock(processedNewBlock));

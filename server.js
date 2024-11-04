@@ -84,13 +84,33 @@ const bitcoinClient = new BitcoinCore({
 });
 
 function calculateFeeStats(transactions) {
-  if (!transactions || transactions.length === 0) return { min: 0, max: 0, avg: 0 };
+  if (!transactions || transactions.length === 0) {
+    return {
+      min: 0,
+      max: 0,
+      avg: 0
+    };
+  }
 
-  const fees = transactions.map(tx => tx.fee / tx.vsize); // fee rate in sat/vB
+  let min = Infinity;
+  let max = 0;
+  let sum = 0;
+  let count = 0;
+
+  for (const tx of transactions) {
+    const feeRate = tx.fees?.base / tx.vsize; // fee rate in sat/vB
+    if (feeRate) {
+      min = Math.min(min, feeRate);
+      max = Math.max(max, feeRate);
+      sum += feeRate;
+      count++;
+    }
+  }
+
   return {
-    min: Math.min(...fees),
-    max: Math.max(...fees),
-    avg: fees.reduce((a, b) => a + b, 0) / fees.length
+    min: count ? min : 0,
+    max: count ? max : 0,
+    avg: count ? sum / count : 0
   };
 }
 
@@ -1018,23 +1038,28 @@ app.get('/api/project-rankings', async (req, res) => {
 // Add this new endpoint to your server.js
 app.get('/api/upcoming-block', async (req, res) => {
   try {
-    // Get mempool transactions
-    const mempoolTxids = await bitcoinClient.getRawMempool(true); // true for verbose output
+    // 1. Get current mempool info
+    const mempoolInfo = await bitcoinClient.getMempoolInfo();
+
+    // 2. Get mempool transactions
+    const mempoolTxids = await bitcoinClient.getRawMempool(true);
     const transactions = Object.values(mempoolTxids);
 
-    // Get current blockchain info
+    // 3. Get current blockchain info
     const blockchainInfo = await bitcoinClient.getBlockchainInfo();
     const currentHeight = blockchainInfo.blocks;
 
-    // Calculate fee statistics
+    // 4. Get latest block for timestamp calculation
+    const latestBlockHash = await bitcoinClient.getBlockHash(currentHeight);
+    const latestBlock = await bitcoinClient.getBlock(latestBlockHash);
+
+    // 5. Calculate fee statistics
     const feeStats = calculateFeeStats(transactions);
 
-    // Estimate next block's timestamp (roughly 10 minutes from latest block)
-    const latestBlock = await bitcoinClient.getBlock(await bitcoinClient.getBlockHash(currentHeight));
-    const estimatedTimestamp = (latestBlock.time + 600) * 1000; // Convert to milliseconds
-
+    // 6. Prepare response data
     const upcomingBlockData = {
       block_height: currentHeight + 1,
+      estimated_transactions: mempoolInfo.size,
       fees_estimate: Math.round(feeStats.avg),
       min_fee: Math.round(feeStats.min),
       max_fee: Math.round(feeStats.max),
@@ -1042,14 +1067,24 @@ app.get('/api/upcoming-block', async (req, res) => {
         min: Math.round(feeStats.min),
         max: Math.round(feeStats.max)
       },
-      transactions: transactions.length,
-      timestamp: estimatedTimestamp
+      timestamp: (latestBlock.time + 600) * 1000, // Current time + 10 minutes in milliseconds
+      mempool_size: mempoolInfo.bytes,
+      mempool_bytes: mempoolInfo.bytes,
+      mining_pool: 'Unknown', // This will be determined when the block is actually mined
     };
 
     res.json(upcomingBlockData);
   } catch (error) {
     console.error('Error getting upcoming block data:', error);
-    res.status(500).json({ error: 'Failed to fetch upcoming block data' });
+
+    // More detailed error response
+    const errorResponse = {
+      error: 'Failed to fetch upcoming block data',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
+    };
+
+    res.status(500).json(errorResponse);
   }
 });
 

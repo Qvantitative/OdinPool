@@ -56,14 +56,17 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io({
+    // Initialize socket with the proxy path
+    socketRef.current = io('/', {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
-      // Don't specify the full URL, let Next.js handle it
-      autoConnect: true,
-      reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000
+    });
+
+    // Socket event handlers
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected');
     });
 
     socketRef.current.on('connect_error', (error) => {
@@ -72,6 +75,12 @@ const AnalyticsPage = () => {
 
     socketRef.current.on('new-block', handleNewBlock);
 
+    // Add error handling for failed connections
+    socketRef.current.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
+
+    // Cleanup on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -111,29 +120,23 @@ const AnalyticsPage = () => {
   const fetchUpcomingBlock = async () => {
     try {
       const response = await fetch('/api/upcoming-block', {
+        method: 'GET',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
-        },
-        // Important: Don't set credentials or specify the full URL
-        // Let Next.js handle the proxy
+        }
       });
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.warn('Upcoming block data not available yet');
-          return null;
+          console.warn('Upcoming block data not yet available');
+          return;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const upcomingBlockData = await response.json();
-      if (!upcomingBlockData) {
-        console.warn('No upcoming block data received');
-        return null;
-      }
-
-      setUpcomingBlock(upcomingBlockData);
+      const data = await response.json();
+      setUpcomingBlock(data);
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
       setUpcomingBlock(null);
@@ -247,6 +250,30 @@ const AnalyticsPage = () => {
   const handleBackFromBlockClick = () => {
     setSelectedBlock(null);
   };
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        await Promise.all([
+          fetchBlockData(),
+          fetchUpcomingBlock()
+        ]);
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+        setError('Failed to load initial data');
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUpcomingBlock();
+    }, 30000); // Fetch every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Render error state
   if (error) {

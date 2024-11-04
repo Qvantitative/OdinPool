@@ -26,7 +26,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: `${__dirname}/.env` });
 
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'https://odinpool.ai',
+    'https://www.odinpool.ai',
+    'http://localhost:3000'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 const app = express();
+app.use(cors(corsOptions));
 
 // SSL configuration
 const sslOptions = {
@@ -40,7 +53,29 @@ const server = https.createServer(sslOptions, app);
 // Setup Socket.io
 const io = new Server(server, {
   cors: corsOptions,
-  transports: ['websocket', 'polling']
+  path: '/socket.io',
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// 5. Add error handling for the server
+server.on('error', (error) => {
+  console.error('HTTPS Server Error:', error);
+});
+
+// 6. Add improved Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('error', (error) => {
+    console.error('Socket Error:', error);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('Client disconnected:', socket.id, 'Reason:', reason);
+  });
 });
 
 // For Ord server requests (local)
@@ -59,21 +94,6 @@ const localInstance = axios.create({
   baseURL: 'http://143.198.17.64:3001'  // Keep this as is
 });
 
-// Middleware
-const corsOptions = {
-  origin: [
-    'https://odinpool.ai',
-    'https://www.odinpool.ai',
-    'http://localhost:3000',
-    'https://143.198.17.64:3001'  // Add your Digital Ocean domain
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-};
-
-app.use(cors(corsOptions));
-
 // Database
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -87,7 +107,7 @@ const bitcoinClient = new BitcoinCore({
   password: process.env.BITCOIN_RPC_PASSWORD,
   host: '68.9.235.71',
   port: 8332,
-});t
+});
 
 function calculateFeeStats(transactions) {
   if (!transactions || transactions.length === 0) {
@@ -370,12 +390,6 @@ function decodeRuneData(asm) {
     return { error: error.message, cenotaph: true };
   }
 }
-
-// Socket.io connection
-io.on('connection', (socket) => {
-  console.log('A client connected');
-  socket.on('disconnect', () => console.log('A client disconnected'));
-});
 
 // Bitcoin blockchain data updates
 async function updateBlockchainDataWithEmit() {

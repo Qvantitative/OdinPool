@@ -11,7 +11,7 @@ const BlockDisplay = ({ block, onBlockClick }) => {
   return (
     <div
       className="block-height inline-block text-center mb-2 cursor-pointer"
-      style={{ flex: '0 0 auto', marginRight: 'auto' }}
+      style={{ flex: '0 0 auto' }}
       aria-label={`Block #${block_height} mined by ${mining_pool || 'Unknown'} with estimated fee of ${fees_estimate || 'N/A'} sat/vB`}
       onClick={() => onBlockClick(block)}
     >

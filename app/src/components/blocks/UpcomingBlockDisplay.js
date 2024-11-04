@@ -11,7 +11,7 @@ const UpcomingBlockDisplay = ({ block, mempoolSize }) => {
   return (
     <div
       className="block-height inline-block text-center mb-2"
-      style={{ flex: '0 0 auto', marginLeft: 'auto' }}
+      style={{ flex: '0 0 auto' }}
       key={block_height}
       aria-label={`Block #${block_height} with estimated fee of ${fees_estimate || 'N/A'} sat/vB`}
     >

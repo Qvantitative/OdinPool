@@ -260,8 +260,8 @@ const AnalyticsPage = () => {
           <div className="border-l border-dotted border-gray-500 mx-4"></div>
           <div
             ref={scrollContainerRef}
-            className="flex flex-row-reverse overflow-x-auto custom-scrollbar flex-grow"
-            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}
+            className="flex overflow-x-auto custom-scrollbar flex-grow"
+            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }} // Removed overflowX: 'hidden'
           >
             {sortedBlockData.map((block) => (
               <BlockDisplay key={block.block_height} block={block} onBlockClick={handleBlockClick} />

@@ -56,27 +56,27 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('/');
-    fetchInitialData();
+    socketRef.current = io({
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      // Don't specify the full URL, let Next.js handle it
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+    });
 
     socketRef.current.on('new-block', handleNewBlock);
 
-    // Horizontal scroll handler
-    const handleWheel = (e) => {
-      if (scrollContainerRef.current) {
-        e.preventDefault();
-        scrollContainerRef.current.scrollLeft += e.deltaY;
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
       }
     };
-
-    const container = scrollContainerRef.current;
-    container?.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      socketRef.current.disconnect();
-      container?.removeEventListener('wheel', handleWheel);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch initial block data and upcoming block
@@ -110,10 +110,29 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/upcoming-block');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const response = await fetch('/api/upcoming-block', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        // Important: Don't set credentials or specify the full URL
+        // Let Next.js handle the proxy
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.warn('Upcoming block data not available yet');
+          return null;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const upcomingBlockData = await response.json();
+      if (!upcomingBlockData) {
+        console.warn('No upcoming block data received');
+        return null;
+      }
+
       setUpcomingBlock(upcomingBlockData);
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);

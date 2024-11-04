@@ -39,10 +39,8 @@ const server = https.createServer(sslOptions, app);
 
 // Setup Socket.io
 const io = new Server(server, {
-  cors: {
-    origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
-    methods: ['GET', 'POST']
-  },
+  cors: corsOptions,
+  transports: ['websocket', 'polling']
 });
 
 // For Ord server requests (local)
@@ -62,11 +60,19 @@ const localInstance = axios.create({
 });
 
 // Middleware
-app.use(cors({
-  origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
-  credentials: true
-}));
-app.use(bodyParser.json({ limit: '50mb' }));
+const corsOptions = {
+  origin: [
+    'https://odinpool.ai',
+    'https://www.odinpool.ai',
+    'http://localhost:3000',
+    'https://143.198.17.64:3001'  // Add your Digital Ocean domain
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 
 // Database
 const pool = new pg.Pool({
@@ -81,7 +87,7 @@ const bitcoinClient = new BitcoinCore({
   password: process.env.BITCOIN_RPC_PASSWORD,
   host: '68.9.235.71',
   port: 8332,
-});
+});t
 
 function calculateFeeStats(transactions) {
   if (!transactions || transactions.length === 0) {

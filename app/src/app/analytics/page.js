@@ -174,18 +174,11 @@ const AnalyticsPage = () => {
         return prevBlocks;
       }
 
-      // Insert the block in the correct position based on block height
-      const updatedBlocks = [...prevBlocks];
-      const insertIndex = updatedBlocks.findIndex(block => block.block_height < newBlock.block_height);
+      const updatedBlocks = [processedNewBlock, ...prevBlocks].slice(0, 100);
 
-      if (insertIndex === -1) {
-        updatedBlocks.push(processedNewBlock);
-      } else {
-        updatedBlocks.splice(insertIndex, 0, processedNewBlock);
-      }
+      console.log('Updated blockData:', updatedBlocks.map((block) => block.block_height));
 
-      // Keep only the last 100 blocks
-      return updatedBlocks.slice(0, 100);
+      return updatedBlocks;
     });
 
     setUpcomingBlock(generateUpcomingBlock(processedNewBlock));
@@ -268,10 +261,9 @@ const AnalyticsPage = () => {
           <div
             ref={scrollContainerRef}
             className="flex overflow-x-auto custom-scrollbar flex-grow"
-            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}
+            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }} // Removed overflowX: 'hidden'
           >
-            {/* Remove the additional sort here since blocks are already properly ordered */}
-            {blockData.map((block) => (
+            {sortedBlockData.map((block) => (
               <BlockDisplay key={block.block_height} block={block} onBlockClick={handleBlockClick} />
             ))}
           </div>

@@ -26,20 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: `${__dirname}/.env` });
 
-// CORS configuration
-const corsOptions = {
-  origin: [
-    'https://odinpool.ai',
-    'https://www.odinpool.ai',
-    'http://localhost:3000'
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
 const app = express();
-app.use(cors(corsOptions));
 
 // SSL configuration
 const sslOptions = {
@@ -52,30 +39,10 @@ const server = https.createServer(sslOptions, app);
 
 // Setup Socket.io
 const io = new Server(server, {
-  cors: corsOptions,
-  path: '/socket.io',
-  transports: ['websocket', 'polling'],
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
-
-// 5. Add error handling for the server
-server.on('error', (error) => {
-  console.error('HTTPS Server Error:', error);
-});
-
-// 6. Add improved Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('error', (error) => {
-    console.error('Socket Error:', error);
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log('Client disconnected:', socket.id, 'Reason:', reason);
-  });
+  cors: {
+    origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
+    methods: ['GET', 'POST']
+  },
 });
 
 // For Ord server requests (local)
@@ -94,6 +61,13 @@ const localInstance = axios.create({
   baseURL: 'http://143.198.17.64:3001'  // Keep this as is
 });
 
+// Middleware
+app.use(cors({
+  origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
+  credentials: true
+}));
+app.use(bodyParser.json({ limit: '50mb' }));
+
 // Database
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -108,37 +82,6 @@ const bitcoinClient = new BitcoinCore({
   host: '68.9.235.71',
   port: 8332,
 });
-
-function calculateFeeStats(transactions) {
-  if (!transactions || transactions.length === 0) {
-    return {
-      min: 0,
-      max: 0,
-      avg: 0
-    };
-  }
-
-  let min = Infinity;
-  let max = 0;
-  let sum = 0;
-  let count = 0;
-
-  for (const tx of transactions) {
-    const feeRate = tx.fees?.base / tx.vsize; // fee rate in sat/vB
-    if (feeRate) {
-      min = Math.min(min, feeRate);
-      max = Math.max(max, feeRate);
-      sum += feeRate;
-      count++;
-    }
-  }
-
-  return {
-    min: count ? min : 0,
-    max: count ? max : 0,
-    avg: count ? sum / count : 0
-  };
-}
 
 // Helper function to chunk data into smaller batches
 function chunkArray(array, chunkSize) {
@@ -390,6 +333,12 @@ function decodeRuneData(asm) {
     return { error: error.message, cenotaph: true };
   }
 }
+
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log('A client connected');
+  socket.on('disconnect', () => console.log('A client disconnected'));
+});
 
 // Bitcoin blockchain data updates
 async function updateBlockchainDataWithEmit() {
@@ -1052,59 +1001,6 @@ app.get('/api/project-rankings', async (req, res) => {
   } catch (error) {
     console.error('Error fetching project rankings:', error);
     res.status(500).json({ error: 'Failed to fetch project rankings' });
-  }
-});
-
-// Add this new endpoint to your server.js
-app.get('/api/upcoming-block', async (req, res) => {
-  try {
-    // 1. Get current mempool info
-    const mempoolInfo = await bitcoinClient.getMempoolInfo();
-
-    // 2. Get mempool transactions
-    const mempoolTxids = await bitcoinClient.getRawMempool(true);
-    const transactions = Object.values(mempoolTxids);
-
-    // 3. Get current blockchain info
-    const blockchainInfo = await bitcoinClient.getBlockchainInfo();
-    const currentHeight = blockchainInfo.blocks;
-
-    // 4. Get latest block for timestamp calculation
-    const latestBlockHash = await bitcoinClient.getBlockHash(currentHeight);
-    const latestBlock = await bitcoinClient.getBlock(latestBlockHash);
-
-    // 5. Calculate fee statistics
-    const feeStats = calculateFeeStats(transactions);
-
-    // 6. Prepare response data
-    const upcomingBlockData = {
-      block_height: currentHeight + 1,
-      estimated_transactions: mempoolInfo.size,
-      fees_estimate: Math.round(feeStats.avg),
-      min_fee: Math.round(feeStats.min),
-      max_fee: Math.round(feeStats.max),
-      feeSpan: {
-        min: Math.round(feeStats.min),
-        max: Math.round(feeStats.max)
-      },
-      timestamp: (latestBlock.time + 600) * 1000, // Current time + 10 minutes in milliseconds
-      mempool_size: mempoolInfo.bytes,
-      mempool_bytes: mempoolInfo.bytes,
-      mining_pool: 'Unknown', // This will be determined when the block is actually mined
-    };
-
-    res.json(upcomingBlockData);
-  } catch (error) {
-    console.error('Error getting upcoming block data:', error);
-
-    // More detailed error response
-    const errorResponse = {
-      error: 'Failed to fetch upcoming block data',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      timestamp: new Date().toISOString()
-    };
-
-    res.status(500).json(errorResponse);
   }
 });
 

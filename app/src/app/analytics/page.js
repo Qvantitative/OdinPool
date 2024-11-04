@@ -92,15 +92,9 @@ const AnalyticsPage = () => {
       if (!response.ok) throw new Error('Failed to fetch blocks from the database');
 
       const data = await response.json();
-      // Process and sort the data
       const processedData = processBlockData(data);
       setBlockData(processedData);
-
-      // Set upcoming block based on the highest block height
-      const latestBlock = processedData[0]; // First block after sorting
-      if (latestBlock) {
-        setUpcomingBlock(generateUpcomingBlock(latestBlock));
-      }
+      setUpcomingBlock(generateUpcomingBlock(processedData[0]));
     } catch (err) {
       console.error('Error fetching block data:', err);
       setError('There was an error loading the data. Please try again later.');
@@ -110,22 +104,13 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      // Use the correct API endpoint
-      const response = await fetch(`${window.location.origin}/api/upcoming-block`);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.warn('Upcoming block data not available yet');
-          return null;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const response = await fetch('/api/upcoming-block');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const upcomingBlockData = await response.json();
       setUpcomingBlock(upcomingBlockData);
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
-      // Set a null state but don't throw an error to prevent UI breakage
       setUpcomingBlock(null);
     }
   };

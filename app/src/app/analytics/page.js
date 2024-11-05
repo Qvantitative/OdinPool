@@ -56,17 +56,21 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('/', {  // Use relative path since rewrites will handle it
+    const socketUrl = window.location.hostname === 'localhost'
+      ? 'http://localhost:3001'
+      : `https://${window.location.hostname}`;
+
+    socketRef.current = io(socketUrl, {
+      path: '/socket.io/',
       transports: ['websocket', 'polling'],
       secure: true,
     });
 
+    // Debug logging
     socketRef.current.on('connect_error', (error) => {
       console.error('Socket connection error details:', error);
-    });
-
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected successfully');
+      console.log('Connection URL:', socketUrl);
+      console.log('Transport:', socketRef.current.io.engine.transport.name);
     });
 
     fetchInitialData();

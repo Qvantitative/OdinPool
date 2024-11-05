@@ -320,37 +320,6 @@ const AnalyticsPage = () => {
           <p className="text-center text-white">Real-time blockchain data and analytics dashboard</p>
         </section>
 
-        {/* Search Bar Section */}
-        <section className="flex justify-center items-center mb-10">
-          <form onSubmit={handleSearchSubmit} className="w-full max-w-md">
-            <div className="flex items-center border-b border-teal-500 py-2">
-              <select
-                className="bg-gray-700 text-white p-2 rounded-l"
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value)}
-              >
-                <option value="Transaction ID">Transaction ID</option>
-                <option value="Block Height">Block Height</option>
-                <option value="Wallet Address">Wallet Address</option>
-              </select>
-              <input
-                className="appearance-none bg-transparent border-none w-full text-white mr-3 py-1 px-2 leading-tight focus:outline-none"
-                type="text"
-                placeholder={`Enter ${searchType}`}
-                aria-label={searchType}
-                value={searchInput}
-                onChange={handleSearchChange}
-              />
-              <button
-                className="flex-shrink-0 bg-teal-500 hover:bg-teal-700 text-sm text-white py-1 px-2 rounded-r"
-                type="submit"
-              >
-                Search
-              </button>
-            </div>
-          </form>
-        </section>
-
         {/* Conditional Rendering Based on expandedContent or selectedBlock */}
         {expandedContent ? (
           <section className="container mx-auto p-8 pt-10">

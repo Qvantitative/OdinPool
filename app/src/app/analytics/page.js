@@ -158,31 +158,33 @@ const AnalyticsPage = () => {
 
   // Handle new block received via WebSocket
   const handleNewBlock = (newBlock) => {
-    console.log('New block received:', newBlock.block_height);
-    const processedNewBlock = {
-      ...newBlock,
-      timestamp: newBlock.timestamp * 1000,
-      mining_pool: newBlock.mining_pool || 'Unknown',
-    };
+      console.log('New block received:', newBlock.block_height);
+      const processedNewBlock = {
+        ...newBlock,
+        timestamp: newBlock.timestamp * 1000,
+        mining_pool: newBlock.mining_pool || 'Unknown',
+      };
 
-    setBlockData((prevBlocks) => {
-      console.log('Previous blockData:', prevBlocks.map((block) => block.block_height));
+      setBlockData((prevBlocks) => {
+        console.log('Previous blockData:', prevBlocks.map((block) => block.block_height));
 
-      const blockExists = prevBlocks.some((block) => block.block_height === newBlock.block_height);
-      if (blockExists) {
-        console.log('Block already exists, no update necessary');
-        return prevBlocks;
-      }
+        // Check if the block already exists
+        const blockExists = prevBlocks.some((block) => block.block_height === newBlock.block_height);
+        if (blockExists) {
+          console.log('Block already exists, no update necessary');
+          return prevBlocks;
+        }
 
-      const updatedBlocks = [processedNewBlock, ...prevBlocks].slice(0, 100);
+        // Prepend the new block and keep only the latest 100 blocks
+        const updatedBlocks = [processedNewBlock, ...prevBlocks].slice(0, 100);
 
-      console.log('Updated blockData:', updatedBlocks.map((block) => block.block_height));
+        console.log('Updated blockData:', updatedBlocks.map((block) => block.block_height));
 
-      return updatedBlocks;
-    });
+        return updatedBlocks;
+      });
 
-    setUpcomingBlock(generateUpcomingBlock(processedNewBlock));
-    fetchUpcomingBlock();
+      setUpcomingBlock(generateUpcomingBlock(processedNewBlock));
+      fetchUpcomingBlock();
   };
 
   // Handle search input change

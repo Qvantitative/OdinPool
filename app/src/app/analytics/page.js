@@ -3,7 +3,6 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import io from 'socket.io-client';
 
 // Components
 import BlockChart from '../../components/blocks/charts/BlockChart';
@@ -34,7 +33,6 @@ const AnalyticsPage = () => {
   const [selectedBlock, setSelectedBlock] = useState(null); // New state variable
 
   // Refs
-  const socketRef = useRef(null);
   const scrollContainerRef = useRef(null);
 
   // Define charts and tablesCards arrays
@@ -56,25 +54,13 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    const socketUrl = window.location.hostname === 'localhost'
-      ? 'http://localhost:3001'
-      : `https://${window.location.hostname}`;
-
-    socketRef.current = io(socketUrl, {
-      path: '/socket.io/',
-      transports: ['websocket', 'polling'],
-      secure: true,
-    });
-
-    // Debug logging
-    socketRef.current.on('connect_error', (error) => {
-      console.error('Socket connection error details:', error);
-      console.log('Connection URL:', socketUrl);
-      console.log('Transport:', socketRef.current.io.engine.transport.name);
-    });
-
+    // Initial fetch
     fetchInitialData();
-    socketRef.current.on('new-block', handleNewBlock);
+
+    // Set up polling interval
+    const pollInterval = setInterval(() => {
+      fetchInitialData();
+    }, 60000); // Poll every minute
 
     // Horizontal scroll handler
     const handleWheel = (e) => {
@@ -87,8 +73,9 @@ const AnalyticsPage = () => {
     const container = scrollContainerRef.current;
     container?.addEventListener('wheel', handleWheel, { passive: false });
 
+    // Cleanup
     return () => {
-      socketRef.current.disconnect();
+      clearInterval(pollInterval);
       container?.removeEventListener('wheel', handleWheel);
     };
   }, []);
@@ -106,8 +93,26 @@ const AnalyticsPage = () => {
       if (!response.ok) throw new Error('Failed to fetch blocks from the database');
 
       const data = await response.json();
+
+      setBlockData((prevBlocks) => {
+        // Check if newest block already exists
+        const latestBlock = data[0];
+        const blockExists = prevBlocks.some(
+          (block) => block.block_height === latestBlock.block_height
+        );
+
+        if (blockExists) {
+          console.log('Block already exists, no update necessary');
+          return prevBlocks;
+        }
+
+        // Process and update blocks
+        const processedData = processBlockData(data);
+        return processedData;
+      });
+
+      // Update upcoming block based on latest data
       const processedData = processBlockData(data);
-      setBlockData(processedData);
       setUpcomingBlock(generateUpcomingBlock(processedData[0]));
     } catch (err) {
       console.error('Error fetching block data:', err);
@@ -130,7 +135,7 @@ const AnalyticsPage = () => {
       const data = await response.json();
 
       if (data && data.length > 0) {
-        const latestBlock = data[0]; // Get the most recent block since it's ordered DESC
+        const latestBlock = data[0];
         const upcomingBlockData = {
           block_height: latestBlock.block_height + 1,
           fees_estimate: latestBlock.fees_estimate,
@@ -138,8 +143,8 @@ const AnalyticsPage = () => {
             min: latestBlock.min_fee,
             max: latestBlock.max_fee
           },
-          transactions: 0, // New block starts with 0 transactions
-          timestamp: new Date().getTime(), // Current timestamp for upcoming block
+          transactions: 0,
+          timestamp: new Date().getTime(),
           mining_pool: latestBlock.mining_pool,
           inscriptions: latestBlock.inscriptions
         };
@@ -153,7 +158,7 @@ const AnalyticsPage = () => {
     }
   };
 
-  // Process block data
+  // Helper functions remain the same
   const processBlockData = (data) => {
     const processedData = data
       .map((block) => ({
@@ -168,49 +173,15 @@ const AnalyticsPage = () => {
       }))
       .sort((a, b) => b.block_height - a.block_height);
 
-    console.log('Processed blockData:', processedData.map((block) => block.inscriptions));
-
     return processedData;
   };
 
-  // Generate upcoming block data
   const generateUpcomingBlock = (latestBlock) => {
     if (!latestBlock) return null;
     return {
       ...latestBlock,
       block_height: latestBlock.block_height + 1,
     };
-  };
-
-  // Handle new block received via WebSocket
-  const handleNewBlock = (newBlock) => {
-      console.log('New block received:', newBlock.block_height);
-      const processedNewBlock = {
-        ...newBlock,
-        timestamp: newBlock.timestamp * 1000,
-        mining_pool: newBlock.mining_pool || 'Unknown',
-      };
-
-      setBlockData((prevBlocks) => {
-        console.log('Previous blockData:', prevBlocks.map((block) => block.block_height));
-
-        // Check if the block already exists
-        const blockExists = prevBlocks.some((block) => block.block_height === newBlock.block_height);
-        if (blockExists) {
-          console.log('Block already exists, no update necessary');
-          return prevBlocks;
-        }
-
-        // Prepend the new block and keep only the latest 100 blocks
-        const updatedBlocks = [processedNewBlock, ...prevBlocks].slice(0, 100);
-
-        console.log('Updated blockData:', updatedBlocks.map((block) => block.block_height));
-
-        return updatedBlocks;
-      });
-
-      setUpcomingBlock(generateUpcomingBlock(processedNewBlock));
-      fetchUpcomingBlock();
   };
 
   // Handle search input change

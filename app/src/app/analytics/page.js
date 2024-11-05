@@ -273,6 +273,8 @@ const AnalyticsPage = () => {
     setShowTrending(false);
     setShowRunes(false);
     setSelectedCollection(prev => prev || 'bitcoin-puppets');
+    setExpandedContent(null); // Reset expandedContent
+    setSelectedBlock(null);   // Reset selectedBlock
   }, []);
 
   // Handle back button click from BubbleMaps

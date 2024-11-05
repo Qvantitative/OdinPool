@@ -2,6 +2,10 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
   const rpcUser = process.env.BITCOIN_RPC_USER;
   const rpcPassword = process.env.BITCOIN_RPC_PASSWORD;
   const rpcUrl = `http://${rpcUser}:${rpcPassword}@68.9.235.71:8332/`;
@@ -19,7 +23,7 @@ export default async function handler(req, res) {
       block_height: data.blockHeight + 1,
       fees_estimate: data.feeEstimate,
       feeSpan: data.feeSpan,
-      transactions: data.size, // Adjust as needed
+      transactions: data.size,
       timestamp: new Date().getTime(),
     };
 

@@ -104,7 +104,13 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/bitcoin-blocks');
+      const response = await fetch('/api/bitcoin-blocks', {
+        method: 'POST', // Change to 'GET' if your handler accepts GET
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();

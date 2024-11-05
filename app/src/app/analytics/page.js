@@ -275,6 +275,11 @@ const AnalyticsPage = () => {
     setSelectedCollection(prev => prev || 'bitcoin-puppets');
   }, []);
 
+  // Handle back button click from BubbleMaps
+  const handleBackFromBubbleMap = () => {
+    setShowBubbleChart(false);
+  };
+
   // Handle back button click
   const handleBackClick = () => {
     setExpandedContent(null);
@@ -334,7 +339,7 @@ const AnalyticsPage = () => {
         onShowBlocks={handleShowBlocks}
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
-        onShowBubbleMap={handleShowBubbleChart} // Add this
+        onShowBubbleMap={handleShowBubbleChart}
         selectedView={selectedView}
         onSearch={async ({ type, value }) => {
           if (type === 'Transaction ID') {
@@ -383,19 +388,6 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
-      {/* Conditional Rendering for BubbleChart */}
-      {showBubbleChart && (
-        <div className="w-full h-screen relative z-50"> {/* Add positioning context */}
-          <BubbleMaps
-            projectRankings={projectRankings}
-            rankingsLoading={rankingsLoading}
-            rankingsError={rankingsError}
-            selectedCollection={selectedCollection}
-            onCollectionChange={handleCollectionChange}
-          />
-        </div>
-      )}
-
       <main className="container mx-auto p-8 pt-80">  {/* Increased from pt-64 to pt-80 */}
         {/* Page Header */}
         <section className="mb-10">
@@ -451,6 +443,42 @@ const AnalyticsPage = () => {
               Back to Analytics
             </button>
             <BlockDataTable block={selectedBlock} />
+          </section>
+          <section className="container mx-auto p-8 pt-10">
+            <button
+              onClick={handleBackFromBubbleMap}
+              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Back to Analytics
+            </button>
+            <div className="w-full h-screen relative z-50">
+              <BubbleMaps
+                projectRankings={projectRankings}
+                rankingsLoading={rankingsLoading}
+                rankingsError={rankingsError}
+                selectedCollection={selectedCollection}
+                onCollectionChange={handleCollectionChange}
+              />
+            </div>
+          </section>
+        ) : showBubbleChart ? (
+          // Render BubbleMaps component with back button
+          <section className="container mx-auto p-8 pt-10">
+            <button
+              onClick={handleBackFromBubbleMap}
+              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Back to Analytics
+            </button>
+            <div className="w-full h-screen relative z-50">
+              <BubbleMaps
+                projectRankings={projectRankings}
+                rankingsLoading={rankingsLoading}
+                rankingsError={rankingsError}
+                selectedCollection={selectedCollection}
+                onCollectionChange={handleCollectionChange}
+              />
+            </div>
           </section>
         ) : (
           // Default content when no search is made

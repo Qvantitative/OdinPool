@@ -1,4 +1,4 @@
-// app/components/wallet/Navbar.js
+// app/src/components/wallet/Navbar.js
 
 import React, { useState, useRef } from 'react';
 import Sidebar from './Sidebar';

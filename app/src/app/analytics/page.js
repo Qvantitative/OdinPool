@@ -2,11 +2,11 @@
 
 "use client";
 
+import dynamic from 'next/dynamic';
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 
 // Components
-import Navbar from '../../components/blocks/Navbar';
 import BlockChart from '../../components/blocks/charts/BlockChart';
 import FeeEstimateCard from '../../components/blocks/FeeEstimateCard';
 import BlockRewardsCard from '../../components/blocks/BlockRewardsCard';
@@ -21,8 +21,10 @@ import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 
+const Navbar = dynamic(() => import('../../components/blocks/Navbar'), { ssr: false });
+
 const AnalyticsPage = () => {
-  const router = useRouter();
+  const router = typeof window !== "undefined" ? useRouter() : null;
 
   // State Variables
   const [blockData, setBlockData] = useState([]);
@@ -180,6 +182,16 @@ const AnalyticsPage = () => {
   const sortedBlockData = [...blockData]
     .sort((a, b) => b.block_height - a.block_height)
     .slice(0, 100);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    // Handle the search logic here based on the searchType and searchInput states
+    console.log(`Search for ${searchType}: ${searchInput}`);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchInput(e.target.value);
+  };
 
   return (
     <div className="bg-gray min-h-screen relative">

@@ -21,7 +21,7 @@ import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 
-const NavBar = dynamic(() => import('../../components/blocks/NavBar'), { ssr: false });
+//const NavBar = dynamic(() => import('../../components/blocks/NavBar'), { ssr: false });
 
 const AnalyticsPage = () => {
   const router = useRouter();
@@ -193,7 +193,7 @@ const AnalyticsPage = () => {
   return (
     <div className="bg-gray min-h-screen relative">
       {/* NavBar */}
-      <NavBar />
+
 
       {/* Fixed Header with BlockDisplay */}
       <header className="fixed top-0 left-0 right-0 bg-gray-800 p-4 z-50">

@@ -1,6 +1,7 @@
 // app/components/blocks/Navbar.js
 
 import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/router';
 
 // Bitcoin SVG Logo Component
 const BitcoinLogo = ({ width = 24, height = 24, className = '' }) => (

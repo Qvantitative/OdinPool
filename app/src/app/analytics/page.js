@@ -32,6 +32,8 @@ const AnalyticsPage = () => {
   const [searchType, setSearchType] = useState('Transaction ID');
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [selectedView, setSelectedView] = useState('blocks');
+  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [showBubbleChart, setShowBubbleChart] = useState(false);
 
   // Refs
   const scrollContainerRef = useRef(null);

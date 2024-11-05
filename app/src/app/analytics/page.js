@@ -104,7 +104,7 @@ const AnalyticsPage = () => {
   // Fetch upcoming block data with GET request
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/bitcoin-blocks', {
+      const response = await fetch('/api/blocks', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

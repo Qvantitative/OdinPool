@@ -105,7 +105,7 @@ const AnalyticsPage = () => {
   const fetchUpcomingBlock = async () => {
     try {
       const response = await fetch('/api/bitcoin-blocks', {
-        method: 'GET', // Use 'GET' if your handler expects GET
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         },

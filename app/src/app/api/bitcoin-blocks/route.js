@@ -11,6 +11,7 @@ export default async function handler(req, res) {
   const rpcUrl = `http://${rpcUser}:${rpcPassword}@68.9.235.71:8332/`;
 
   try {
+    // Note: We are still using a POST request internally here because the Bitcoin RPC API requires it.
     const response = await axios.post(rpcUrl, {
       jsonrpc: "1.0",
       id: "mempool_data",

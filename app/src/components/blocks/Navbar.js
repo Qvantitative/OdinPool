@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { LineChart, Activity, Database, Search, BarChart2, X } from 'lucide-react';
+import { LineChart, Activity, Database, Search, BarChart2, X, CircleDot } from 'lucide-react';
 
 // Analytics Logo Component
 const AnalyticsLogo = ({ width = 24, height = 24, className = '' }) => (

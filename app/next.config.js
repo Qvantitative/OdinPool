@@ -15,7 +15,6 @@ const nextConfig = {
         source: '/socket.io/:path*',
         destination: 'https://143.198.17.64:3001/socket.io/:path*',  // HTTPS for security
       },
-      // Bitcoin Node Server
       {
         source: '/api/bitcoin-node/:path*',
         destination: process.env.NODE_ENV === 'development'

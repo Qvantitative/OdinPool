@@ -1,4 +1,4 @@
-// app/components/blocks/Navbar.js
+// app/components/blocks/NavBar.js
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
@@ -11,7 +11,7 @@ const BitcoinLogo = ({ width = 24, height = 24, className = '' }) => (
   </svg>
 );
 
-const Navbar = ({ balance, ordinalAddress }) => {
+const NavBar = ({ balance, ordinalAddress }) => {
   const [showSidebar, setShowSidebar] = useState(false);
   const hoverTimeout = useRef(null);
   const router = useRouter();
@@ -78,4 +78,4 @@ const Navbar = ({ balance, ordinalAddress }) => {
   );
 };
 
-export default React.memo(Navbar);
+export default React.memo(NavBar);

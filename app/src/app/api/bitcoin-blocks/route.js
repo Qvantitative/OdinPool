@@ -1,23 +1,34 @@
-// src/app/api/bitcoin-blocks/route.js
+// app/api/bitcoin-blocks/route.js
+import { NextResponse } from 'next/server';
 import axios from 'axios';
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
+export async function GET() {
   const rpcUser = process.env.BITCOIN_RPC_USER;
   const rpcPassword = process.env.BITCOIN_RPC_PASSWORD;
+
+  if (!rpcUser || !rpcPassword) {
+    return NextResponse.json(
+      { error: 'Bitcoin RPC credentials not configured' },
+      { status: 500 }
+    );
+  }
+
   const rpcUrl = `http://${rpcUser}:${rpcPassword}@68.9.235.71:8332/`;
 
   try {
-    // Note: We are still using a POST request internally here because the Bitcoin RPC API requires it.
+    // Optional: Add timeout to axios request
     const response = await axios.post(rpcUrl, {
       jsonrpc: "1.0",
       id: "mempool_data",
       method: "getmempoolinfo",
       params: []
+    }, {
+      timeout: 5000 // 5 second timeout
     });
+
+    if (!response.data || !response.data.result) {
+      throw new Error('Invalid response format from Bitcoin RPC');
+    }
 
     const data = response.data.result;
     const upcomingBlockData = {
@@ -28,9 +39,36 @@ export default async function handler(req, res) {
       timestamp: new Date().getTime(),
     };
 
-    res.status(200).json(upcomingBlockData);
+    return NextResponse.json(upcomingBlockData);
   } catch (error) {
     console.error("Error fetching mempool data:", error);
-    res.status(500).json({ error: "Failed to fetch mempool data" });
+
+    // Return more specific error messages based on the error type
+    if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNREFUSED') {
+        return NextResponse.json(
+          { error: "Could not connect to Bitcoin RPC server" },
+          { status: 503 }
+        );
+      }
+      if (error.response?.status === 401) {
+        return NextResponse.json(
+          { error: "Invalid Bitcoin RPC credentials" },
+          { status: 401 }
+        );
+      }
+    }
+
+    return NextResponse.json(
+      { error: "Failed to fetch mempool data" },
+      { status: 500 }
+    );
   }
+}
+
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
 }

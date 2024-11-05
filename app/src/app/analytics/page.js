@@ -101,10 +101,10 @@ const AnalyticsPage = () => {
     }
   };
 
-  // Fetch upcoming block data with GET request
+  // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/blocks', {
+      const response = await fetch('/api/blocks?limit=1', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -115,8 +115,21 @@ const AnalyticsPage = () => {
 
       const data = await response.json();
 
-      if (data && Object.keys(data).length > 0) {
-        setUpcomingBlock(data);
+      if (data && data.length > 0) {
+        const latestBlock = data[0]; // Get the most recent block since it's ordered DESC
+        const upcomingBlockData = {
+          block_height: latestBlock.block_height + 1,
+          fees_estimate: latestBlock.fees_estimate,
+          feeSpan: {
+            min: latestBlock.min_fee,
+            max: latestBlock.max_fee
+          },
+          transactions: 0, // New block starts with 0 transactions
+          timestamp: new Date().getTime(), // Current timestamp for upcoming block
+          mining_pool: latestBlock.mining_pool,
+          inscriptions: latestBlock.inscriptions
+        };
+        setUpcomingBlock(upcomingBlockData);
       } else {
         setUpcomingBlock(null);
       }

@@ -101,11 +101,11 @@ const AnalyticsPage = () => {
     }
   };
 
-  // Fetch upcoming block data
+  // Fetch upcoming block data with GET request
   const fetchUpcomingBlock = async () => {
     try {
       const response = await fetch('/api/bitcoin-blocks', {
-        method: 'POST', // Change to 'GET' if your handler accepts GET
+        method: 'GET', // Use 'GET' if your handler expects GET
         headers: {
           'Content-Type': 'application/json'
         },
@@ -116,14 +116,7 @@ const AnalyticsPage = () => {
       const data = await response.json();
 
       if (data && Object.keys(data).length > 0) {
-        const upcomingBlockData = {
-          block_height: data.blockHeight + 1,
-          fees_estimate: data.feeEstimate,
-          feeSpan: data.feeSpan,
-          transactions: 0,
-          timestamp: new Date(data.timestamp).getTime(),
-        };
-        setUpcomingBlock(upcomingBlockData);
+        setUpcomingBlock(data);
       } else {
         setUpcomingBlock(null);
       }

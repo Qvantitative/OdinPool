@@ -24,7 +24,7 @@ const Navbar = ({
   onShowBlocks,
   onShowTransactions,
   onShowAnalytics,
-  onShowCharts,
+  onShowBubbleMap,
   selectedView,
   onSearch,
 }) => {
@@ -70,6 +70,12 @@ const Navbar = ({
       icon: <BarChart2 className="w-5 h-5" />,
       onClick: onShowCharts,
       active: selectedView === 'charts'
+    },
+    {
+      label: 'Bubble Map',
+      icon: <CircleDot className="w-5 h-5" />,
+      onClick: onShowBubbleMap,
+      active: selectedView === 'bubbleMap'
     }
   ];
 

@@ -335,6 +335,7 @@ const AnalyticsPage = () => {
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
         onShowCharts={handleShowCharts}
+        onShowBubbleMap={handleShowBubbleChart} // Add this
         selectedView={selectedView}
         onSearch={async ({ type, value }) => {
           if (type === 'Transaction ID') {
@@ -383,16 +384,17 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
-
       {/* Conditional Rendering for BubbleChart */}
       {showBubbleChart && (
-        <BubbleMaps
-          projectRankings={projectRankings}
-          rankingsLoading={rankingsLoading}
-          rankingsError={rankingsError}
-          selectedCollection={selectedCollection}
-          onCollectionChange={handleCollectionChange}
-        />
+        <div className="w-full h-screen relative z-50"> {/* Add positioning context */}
+          <BubbleMaps
+            projectRankings={projectRankings}
+            rankingsLoading={rankingsLoading}
+            rankingsError={rankingsError}
+            selectedCollection={selectedCollection}
+            onCollectionChange={handleCollectionChange}
+          />
+        </div>
       )}
 
       <main className="container mx-auto p-8 pt-80">  {/* Increased from pt-64 to pt-80 */}

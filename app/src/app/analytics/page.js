@@ -56,21 +56,22 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    // Socket setup with the correct URL and SSL settings
-    socketRef.current = io('https://odinpool.ai', { // Use your domain instead of IP
+    socketRef.current = io('https://odinpool.ai', {
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
       secure: true,
-      rejectUnauthorized: true,
-      // Add SSL verification settings
-      ca: process.env.NODE_ENV === 'production' ? [/* your SSL certificate */] : undefined,
     });
 
-    fetchInitialData();
-
+    // Add error handling for debugging
     socketRef.current.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
     });
+
+    socketRef.current.on('connect', () => {
+      console.log('Socket connected successfully');
+    });
+
+    fetchInitialData();
 
     socketRef.current.on('new-block', handleNewBlock);
 

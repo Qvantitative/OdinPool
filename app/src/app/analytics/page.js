@@ -21,7 +21,7 @@ import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 
-const Navbar = dynamic(() => import('../../components/blocks/Navbar'), { ssr: false });
+const Navbar = dynamic(() => import('../../components/blocks/NavBar'), { ssr: false });
 
 const AnalyticsPage = () => {
   const router = typeof window !== "undefined" ? useRouter() : null;

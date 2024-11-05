@@ -79,7 +79,7 @@ const Navbar = ({
       <div className="flex items-center space-x-6">
         <div className="flex items-center space-x-2">
           <AnalyticsLogo width={28} height={28} className="text-blue-500" />
-          <span className="text-lg font-bold">Bitcoin Analytics</span>
+          <span className="text-lg font-bold">ODIN</span>
         </div>
 
         <div className="flex items-center space-x-4">

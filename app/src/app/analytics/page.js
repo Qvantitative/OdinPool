@@ -378,7 +378,7 @@ const AnalyticsPage = () => {
           <div
             ref={scrollContainerRef}
             className="flex overflow-x-auto custom-scrollbar flex-grow"
-            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }} // Removed overflowX: 'hidden'
+            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}
           >
             {sortedBlockData.map((block) => (
               <BlockDisplay key={block.block_height} block={block} onBlockClick={handleBlockClick} />
@@ -388,14 +388,14 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-8 pt-80">  {/* Increased from pt-64 to pt-80 */}
+      <main className="container mx-auto p-8 pt-80">
         {/* Page Header */}
         <section className="mb-10">
           <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Onchain Data Analytics</h1>
           <p className="text-center text-white">Real-time blockchain data and analytics dashboard</p>
         </section>
 
-        {/* Conditional Rendering Based on expandedContent or selectedBlock */}
+        {/* Conditional Rendering Based on expandedContent, selectedBlock, or showBubbleChart */}
         {expandedContent ? (
           <section className="container mx-auto p-8 pt-10">
             <button
@@ -431,7 +431,6 @@ const AnalyticsPage = () => {
             ) : null}
           </section>
         ) : selectedBlock ? (
-          // Fixed: Removed duplicate sections, combined content
           <section className="container mx-auto p-8 pt-10">
             <button
               onClick={handleBackFromBlockClick}
@@ -440,23 +439,6 @@ const AnalyticsPage = () => {
               Back to Analytics
             </button>
             <BlockDataTable block={selectedBlock} />
-            <div className="mt-8">
-              <button
-                onClick={handleBackFromBubbleMap}
-                className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-              >
-                Back to Analytics
-              </button>
-              <div className="w-full h-screen relative z-50">
-                <BubbleMaps
-                  projectRankings={projectRankings}
-                  rankingsLoading={rankingsLoading}
-                  rankingsError={rankingsError}
-                  selectedCollection={selectedCollection}
-                  onCollectionChange={handleCollectionChange}
-                />
-              </div>
-            </div>
           </section>
         ) : showBubbleChart ? (
           <section className="container mx-auto p-8 pt-10">
@@ -466,7 +448,7 @@ const AnalyticsPage = () => {
             >
               Back to Analytics
             </button>
-            <div className="w-full h-screen relative z-50">
+            <div className="w-full h-screen relative">
               <BubbleMaps
                 projectRankings={projectRankings}
                 rankingsLoading={rankingsLoading}

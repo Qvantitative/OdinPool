@@ -20,6 +20,8 @@ import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 
+const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
+
 const AnalyticsPage = () => {
   // State Variables
   const [blockData, setBlockData] = useState([]);

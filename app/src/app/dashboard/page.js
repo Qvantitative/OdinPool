@@ -16,7 +16,6 @@ const TrendingChart = dynamic(() => import('../../components/wallet/charts/Trend
 const InscriptionLookup = dynamic(() => import('../../components/wallet/InscriptionLookup'), { ssr: false });
 const BubbleMaps = dynamic(() => import('../../components/wallet/BubbleMaps'), { ssr: false });  // <-- Changed from BubbleChart to BubbleMaps
 
-
 const ErrorMessage = ({ message }) => <div className="error">{message}</div>;
 const LoadingIndicator = () => <div>Loading...</div>;
 

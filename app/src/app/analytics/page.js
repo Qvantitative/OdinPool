@@ -334,7 +334,6 @@ const AnalyticsPage = () => {
         onShowBlocks={handleShowBlocks}
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
-        onShowCharts={handleShowCharts}
         onShowBubbleMap={handleShowBubbleChart} // Add this
         selectedView={selectedView}
         onSearch={async ({ type, value }) => {

@@ -56,8 +56,7 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('/', {  // Your DigitalOcean IP
-      path: '/socket.io/',
+    socketRef.current = io('/', {  // Use relative path since rewrites will handle it
       transports: ['websocket', 'polling'],
       secure: true,
     });

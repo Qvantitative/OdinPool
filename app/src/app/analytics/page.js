@@ -56,12 +56,19 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('/');
+    // Socket setup with the correct URL
+    socketRef.current = io('https://143.198.17.64:3001', {
+      path: '/socket.io/',
+      transports: ['websocket', 'polling'],
+      secure: true,
+      rejectUnauthorized: false,
+    });
+
     fetchInitialData();
 
     socketRef.current.on('new-block', handleNewBlock);
 
-    // Horizontal scroll handler
+    // Horizontal scroll handler - kept exactly as it was
     const handleWheel = (e) => {
       if (scrollContainerRef.current) {
         e.preventDefault();

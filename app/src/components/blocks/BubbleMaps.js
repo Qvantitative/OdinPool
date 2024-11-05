@@ -57,23 +57,36 @@ const BubbleMaps = ({
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const containerRef = useRef(null);
+  const containerRef = useCallback((node) => {
+    if (node !== null) {
+      setDimensions({
+        width: node.offsetWidth,
+        height: window.innerHeight * 0.8,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const updateDimensions = () => {
-      const node = containerRef.current;
-      if (node) {
+      if (dimensions.width === 0) {
+        const node = containerRef.current;
+        if (node) {
+          setDimensions({
+            width: node.offsetWidth,
+            height: window.innerHeight * 0.8,
+          });
+        }
+      } else {
         setDimensions({
-          width: node.offsetWidth,
+          width: dimensions.width,
           height: window.innerHeight * 0.8,
         });
       }
     };
 
     window.addEventListener('resize', updateDimensions);
-    updateDimensions(); // Initial call to set dimensions
     return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
+  }, [dimensions.width]);
 
   const getPseudoRandomNumber = (seed) => {
     let x = 0;
@@ -313,23 +326,17 @@ const BubbleMaps = ({
                   key={holder.address}
                   className="holder-bubble group"
                   onMouseEnter={(e) => {
-                    if (containerRef.current) {
-                      const rect = containerRef.current.getBoundingClientRect();
-                      setSelectedHolder(holder);
-                      setTooltipPosition({
-                        x: e.clientX - rect.left,
-                        y: e.clientY - rect.top,
-                      });
-                    }
+                    setSelectedHolder(holder);
+                    setTooltipPosition({
+                      x: e.clientX,
+                      y: e.clientY
+                    });
                   }}
                   onMouseMove={(e) => {
-                    if (containerRef.current) {
-                      const rect = containerRef.current.getBoundingClientRect();
-                      setTooltipPosition({
-                        x: e.clientX - rect.left,
-                        y: e.clientY - rect.top,
-                      });
-                    }
+                    setTooltipPosition({
+                      x: e.clientX,
+                      y: e.clientY
+                    });
                   }}
                   onMouseLeave={() => {
                     setSelectedHolder(null);

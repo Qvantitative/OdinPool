@@ -56,15 +56,14 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    socketRef.current = io('https://odinpool.ai', {
+    socketRef.current = io('https://143.198.17.64:3001', {  // Your DigitalOcean IP
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
       secure: true,
     });
 
-    // Add error handling for debugging
     socketRef.current.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      console.error('Socket connection error details:', error);
     });
 
     socketRef.current.on('connect', () => {
@@ -72,7 +71,6 @@ const AnalyticsPage = () => {
     });
 
     fetchInitialData();
-
     socketRef.current.on('new-block', handleNewBlock);
 
     // Horizontal scroll handler

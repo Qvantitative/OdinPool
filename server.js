@@ -40,13 +40,14 @@ const server = https.createServer(sslOptions, app);
 // Setup Socket.io
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'development'
-      ? ['http://localhost:3000']
-      : ['https://odinpool.ai', 'https://www.odinpool.ai'],
+    origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
     methods: ['GET', 'POST'],
-    credentials: true,
-    transports: ['websocket', 'polling']
+    credentials: true
   },
+  // Add SSL settings
+  secure: true,
+  key: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/odinpool.ai/fullchain.pem'),
 });
 
 // For Ord server requests (local)

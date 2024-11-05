@@ -6,7 +6,7 @@ import React, { useEffect, useState, useRef } from 'react';
 
 // Components
 import BlockChart from '../../components/blocks/charts/BlockChart';
-
+import Navbar from '../../components/blocks/Navbar';
 import FeeEstimateCard from '../../components/blocks/FeeEstimateCard';
 import BlockRewardsCard from '../../components/blocks/BlockRewardsCard';
 import BlockDisplay from '../../components/blocks/BlockDisplay';
@@ -30,7 +30,8 @@ const AnalyticsPage = () => {
   const [selectedChart, setSelectedChart] = useState('BlockChart');
   const [selectedTableCard, setSelectedTableCard] = useState('BitcoinBlockTable');
   const [searchType, setSearchType] = useState('Transaction ID');
-  const [selectedBlock, setSelectedBlock] = useState(null); // New state variable
+  const [selectedBlock, setSelectedBlock] = useState(null);
+  const [selectedView, setSelectedView] = useState('blocks');
 
   // Refs
   const scrollContainerRef = useRef(null);
@@ -232,6 +233,15 @@ const AnalyticsPage = () => {
     setSelectedBlock(null);
   };
 
+  const handleShowBlocks = () => setSelectedView('blocks');
+  const handleShowTransactions = () => setSelectedView('transactions');
+  const handleShowAnalytics = () => setSelectedView('analytics');
+  const handleShowCharts = () => setSelectedView('charts');
+  const handleShowSearch = () => {
+    // Focus on your search input
+    document.querySelector('input[type="text"]')?.focus();
+  };
+
   // Render error state
   if (error) {
     return (
@@ -250,8 +260,17 @@ const AnalyticsPage = () => {
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">
+      <Navbar
+        onShowBlocks={handleShowBlocks}
+        onShowTransactions={handleShowTransactions}
+        onShowAnalytics={handleShowAnalytics}
+        onShowSearch={handleShowSearch}
+        onShowCharts={handleShowCharts}
+        selectedView={selectedView}
+      />
+
       {/* Fixed Header with BlockDisplay */}
-      <header className="fixed top-0 left-0 right-0 bg-gray-800 p-4 z-50">
+      <header className="fixed top-16 left-0 right-0 bg-gray-800 p-4 z-40">
         <div className="flex justify-between items-stretch">
           <div className="flex custom-scrollbar" style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}>
             {upcomingBlock && <UpcomingBlockDisplay block={upcomingBlock} />}
@@ -270,7 +289,7 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-8 pt-64">
+      <main className="container mx-auto p-8 pt-80">  {/* Increased from pt-64 to pt-80 */}
         {/* Page Header */}
         <section className="mb-10">
           <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Onchain Data Analytics</h1>

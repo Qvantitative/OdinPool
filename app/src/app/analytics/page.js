@@ -24,7 +24,7 @@ import BlockDataTable from '../../components/blocks/BlockDataTable';
 const NavBar = dynamic(() => import('../../components/blocks/NavBar'), { ssr: false });
 
 const AnalyticsPage = () => {
-  const router = typeof window !== "undefined" ? useRouter() : null;
+  const router = useRouter();
 
   // State Variables
   const [blockData, setBlockData] = useState([]);
@@ -146,7 +146,7 @@ const AnalyticsPage = () => {
   };
 
   const processBlockData = (data) => {
-    const processedData = data
+    return data
       .map((block) => ({
         id: block.block_height,
         block_height: block.block_height,
@@ -158,8 +158,6 @@ const AnalyticsPage = () => {
         inscriptions: block.inscriptions,
       }))
       .sort((a, b) => b.block_height - a.block_height);
-
-    return processedData;
   };
 
   const generateUpcomingBlock = (latestBlock) => {
@@ -185,7 +183,6 @@ const AnalyticsPage = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    // Handle the search logic here based on the searchType and searchInput states
     console.log(`Search for ${searchType}: ${searchInput}`);
   };
 

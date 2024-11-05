@@ -9,13 +9,19 @@ const nextConfig = {
       // Digital Ocean routes
       {
         source: '/api/:path*',
-        destination: 'https://143.198.17.64:3001/api/:path*',  // Changed to https
+        destination: 'https://143.198.17.64:3001/api/:path*',  // HTTPS for security
+      },
+      {
+        source: '/api/bitcoin-node/:path*',
+        destination: process.env.NODE_ENV === 'development'
+          ? 'http://localhost:8332/:path*'
+          : 'http://68.9.235.71:8332/:path*',
       },
       {
         source: '/socket.io/:path*',
-        destination: 'https://143.198.17.64:3001/socket.io/:path*',  // Changed to https
+        destination: 'https://143.198.17.64:3001/socket.io/:path*',  // HTTPS for security
       },
-      // Ord server routes remain the same since they use http
+      // Ord server routes
       {
         source: '/ord/inscription/:path*',
         destination: process.env.NODE_ENV === 'development'
@@ -37,7 +43,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*'
+            value: '*'  // Permissive; consider restricting in production
           },
           {
             key: 'Access-Control-Allow-Methods',

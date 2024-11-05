@@ -1,7 +1,5 @@
-// app/src/components/blocks/Navbar.js
-
 import React, { useState, useRef } from 'react';
-import { LineChart, Activity, Database, Search, BarChart2 } from 'lucide-react';
+import { LineChart, Activity, Database, Search, BarChart2, X } from 'lucide-react';
 
 // Analytics Logo Component
 const AnalyticsLogo = ({ width = 24, height = 24, className = '' }) => (
@@ -26,24 +24,26 @@ const Navbar = ({
   onShowBlocks,
   onShowTransactions,
   onShowAnalytics,
-  onShowSearch,
   onShowCharts,
-  selectedView
+  selectedView,
+  onSearch,
 }) => {
-  const [showSidebar, setShowSidebar] = useState(false);
+  // Search state
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchType, setSearchType] = useState('Transaction ID');
   const hoverTimeout = useRef(null);
 
-  const handleMouseEnter = () => {
-    if (hoverTimeout.current) {
-      clearTimeout(hoverTimeout.current);
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (onSearch) {
+      onSearch({
+        type: searchType,
+        value: searchInput.trim()
+      });
     }
-    setShowSidebar(true);
-  };
-
-  const handleMouseLeave = () => {
-    hoverTimeout.current = setTimeout(() => {
-      setShowSidebar(false);
-    }, 200);
+    setSearchInput('');
+    setShowSearch(false);
   };
 
   const navItems = [
@@ -102,13 +102,47 @@ const Navbar = ({
 
       {/* Right Side - Search */}
       <div className="flex items-center space-x-4">
-        <button
-          onClick={onShowSearch}
-          className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-800 transition-colors duration-200"
-        >
-          <Search className="w-5 h-5" />
-          <span className="font-medium">Search</span>
-        </button>
+        {showSearch ? (
+          <form onSubmit={handleSearchSubmit} className="flex items-center space-x-2">
+            <select
+              className="bg-gray-800 text-white px-2 py-1 rounded-l outline-none"
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+            >
+              <option value="Transaction ID">Transaction ID</option>
+              <option value="Block Height">Block Height</option>
+              <option value="Wallet Address">Wallet Address</option>
+            </select>
+            <input
+              type="text"
+              className="bg-gray-800 text-white px-3 py-1 outline-none min-w-[200px]"
+              placeholder={`Enter ${searchType}`}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-3 py-1 rounded-r hover:bg-blue-700"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSearch(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </form>
+        ) : (
+          <button
+            onClick={() => setShowSearch(true)}
+            className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-800 transition-colors duration-200"
+          >
+            <Search className="w-5 h-5" />
+            <span className="font-medium">Search</span>
+          </button>
+        )}
       </div>
     </nav>
   );

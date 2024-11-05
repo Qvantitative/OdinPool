@@ -264,9 +264,33 @@ const AnalyticsPage = () => {
         onShowBlocks={handleShowBlocks}
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
-        onShowSearch={handleShowSearch}
         onShowCharts={handleShowCharts}
         selectedView={selectedView}
+        onSearch={async ({ type, value }) => {
+          if (type === 'Transaction ID') {
+            setExpandedContent({ type: 'Transaction', id: value });
+          } else if (type === 'Block Height') {
+            try {
+              const response = await fetch(`/api/ord/block/${value}`);
+              if (!response.ok) throw new Error(`Block not found for height: ${value}`);
+              const blockData = await response.json();
+              setExpandedContent({ type: 'Block', block: blockData });
+            } catch (error) {
+              console.error('Error fetching block:', error);
+              setError(`Error fetching block: ${error.message}`);
+            }
+          } else if (type === 'Wallet Address') {
+            try {
+              const response = await fetch(`/api/ord/address/${value}`);
+              if (!response.ok) throw new Error(`Address not found: ${value}`);
+              const addressData = await response.json();
+              setExpandedContent({ type: 'Wallet', addressData });
+            } catch (error) {
+              console.error('Error fetching address:', error);
+              setError(`Error fetching address: ${error.message}`);
+            }
+          }
+        }}
       />
 
       {/* Fixed Header with BlockDisplay */}

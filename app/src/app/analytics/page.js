@@ -1,7 +1,7 @@
 // app/analytics/page.js
 
 "use client";
-j = 1
+
 import dynamic from 'next/dynamic';
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';

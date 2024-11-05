@@ -56,19 +56,23 @@ const AnalyticsPage = () => {
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    // Socket setup with the correct URL
-    socketRef.current = io('https://143.198.17.64:3001', {
+    // Socket setup with the correct URL based on environment
+    const socketUrl = process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3001'
+      : 'https://143.198.17.64:3001';
+
+    socketRef.current = io(socketUrl, {
       path: '/socket.io/',
       transports: ['websocket', 'polling'],
-      secure: true,
-      rejectUnauthorized: false,
+      secure: process.env.NODE_ENV !== 'development',
+      rejectUnauthorized: false // Only if using self-signed certificates
     });
 
     fetchInitialData();
 
     socketRef.current.on('new-block', handleNewBlock);
 
-    // Horizontal scroll handler - kept exactly as it was
+    // Horizontal scroll handler
     const handleWheel = (e) => {
       if (scrollContainerRef.current) {
         e.preventDefault();
@@ -83,7 +87,6 @@ const AnalyticsPage = () => {
       socketRef.current.disconnect();
       container?.removeEventListener('wheel', handleWheel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch initial block data and upcoming block

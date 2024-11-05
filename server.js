@@ -40,8 +40,12 @@ const server = https.createServer(sslOptions, app);
 // Setup Socket.io
 const io = new Server(server, {
   cors: {
-    origin: ['https://odinpool.ai', 'https://www.odinpool.ai'],
-    methods: ['GET', 'POST']
+    origin: process.env.NODE_ENV === 'development'
+      ? ['http://localhost:3000']
+      : ['https://odinpool.ai', 'https://www.odinpool.ai'],
+    methods: ['GET', 'POST'],
+    credentials: true,
+    transports: ['websocket', 'polling']
   },
 });
 

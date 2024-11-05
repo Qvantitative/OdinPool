@@ -21,8 +21,6 @@ import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 
-//const NavBar = dynamic(() => import('../../components/blocks/NavBar'), { ssr: false });
-
 const AnalyticsPage = () => {
   const router = useRouter();
 
@@ -146,7 +144,7 @@ const AnalyticsPage = () => {
   };
 
   const processBlockData = (data) => {
-    return data
+    const processedData = data
       .map((block) => ({
         id: block.block_height,
         block_height: block.block_height,
@@ -158,6 +156,8 @@ const AnalyticsPage = () => {
         inscriptions: block.inscriptions,
       }))
       .sort((a, b) => b.block_height - a.block_height);
+
+    return processedData;
   };
 
   const generateUpcomingBlock = (latestBlock) => {
@@ -181,19 +181,10 @@ const AnalyticsPage = () => {
     .sort((a, b) => b.block_height - a.block_height)
     .slice(0, 100);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    console.log(`Search for ${searchType}: ${searchInput}`);
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchInput(e.target.value);
-  };
-
   return (
     <div className="bg-gray min-h-screen relative">
-      {/* NavBar */}
-
+      {/* Navbar */}
+      <Navbar />
 
       {/* Fixed Header with BlockDisplay */}
       <header className="fixed top-0 left-0 right-0 bg-gray-800 p-4 z-50">

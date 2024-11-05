@@ -2,7 +2,8 @@
 
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 
 // Components
 import BlockChart from '../../components/blocks/charts/BlockChart';
@@ -36,6 +37,11 @@ const AnalyticsPage = () => {
   const [selectedView, setSelectedView] = useState('blocks');
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [showBubbleChart, setShowBubbleChart] = useState(false);
+  const [projectRankings, setProjectRankings] = useState([]);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
+  const [rankingsError, setRankingsError] = useState(null);
+  const [showTrending, setShowTrending] = useState(false);
+  const [showRunes, setShowRunes] = useState(false);
 
   // Refs
   const scrollContainerRef = useRef(null);
@@ -190,15 +196,15 @@ const AnalyticsPage = () => {
   };
 
   // In Portfolio.js, update the fetchProjectRankings function:
-
   const fetchProjectRankings = useCallback(async (projectSlug = null) => {
+    if (!projectSlug) return;
+
     setRankingsLoading(true);
     setRankingsError(null);
+
     try {
       const url = new URL('/api/project-rankings', window.location.origin);
-      if (projectSlug) {
-        url.searchParams.append('project', projectSlug);
-      }
+      url.searchParams.append('project', projectSlug);
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -209,7 +215,6 @@ const AnalyticsPage = () => {
 
       // Handle both array and object response formats
       if (!Array.isArray(data)) {
-        // If we get an object with project keys, get the data for the selected project
         data = data[projectSlug] || [];
       }
 
@@ -221,7 +226,6 @@ const AnalyticsPage = () => {
         rank_display: `#${ranking.rank}`
       }));
 
-      console.log('Transformed Rankings:', transformedData);
       setProjectRankings(transformedData);
     } catch (error) {
       console.error('Error fetching project rankings:', error);
@@ -263,6 +267,14 @@ const AnalyticsPage = () => {
     }
   };
 
+  // Update the handleShowBubbleChart function
+  const handleShowBubbleChart = useCallback(() => {
+    setShowBubbleChart(true);
+    setShowTrending(false);
+    setShowRunes(false);
+    setSelectedCollection(prev => prev || 'bitcoin-puppets');
+  }, []);
+
   // Handle back button click
   const handleBackClick = () => {
     setExpandedContent(null);
@@ -303,19 +315,17 @@ const AnalyticsPage = () => {
     .sort((a, b) => b.block_height - a.block_height)
     .slice(0, 100); // Get only the last 100 blocks
 
-  const handleShowBubbleChart = useCallback(() => {
-      setShowBubbleChart(true);
-      setShowTrending(false);
-      setShowRunes(false);
-      setSelectedCollection(prev => prev || 'bitcoin-puppets');
-      fetchProjectRankings(selectedCollection || 'bitcoin-puppets');
-  }, [selectedCollection, fetchProjectRankings]);
-
+  // UseEffect to handle collection changes
   useEffect(() => {
-    if (selectedCollection) {
+    if (selectedCollection && showBubbleChart) {
       fetchProjectRankings(selectedCollection);
     }
-  }, [selectedCollection, fetchProjectRankings]);
+  }, [selectedCollection, showBubbleChart, fetchProjectRankings]);
+
+  // Function to handle collection changes
+  const handleCollectionChange = useCallback((collection) => {
+    setSelectedCollection(collection);
+  }, []);
 
   // Main render
   return (
@@ -381,10 +391,7 @@ const AnalyticsPage = () => {
           rankingsLoading={rankingsLoading}
           rankingsError={rankingsError}
           selectedCollection={selectedCollection}
-          onCollectionChange={(collection) => {
-            setSelectedCollection(collection);
-            fetchProjectRankings(collection);
-          }}
+          onCollectionChange={handleCollectionChange}
         />
       )}
 

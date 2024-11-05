@@ -1,4 +1,4 @@
-// app/components/wallet/BubbleMaps.js
+// app/components/blocks/BubbleMaps.js
 
 "use client";
 

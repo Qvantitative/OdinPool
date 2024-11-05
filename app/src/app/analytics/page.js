@@ -3,10 +3,11 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/router';
 
 // Components
+import Navbar from '../../components/blocks/Navbar';
 import BlockChart from '../../components/blocks/charts/BlockChart';
-
 import FeeEstimateCard from '../../components/blocks/FeeEstimateCard';
 import BlockRewardsCard from '../../components/blocks/BlockRewardsCard';
 import BlockDisplay from '../../components/blocks/BlockDisplay';
@@ -21,6 +22,8 @@ import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 
 const AnalyticsPage = () => {
+  const router = useRouter();
+
   // State Variables
   const [blockData, setBlockData] = useState([]);
   const [upcomingBlock, setUpcomingBlock] = useState(null);
@@ -30,7 +33,7 @@ const AnalyticsPage = () => {
   const [selectedChart, setSelectedChart] = useState('BlockChart');
   const [selectedTableCard, setSelectedTableCard] = useState('BitcoinBlockTable');
   const [searchType, setSearchType] = useState('Transaction ID');
-  const [selectedBlock, setSelectedBlock] = useState(null); // New state variable
+  const [selectedBlock, setSelectedBlock] = useState(null);
 
   // Refs
   const scrollContainerRef = useRef(null);
@@ -42,27 +45,22 @@ const AnalyticsPage = () => {
     { name: 'Mining Pool Bar Chart', value: 'MiningPoolBarChart', component: <MiningPoolBarChart blockData={blockData} /> },
     { name: 'Mining Pool Pie Chart', value: 'MiningPoolPieChart', component: <MiningPoolPieChart blockData={blockData} /> },
     { name: 'Pareto Chart of Top Addresses', value: 'ParetoChart', component: <ParetoChart /> },
-    // Add other charts if any
   ];
 
   const tablesCards = [
     { name: 'Bitcoin Block Table', value: 'BitcoinBlockTable', component: <BitcoinBlockTable /> },
     { name: 'Fee Estimate Card', value: 'FeeEstimateCard', component: <FeeEstimateCard /> },
     { name: 'Block Rewards Card', value: 'BlockRewardsCard', component: <BlockRewardsCard timePeriod="1d" /> },
-    // Add other tables/cards if any
   ];
 
   // Effect: Initialize WebSocket and fetch initial data
   useEffect(() => {
-    // Initial fetch
     fetchInitialData();
 
-    // Set up polling interval
     const pollInterval = setInterval(() => {
       fetchInitialData();
-    }, 60000); // Poll every minute
+    }, 60000);
 
-    // Horizontal scroll handler
     const handleWheel = (e) => {
       if (scrollContainerRef.current) {
         e.preventDefault();
@@ -73,19 +71,16 @@ const AnalyticsPage = () => {
     const container = scrollContainerRef.current;
     container?.addEventListener('wheel', handleWheel, { passive: false });
 
-    // Cleanup
     return () => {
       clearInterval(pollInterval);
       container?.removeEventListener('wheel', handleWheel);
     };
   }, []);
 
-  // Fetch initial block data and upcoming block
   const fetchInitialData = async () => {
     await Promise.all([fetchBlockData(), fetchUpcomingBlock()]);
   };
 
-  // Fetch block data
   const fetchBlockData = async () => {
     try {
       const maxBlocks = 144 * 30;
@@ -95,7 +90,6 @@ const AnalyticsPage = () => {
       const data = await response.json();
 
       setBlockData((prevBlocks) => {
-        // Check if newest block already exists
         const latestBlock = data[0];
         const blockExists = prevBlocks.some(
           (block) => block.block_height === latestBlock.block_height
@@ -106,12 +100,10 @@ const AnalyticsPage = () => {
           return prevBlocks;
         }
 
-        // Process and update blocks
         const processedData = processBlockData(data);
         return processedData;
       });
 
-      // Update upcoming block based on latest data
       const processedData = processBlockData(data);
       setUpcomingBlock(generateUpcomingBlock(processedData[0]));
     } catch (err) {
@@ -120,16 +112,9 @@ const AnalyticsPage = () => {
     }
   };
 
-  // Fetch upcoming block data
   const fetchUpcomingBlock = async () => {
     try {
-      const response = await fetch('/api/blocks?limit=1', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-      });
-
+      const response = await fetch('/api/blocks?limit=1');
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
@@ -158,7 +143,6 @@ const AnalyticsPage = () => {
     }
   };
 
-  // Helper functions remain the same
   const processBlockData = (data) => {
     const processedData = data
       .map((block) => ({
@@ -184,55 +168,6 @@ const AnalyticsPage = () => {
     };
   };
 
-  // Handle search input change
-  const handleSearchChange = (e) => setSearchInput(e.target.value);
-
-  // Handle search form submission
-  const handleSearchSubmit = async (e) => {
-    e.preventDefault();
-
-    if (searchType === 'Transaction ID') {
-      setExpandedContent({ type: 'Transaction', id: searchInput.trim() });
-    } else if (searchType === 'Block Height') {
-      try {
-        const response = await fetch(`/api/ord/block/${searchInput.trim()}`);
-        if (!response.ok) throw new Error(`Block not found for height: ${searchInput.trim()}`);
-        const blockData = await response.json();
-        setExpandedContent({ type: 'Block', block: blockData });
-      } catch (error) {
-        console.error('Error fetching block:', error);
-        setError(`Error fetching block: ${error.message}`);
-      }
-    } else if (searchType === 'Wallet Address') {
-      try {
-        const response = await fetch(`/api/ord/address/${searchInput.trim()}`);
-        if (!response.ok) throw new Error(`Address not found: ${searchInput.trim()}`);
-        const addressData = await response.json();
-        setExpandedContent({ type: 'Wallet', addressData });
-      } catch (error) {
-        console.error('Error fetching address:', error);
-        setError(`Error fetching address: ${error.message}`);
-      }
-    }
-  };
-
-  // Handle back button click
-  const handleBackClick = () => {
-    setExpandedContent(null);
-    setSearchInput('');
-    setSearchType('Transaction ID');
-  };
-
-  // Handle block click
-  const handleBlockClick = (block) => {
-    setSelectedBlock(block);
-  };
-
-  const handleBackFromBlockClick = () => {
-    setSelectedBlock(null);
-  };
-
-  // Render error state
   if (error) {
     return (
       <div className="container mx-auto p-6 bg-gray min-h-screen">
@@ -242,14 +177,15 @@ const AnalyticsPage = () => {
     );
   }
 
-  // Sort blockData before rendering
   const sortedBlockData = [...blockData]
     .sort((a, b) => b.block_height - a.block_height)
-    .slice(0, 100); // Get only the last 100 blocks
+    .slice(0, 100);
 
-  // Main render
   return (
     <div className="bg-gray min-h-screen relative">
+      {/* Navbar */}
+      <Navbar />
+
       {/* Fixed Header with BlockDisplay */}
       <header className="fixed top-0 left-0 right-0 bg-gray-800 p-4 z-50">
         <div className="flex justify-between items-stretch">
@@ -260,10 +196,10 @@ const AnalyticsPage = () => {
           <div
             ref={scrollContainerRef}
             className="flex overflow-x-auto custom-scrollbar flex-grow"
-            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }} // Removed overflowX: 'hidden'
+            style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}
           >
             {sortedBlockData.map((block) => (
-              <BlockDisplay key={block.block_height} block={block} onBlockClick={handleBlockClick} />
+              <BlockDisplay key={block.block_height} block={block} />
             ))}
           </div>
         </div>

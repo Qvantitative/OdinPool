@@ -411,10 +411,8 @@ const AnalyticsPage = () => {
               <BlockDataTable block={expandedContent.block} />
             ) : expandedContent.type === 'Wallet' ? (
               <div>
-                {/* Display the same UI as handleAddressClick in BlockDataTable */}
                 <h2 className="text-2xl font-bold mb-4">Address Details</h2>
                 <div className="flex flex-wrap -mx-2">
-                  {/* Inscriptions */}
                   {expandedContent.addressData.inscriptions && (
                     <div className="w-full lg:w-1/2 px-2">
                       <h3 className="text-xl font-semibold mb-4">Inscriptions</h3>
@@ -422,7 +420,6 @@ const AnalyticsPage = () => {
                     </div>
                   )}
 
-                  {/* Outputs */}
                   {expandedContent.addressData.outputs && (
                     <div className="w-full lg:w-1/2 px-2">
                       <h3 className="text-xl font-semibold mb-4">Outputs</h3>
@@ -434,7 +431,7 @@ const AnalyticsPage = () => {
             ) : null}
           </section>
         ) : selectedBlock ? (
-          // Render block data table if a block is clicked
+          // Fixed: Removed duplicate sections, combined content
           <section className="container mx-auto p-8 pt-10">
             <button
               onClick={handleBackFromBlockClick}
@@ -443,26 +440,25 @@ const AnalyticsPage = () => {
               Back to Analytics
             </button>
             <BlockDataTable block={selectedBlock} />
-          </section>
-          <section className="container mx-auto p-8 pt-10">
-            <button
-              onClick={handleBackFromBubbleMap}
-              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Back to Analytics
-            </button>
-            <div className="w-full h-screen relative z-50">
-              <BubbleMaps
-                projectRankings={projectRankings}
-                rankingsLoading={rankingsLoading}
-                rankingsError={rankingsError}
-                selectedCollection={selectedCollection}
-                onCollectionChange={handleCollectionChange}
-              />
+            <div className="mt-8">
+              <button
+                onClick={handleBackFromBubbleMap}
+                className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Back to Analytics
+              </button>
+              <div className="w-full h-screen relative z-50">
+                <BubbleMaps
+                  projectRankings={projectRankings}
+                  rankingsLoading={rankingsLoading}
+                  rankingsError={rankingsError}
+                  selectedCollection={selectedCollection}
+                  onCollectionChange={handleCollectionChange}
+                />
+              </div>
             </div>
           </section>
         ) : showBubbleChart ? (
-          // Render BubbleMaps component with back button
           <section className="container mx-auto p-8 pt-10">
             <button
               onClick={handleBackFromBubbleMap}
@@ -481,7 +477,6 @@ const AnalyticsPage = () => {
             </div>
           </section>
         ) : (
-          // Default content when no search is made
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {/* Left Column: Charts */}
             <div className="space-y-10">

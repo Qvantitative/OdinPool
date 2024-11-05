@@ -185,6 +185,48 @@ const AnalyticsPage = () => {
     };
   };
 
+  // In Portfolio.js, update the fetchProjectRankings function:
+
+  const fetchProjectRankings = useCallback(async (projectSlug = null) => {
+    setRankingsLoading(true);
+    setRankingsError(null);
+    try {
+      const url = new URL('/api/project-rankings', window.location.origin);
+      if (projectSlug) {
+        url.searchParams.append('project', projectSlug);
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch project rankings');
+      }
+
+      let data = await response.json();
+
+      // Handle both array and object response formats
+      if (!Array.isArray(data)) {
+        // If we get an object with project keys, get the data for the selected project
+        data = data[projectSlug] || [];
+      }
+
+      // Transform data to include formatted values
+      const transformedData = data.map(ranking => ({
+        ...ranking,
+        holding_percentage: parseFloat(ranking.holding_percentage).toFixed(2),
+        formattedAddress: `${ranking.address.slice(0, 6)}...${ranking.address.slice(-4)}`,
+        rank_display: `#${ranking.rank}`
+      }));
+
+      console.log('Transformed Rankings:', transformedData);
+      setProjectRankings(transformedData);
+    } catch (error) {
+      console.error('Error fetching project rankings:', error);
+      setRankingsError(error.message);
+    } finally {
+      setRankingsLoading(false);
+    }
+  }, []);
+
   // Handle search input change
   const handleSearchChange = (e) => setSearchInput(e.target.value);
 
@@ -257,6 +299,20 @@ const AnalyticsPage = () => {
     .sort((a, b) => b.block_height - a.block_height)
     .slice(0, 100); // Get only the last 100 blocks
 
+  const handleShowBubbleChart = useCallback(() => {
+      setShowBubbleChart(true);
+      setShowTrending(false);
+      setShowRunes(false);
+      setSelectedCollection(prev => prev || 'bitcoin-puppets');
+      fetchProjectRankings(selectedCollection || 'bitcoin-puppets');
+  }, [selectedCollection, fetchProjectRankings]);
+
+  useEffect(() => {
+    if (selectedCollection) {
+      fetchProjectRankings(selectedCollection);
+    }
+  }, [selectedCollection, fetchProjectRankings]);
+
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">
@@ -313,6 +369,21 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
+
+      {/* Conditional Rendering for BubbleChart */}
+      {showBubbleChart && (
+        <BubbleMaps
+          projectRankings={projectRankings}
+          rankingsLoading={rankingsLoading}
+          rankingsError={rankingsError}
+          selectedCollection={selectedCollection}
+          onCollectionChange={(collection) => {
+            setSelectedCollection(collection);
+            fetchProjectRankings(collection);
+          }}
+        />
+      )}
+
       <main className="container mx-auto p-8 pt-80">  {/* Increased from pt-64 to pt-80 */}
         {/* Page Header */}
         <section className="mb-10">

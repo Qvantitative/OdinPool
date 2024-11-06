@@ -54,12 +54,6 @@ const Navbar = ({
       active: selectedView === 'blocks'
     },
     {
-      label: 'Transactions',
-      icon: <Activity className="w-5 h-5" />,
-      onClick: onShowTransactions,
-      active: selectedView === 'transactions'
-    },
-    {
       label: 'Analytics',
       icon: <LineChart className="w-5 h-5" />,
       onClick: onShowAnalytics,
@@ -110,8 +104,8 @@ const Navbar = ({
               onChange={(e) => setSearchType(e.target.value)}
             >
               <option value="Transaction ID">Transaction ID</option>
-              <option value="Block Height">Block Height</option>
-              <option value="Wallet Address">Wallet Address</option>
+              {/* <option value="Block Height">Block Height</option> */}
+              {/* <option value="Wallet Address">Wallet Address</option> */}
             </select>
             <input
               type="text"

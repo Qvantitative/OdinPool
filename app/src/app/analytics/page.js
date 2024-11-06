@@ -470,7 +470,6 @@ const AnalyticsPage = () => {
           <section>
             {/* Render the Transactions view */}
             {/* You can create a TransactionsList component or similar */}
-            <TransactionsList />
           </section>
         ) : selectedView === 'analytics' ? (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">

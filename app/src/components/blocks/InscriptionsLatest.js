@@ -23,7 +23,7 @@ const axiosInstanceWithoutSSL = axios.create({
 const fetchLatestInscriptionImages = async (setInscriptionImages) => {
   try {
     // Fetch the latest inscription IDs
-    const inscriptionsResponse = await axiosInstanceWithoutSSL.get(`/`);
+    const inscriptionsResponse = await axiosInstanceWithoutSSL.get(`/api/ord`);
     const inscriptionsList = inscriptionsResponse.data;
 
     if (!inscriptionsList || inscriptionsList.length === 0) return;

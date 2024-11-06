@@ -249,7 +249,6 @@ const AnalyticsPage = () => {
         const response = await fetch(`/api/ord/block/${searchInput.trim()}`);
         if (!response.ok) throw new Error(`Block not found for height: ${searchInput.trim()}`);
         const blockData = await response.json();
-        console.log("Ord Block Data:", blockData)
         setExpandedContent({ type: 'Block', block: blockData });
       } catch (error) {
         console.error('Error fetching block:', error);
@@ -352,7 +351,6 @@ const AnalyticsPage = () => {
               const response = await fetch(`/api/ord/block/${value}`);
               if (!response.ok) throw new Error(`Block not found for height: ${value}`);
               const blockData = await response.json();
-              console.log("Ord Block Data:", blockData)
               setExpandedContent({ type: 'Block', block: blockData });
             } catch (error) {
               console.error('Error fetching block:', error);
@@ -536,14 +534,6 @@ const AnalyticsPage = () => {
             </div>
           </section>
         )}
-
-        {/* Return to Landing Page Link */}
-        <a
-          href="/landingPage"
-          className="fixed bottom-4 right-4 bg-blue-500 text-white py-2 px-4 rounded-md shadow-lg hover:bg-blue-400"
-        >
-          Return to Landing Page
-        </a>
       </main>
     </div>
   );

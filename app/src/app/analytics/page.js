@@ -249,6 +249,7 @@ const AnalyticsPage = () => {
         const response = await fetch(`/api/ord/block/${searchInput.trim()}`);
         if (!response.ok) throw new Error(`Block not found for height: ${searchInput.trim()}`);
         const blockData = await response.json();
+        console.log("Ord Block Data:", blockData)
         setExpandedContent({ type: 'Block', block: blockData });
       } catch (error) {
         console.error('Error fetching block:', error);

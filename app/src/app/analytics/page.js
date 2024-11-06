@@ -20,6 +20,7 @@ import TransactionsDetails from '../../components/blocks/TransactionsDetails';
 import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
+import InscriptionsLatest from '../../components/blocks/InscriptionsLatest'
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
 
@@ -463,7 +464,7 @@ const AnalyticsPage = () => {
         ) : selectedView === 'blocks' ? (
           <section>
             {/* Render the Blocks view */}
-            <BitcoinBlockTable />
+            <InscriptionsLatest />
           </section>
         ) : selectedView === 'transactions' ? (
           <section>

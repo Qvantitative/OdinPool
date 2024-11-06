@@ -626,6 +626,20 @@ app.get('/api/top-addresses', async (req, res) => {
   }
 });
 
+// New route for /api/ord homepage
+app.get('/api/ord', (req, res) => {
+  res.json({
+    message: "Welcome to the Ordinals API!",
+    description: "This API provides information on inscriptions, blocks, addresses, and other ordinals-related data.",
+    available_endpoints: [
+      { method: "GET", path: "/api/ord/block/:height", description: "Fetch details of a specific block by height." },
+      { method: "GET", path: "/api/ord/inscription/:id", description: "Fetch details of a specific inscription by ID." },
+      { method: "GET", path: "/api/ord/address/:address", description: "Fetch information for a specific Bitcoin address." },
+    ],
+  });
+});
+
+
 // New endpoint to fetch block details including inscriptions and runes
 app.get('/api/ord/block/:height', async (req, res) => {
   const { height } = req.params;

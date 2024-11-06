@@ -460,7 +460,18 @@ const AnalyticsPage = () => {
               />
             </div>
           </section>
-        ) : (
+        ) : selectedView === 'blocks' ? (
+          <section>
+            {/* Render the Blocks view */}
+            <BitcoinBlockTable />
+          </section>
+        ) : selectedView === 'transactions' ? (
+          <section>
+            {/* Render the Transactions view */}
+            {/* You can create a TransactionsList component or similar */}
+            <TransactionsList />
+          </section>
+        ) : selectedView === 'analytics' ? (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {/* Left Column: Charts */}
             <div className="space-y-10">
@@ -506,6 +517,20 @@ const AnalyticsPage = () => {
               <section className="p-6 bg-gray-500 rounded-lg shadow-lg transition duration-300">
                 {tablesCards.find((item) => item.value === selectedTableCard)?.component}
               </section>
+            </div>
+          </section>
+        ) : (
+          <section>
+            {/* Default content or redirect */}
+            <div className="text-center py-8">
+              <h2 className="text-2xl font-semibold text-white mb-4">No View Selected</h2>
+              <p className="text-gray-300 mb-4">Please select a view from the navigation bar above.</p>
+              <button
+                onClick={() => setSelectedView('blocks')}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                View Blocks
+              </button>
             </div>
           </section>
         )}

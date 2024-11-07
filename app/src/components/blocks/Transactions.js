@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
 
-const Transactions = ({ transactionData, handleTransactionClick, isLoading }) => {
+// Loading Circle Component
+const LoadingCircle = () => (
+  <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    ></path>
+  </svg>
+);
+
+const Transactions = ({ transactionData, handleTransactionClick }) => {
   const [detailedData, setDetailedData] = useState({});
   const [inscriptionData, setInscriptionData] = useState({});
   const [runeData, setRuneData] = useState({});
   const [loading, setLoading] = useState({});
   const [errors, setErrors] = useState({});
   const [expandedOpReturns, setExpandedOpReturns] = useState({});
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,13 +34,12 @@ const Transactions = ({ transactionData, handleTransactionClick, isLoading }) =>
   );
   const totalPages = Math.ceil(transactionData.length / transactionsPerPage);
 
-  // Initial loading screen component
-  const LoadingScreen = () => (
-    <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 rounded-lg">
-      <div className="animate-spin h-12 w-12 border-4 border-blue-500 rounded-full border-t-transparent mb-4"></div>
-      <p className="text-white text-lg">Loading transactions...</p>
-    </div>
-  );
+  useEffect(() => {
+    // Set initial loading to false once we have transaction data
+    if (transactionData.length > 0) {
+      setIsInitialLoading(false);
+    }
+  }, [transactionData]);
 
   useEffect(() => {
     const fetchAllDetails = async (txid) => {
@@ -304,26 +316,28 @@ const Transactions = ({ transactionData, handleTransactionClick, isLoading }) =>
     );
   };
 
+  if (isInitialLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[200px]">
+        <LoadingCircle />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {isLoading ? (
-        <LoadingScreen />
-      ) : (
-        <>
-          <h3 className="text-xl font-semibold mb-4 text-center text-white">
-            Transactions ({transactionData.length} total)
-          </h3>
-          <div className="space-y-4">
-            {currentTransactions.map(renderTransaction)}
-          </div>
-          <Pagination />
-          <div className="text-center text-sm text-gray-400 mt-2">
-            Page {currentPage} of {totalPages} |
-            Showing transactions {indexOfFirstTransaction + 1}-
-            {Math.min(indexOfLastTransaction, transactionData.length)} of {transactionData.length}
-          </div>
-        </>
-      )}
+      <h3 className="text-xl font-semibold mb-4 text-center text-white">
+        Transactions ({transactionData.length} total)
+      </h3>
+      <div className="space-y-4">
+        {currentTransactions.map(renderTransaction)}
+      </div>
+      <Pagination />
+      <div className="text-center text-sm text-gray-400 mt-2">
+        Page {currentPage} of {totalPages} |
+        Showing transactions {indexOfFirstTransaction + 1}-
+        {Math.min(indexOfLastTransaction, transactionData.length)} of {transactionData.length}
+      </div>
     </div>
   );
 };

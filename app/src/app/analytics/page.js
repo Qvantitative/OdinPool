@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // Components
@@ -23,7 +23,7 @@ import BlockDataTable from '../../components/blocks/BlockDataTable';
 import InscriptionsLatest from '../../components/blocks/InscriptionsLatest'
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
-const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
+const TrendingCollections = dynamic(() => import('../../components/wallet/TrendingCollections'), { ssr: false });
 
 const AnalyticsPage = () => {
   // State Variables
@@ -44,28 +44,9 @@ const AnalyticsPage = () => {
   const [rankingsError, setRankingsError] = useState(null);
   const [showTrending, setShowTrending] = useState(false);
   const [showRunes, setShowRunes] = useState(false);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [fpInBTC, setFpInBTC] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [inscriptionStats, setInscriptionStats] = useState([]);
-  const [statsError, setStatsError] = useState(null);
-  const [collections, setCollections] = useState([]);
-  const [hasFetchedInscriptionStats, setHasFetchedInscriptionStats] = useState(false);
 
   // Refs
   const scrollContainerRef = useRef(null);
-
-  // Color mapping function
-  const getProjectColor = (projectSlug) => {
-    const colorMap = {
-      'bitcoin-puppets': '#ff7c43',
-      'nodemonkes': '#ffa600',
-      'basedangels': '#665191',
-      'quantum_cats': '#2f4b7c'
-    };
-    return colorMap[projectSlug] || '#8884d8';
-  };
 
   // Define charts and tablesCards arrays
   const charts = [
@@ -257,10 +238,6 @@ const AnalyticsPage = () => {
   }, []);
 
   const fetchTrendingCollections = useCallback(async (collectionName) => {
-    if (!collectionName) {
-      console.error("Collection name is undefined");
-      return;
-    }
     setLoading(true);
     setError(prev => ({ ...prev, trending: null }));
     try {
@@ -286,39 +263,6 @@ const AnalyticsPage = () => {
       setLoading(false);
     }
   }, []);
-
-  const fetchInscriptionStats = useCallback(async () => {
-    setStatsLoading(true);
-    try {
-      const response = await fetch('/api/wallets/stats');
-      if (!response.ok) {
-        if (response.status === 502) {
-          console.error('Server is temporarily unavailable (502 Bad Gateway)');
-        }
-        throw new Error('Network response was not ok');
-      }
-      const projectData = await response.json();
-
-      const transformedData = projectData.map(project => ({
-        name: project.project_slug,
-        holders: parseInt(project.unique_holders),
-        inscriptions: parseInt(project.total_inscriptions),
-        z: parseInt(project.total_inscriptions),
-        avgPerHolder: parseFloat(project.avg_per_holder),
-        fill: getProjectColor(project.project_slug)
-      }));
-
-      console.log("Inscription Stats:", transformedData)
-
-      setInscriptionStats(transformedData);
-      setStatsLoading(false);
-    } catch (err) {
-      console.error('Error fetching inscription stats:', err);
-      setStatsError(err.message);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [getProjectColor]);
 
   const handleCollectionClick = useCallback((collectionName) => {
     setSelectedCollection(collectionName);
@@ -357,13 +301,6 @@ const AnalyticsPage = () => {
     }
   };
 
-  const handleShowTrending = useCallback(() => {
-      setShowTrending(true);
-      setError(prev => ({ ...prev, trending: null }));
-      fetchTrendingCollections();
-      fetchInscriptionStats();
-  }, [fetchTrendingCollections, fetchInscriptionStats]);
-
   // Update the handleShowBubbleChart function
   const handleShowBubbleChart = useCallback(() => {
     setShowBubbleChart(true);
@@ -395,6 +332,7 @@ const AnalyticsPage = () => {
     setSelectedBlock(null);
   };
 
+  const handleShowBlocks = () => setSelectedView('blocks');
   const handleShowTransactions = () => setSelectedView('transactions');
   const handleShowAnalytics = () => setSelectedView('analytics');
   const handleShowCharts = () => setSelectedView('charts');
@@ -402,26 +340,6 @@ const AnalyticsPage = () => {
     // Focus on your search input
     document.querySelector('input[type="text"]')?.focus();
   };
-
-  const toggleFloorPrice = useCallback(() => {
-    setFpInBTC(prev => !prev);
-  }, []);
-
-  const handleSort = useCallback((key) => {
-    setSortConfig(prevConfig => ({
-      key,
-      direction: prevConfig.key === key && prevConfig.direction === 'ascending' ? 'descending' : 'ascending'
-    }));
-  }, []);
-
-  const sortedCollections = useMemo(() => {
-    if (!sortConfig.key) return collections;
-    return [...collections].sort((a, b) => {
-      return sortConfig.direction === 'ascending'
-        ? a[sortConfig.key] - b[sortConfig.key]
-        : b[sortConfig.key] - a[sortConfig.key];
-    });
-  }, [collections, sortConfig]);
 
   // Render error state
   if (error) {
@@ -449,28 +367,6 @@ const AnalyticsPage = () => {
   const handleCollectionChange = useCallback((collection) => {
     setSelectedCollection(collection);
   }, []);
-
-  const handleShowBlocks = () => {
-    setSelectedView('blocks');
-    setShowTrending(true);  // Add this line to automatically show trending data in blocks view
-    fetchTrendingCollections();  // Add this to fetch data when switching to blocks view
-    fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
-  }
-
-  useEffect(() => {
-    // Set initial view and fetch data
-    setSelectedView('blocks');
-    setShowTrending(true);
-    fetchTrendingCollections();
-    fetchInscriptionStats();
-  }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
-
-  // Only fetch trending collections if `showTrending` is true and `selectedCollection` is defined
-  useEffect(() => {
-    if (showTrending && selectedCollection) {
-      fetchTrendingCollections(selectedCollection);
-    }
-  }, [showTrending, selectedCollection, fetchTrendingCollections]);
 
   // Main render
   return (
@@ -600,22 +496,8 @@ const AnalyticsPage = () => {
           </section>
         ) : selectedView === 'blocks' ? (
           <section>
-            {console.log('Selected View:', selectedView)}
-            {console.log('ShowTrending:', showTrending)}
-            {console.log('Loading:', loading)}
-            {showTrending && !loading && (
-              <TrendingCollections
-                collections={sortedCollections}
-                handleSort={handleSort}
-                sortConfig={sortConfig}
-                toggleFloorPrice={toggleFloorPrice}
-                fpInBTC={fpInBTC}
-                onCollectionClick={handleCollectionClick}
-                inscriptionStats={inscriptionStats}
-                statsLoading={statsLoading}
-                statsError={statsError}
-              />
-            )}
+            {/* Render the Blocks view */}
+            <BitcoinBlockTable />
           </section>
         ) : selectedView === 'transactions' ? (
           <section>

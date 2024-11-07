@@ -257,6 +257,10 @@ const AnalyticsPage = () => {
   }, []);
 
   const fetchTrendingCollections = useCallback(async (collectionName) => {
+    if (!collectionName) {
+      console.error("Collection name is undefined");
+      return;
+    }
     setLoading(true);
     setError(prev => ({ ...prev, trending: null }));
     try {

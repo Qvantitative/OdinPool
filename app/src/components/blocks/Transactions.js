@@ -1,34 +1,68 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Transactions = ({ transactionData, handleTransactionClick }) => {
+  const [detailedData, setDetailedData] = useState({});
+  const [loading, setLoading] = useState({});
+
+  useEffect(() => {
+    const fetchDetails = async (txid) => {
+      try {
+        setLoading(prev => ({ ...prev, [txid]: true }));
+        const response = await fetch(`/api/transactions/${txid}`);
+        const data = await response.json();
+        setDetailedData(prev => ({ ...prev, [txid]: data }));
+      } catch (error) {
+        console.error(`Error fetching details for ${txid}:`, error);
+      } finally {
+        setLoading(prev => ({ ...prev, [txid]: false }));
+      }
+    };
+
+    // Fetch details for transactions that we don't have yet
+    transactionData.forEach(tx => {
+      if (!detailedData[tx.txid]) {
+        fetchDetails(tx.txid);
+      }
+    });
+  }, [transactionData]);
+
   const formatBTC = (value) => parseFloat(value).toFixed(8);
 
   const renderTransaction = (tx) => {
-    // Destructure the transaction data to match TransactionDetails structure
+    const txDetails = detailedData[tx.txid];
+    const isLoading = loading[tx.txid];
+
+    // Merge basic and detailed data
     const transaction = {
       txid: tx.txid,
-      total_input_value: tx.total_input_value,
-      total_output_value: tx.total_output_value,
-      fee: tx.fee_rate,
-      size: tx.size
+      total_input_value: txDetails?.total_input_value || tx.total_input_value,
+      total_output_value: txDetails?.total_output_value || tx.total_output_value,
+      fee: txDetails?.fee_rate || tx.fee_rate,
+      size: txDetails?.size || tx.size
     };
 
-    // Ensure inputs and outputs match the expected format
-    const inputs = tx.input ? tx.input.map(input => ({
+    // Use detailed data if available, otherwise fall back to basic data
+    const inputs = (txDetails?.input || tx.input || []).map(input => ({
       address: input.address,
       value: input.value
-    })) : [];
+    }));
 
-    const outputs = tx.output ? tx.output.map(output => ({
+    const outputs = (txDetails?.output || tx.output || []).map(output => ({
       address: output.address,
       value: output.value,
       scriptPubKey: {
         type: output.script_pubkey?.includes('OP_RETURN') ? 'nulldata' : 'pubkeyhash'
       }
-    })) : [];
+    }));
 
     return (
-      <div key={transaction.txid} className="bg-gray-900 p-4 rounded-lg shadow text-white">
+      <div key={transaction.txid} className="bg-gray-900 p-4 rounded-lg shadow text-white relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+            <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+          </div>
+        )}
+
         <h2
           className="text-lg font-bold mb-4 text-center cursor-pointer hover:text-blue-400"
           onClick={() => handleTransactionClick(transaction.txid)}

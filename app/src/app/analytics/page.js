@@ -292,6 +292,9 @@ const AnalyticsPage = () => {
     try {
       const response = await fetch('/api/wallets/stats');
       if (!response.ok) {
+        if (response.status === 502) {
+          console.error('Server is temporarily unavailable (502 Bad Gateway)');
+        }
         throw new Error('Network response was not ok');
       }
       const projectData = await response.json();
@@ -312,6 +315,7 @@ const AnalyticsPage = () => {
     } catch (err) {
       console.error('Error fetching inscription stats:', err);
       setStatsError(err.message);
+    } finally {
       setStatsLoading(false);
     }
   }, [getProjectColor]);

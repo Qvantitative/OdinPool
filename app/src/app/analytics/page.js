@@ -260,17 +260,23 @@ const AnalyticsPage = () => {
     setLoading(true);
     setError(prev => ({ ...prev, trending: null }));
     try {
-      let url = '/api/trending-collections';
-      if (collectionName) {
-        url += `?name=${collectionName}`;
-      }
-      const response = await fetch(url);
+      const response = await fetch(`/api/trending-collections?name=${collectionName}`);
       if (!response.ok) {
         throw new Error('Failed to fetch trending collection data');
       }
       const data = await response.json();
-      setCollections(data);
+      setCollections(prevCollections => {
+        const index = prevCollections.findIndex(c => c.name === collectionName);
+        if (index !== -1) {
+          const newCollections = [...prevCollections];
+          newCollections[index] = { ...newCollections[index], ...data };
+          return newCollections;
+        }
+        return [...prevCollections, data];
+      });
     } catch (error) {
+      // Add error handling here
+      //setError(prev => ({ ...prev, trending: 'Failed to fetch trending data.' }));
       console.error('Error fetching trending collections:', error);
     } finally {
       setLoading(false);
@@ -344,10 +350,10 @@ const AnalyticsPage = () => {
   };
 
   const handleShowTrending = useCallback(() => {
-    setShowTrending(true);
-    setError(prev => ({ ...prev, trending: null }));
-    fetchTrendingCollections();  // Now safe to call without collectionName
-    fetchInscriptionStats();
+      setShowTrending(true);
+      setError(prev => ({ ...prev, trending: null }));
+      fetchTrendingCollections();
+      fetchInscriptionStats();
   }, [fetchTrendingCollections, fetchInscriptionStats]);
 
   // Update the handleShowBubbleChart function
@@ -445,21 +451,6 @@ const AnalyticsPage = () => {
       });
     }
   }, [showTrending, fetchInscriptionStats, hasFetchedInscriptionStats]);
-
-  const handleShowBlocks = () => {
-    setSelectedView('blocks');
-    setShowTrending(true);  // Add this line to automatically show trending data in blocks view
-    fetchTrendingCollections();  // Add this to fetch data when switching to blocks view
-    fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
-  }
-
-  useEffect(() => {
-    // Set initial view and fetch data
-    setSelectedView('blocks');
-    setShowTrending(true);
-    fetchTrendingCollections();
-    fetchInscriptionStats();
-  }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
 
   // Main render
   return (

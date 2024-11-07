@@ -314,9 +314,6 @@ const Portfolio = () => {
 
   const handleShowTrending = useCallback(() => {
       setShowTrending(true);
-      setShowRunes(false);
-      setInscriptions([]);
-      setShowBubbleChart(false);  // Hide BubbleMaps
       setError(prev => ({ ...prev, trending: null }));
       fetchTrendingCollections();
       fetchInscriptionStats();
@@ -324,8 +321,6 @@ const Portfolio = () => {
 
   const handleShowBubbleChart = useCallback(() => {
       setShowBubbleChart(true);
-      setShowTrending(false);
-      setShowRunes(false);
       setSelectedCollection(prev => prev || 'bitcoin-puppets');
       fetchProjectRankings(selectedCollection || 'bitcoin-puppets');
   }, [selectedCollection, fetchProjectRankings]);

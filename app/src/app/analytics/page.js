@@ -23,6 +23,7 @@ import BlockDataTable from '../../components/blocks/BlockDataTable';
 import InscriptionsLatest from '../../components/blocks/InscriptionsLatest'
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
+const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
 
 const AnalyticsPage = () => {
   // State Variables
@@ -43,9 +44,28 @@ const AnalyticsPage = () => {
   const [rankingsError, setRankingsError] = useState(null);
   const [showTrending, setShowTrending] = useState(false);
   const [showRunes, setShowRunes] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+  const [fpInBTC, setFpInBTC] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [inscriptionStats, setInscriptionStats] = useState([]);
+  const [statsError, setStatsError] = useState(null);
+  const [collections, setCollections] = useState([]);
+  const [hasFetchedInscriptionStats, setHasFetchedInscriptionStats] = useState(false);
 
   // Refs
   const scrollContainerRef = useRef(null);
+
+  // Color mapping function
+  const getProjectColor = (projectSlug) => {
+    const colorMap = {
+      'bitcoin-puppets': '#ff7c43',
+      'nodemonkes': '#ffa600',
+      'basedangels': '#665191',
+      'quantum_cats': '#2f4b7c'
+    };
+    return colorMap[projectSlug] || '#8884d8';
+  };
 
   // Define charts and tablesCards arrays
   const charts = [
@@ -236,6 +256,67 @@ const AnalyticsPage = () => {
     }
   }, []);
 
+  const fetchTrendingCollections = useCallback(async (collectionName) => {
+    setLoading(true);
+    setError(prev => ({ ...prev, trending: null }));
+    try {
+      const response = await fetch(`/api/trending-collections?name=${collectionName}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch trending collection data');
+      }
+      const data = await response.json();
+      setCollections(prevCollections => {
+        const index = prevCollections.findIndex(c => c.name === collectionName);
+        if (index !== -1) {
+          const newCollections = [...prevCollections];
+          newCollections[index] = { ...newCollections[index], ...data };
+          return newCollections;
+        }
+        return [...prevCollections, data];
+      });
+    } catch (error) {
+      // Add error handling here
+      //setError(prev => ({ ...prev, trending: 'Failed to fetch trending data.' }));
+      console.error('Error fetching trending collections:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchInscriptionStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const response = await fetch('/api/wallets/stats');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const projectData = await response.json();
+
+      const transformedData = projectData.map(project => ({
+        name: project.project_slug,
+        holders: parseInt(project.unique_holders),
+        inscriptions: parseInt(project.total_inscriptions),
+        z: parseInt(project.total_inscriptions),
+        avgPerHolder: parseFloat(project.avg_per_holder),
+        fill: getProjectColor(project.project_slug)
+      }));
+
+      console.log("Inscription Stats:", transformedData)
+
+      setInscriptionStats(transformedData);
+      setStatsLoading(false);
+    } catch (err) {
+      console.error('Error fetching inscription stats:', err);
+      setStatsError(err.message);
+      setStatsLoading(false);
+    }
+  }, [getProjectColor]);
+
+  const handleCollectionClick = useCallback((collectionName) => {
+    setSelectedCollection(collectionName);
+    fetchTrendingCollections(collectionName);
+  }, [fetchTrendingCollections]);
+
   // Handle search input change
   const handleSearchChange = (e) => setSearchInput(e.target.value);
 
@@ -308,6 +389,26 @@ const AnalyticsPage = () => {
     document.querySelector('input[type="text"]')?.focus();
   };
 
+  const toggleFloorPrice = useCallback(() => {
+    setFpInBTC(prev => !prev);
+  }, []);
+
+  const handleSort = useCallback((key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'ascending' ? 'descending' : 'ascending'
+    }));
+  }, []);
+
+  const sortedCollections = useMemo(() => {
+    if (!sortConfig.key) return collections;
+    return [...collections].sort((a, b) => {
+      return sortConfig.direction === 'ascending'
+        ? a[sortConfig.key] - b[sortConfig.key]
+        : b[sortConfig.key] - a[sortConfig.key];
+    });
+  }, [collections, sortConfig]);
+
   // Render error state
   if (error) {
     return (
@@ -334,6 +435,16 @@ const AnalyticsPage = () => {
   const handleCollectionChange = useCallback((collection) => {
     setSelectedCollection(collection);
   }, []);
+
+  useEffect(() => {
+    if (showTrending && !hasFetchedInscriptionStats) {
+      setStatsLoading(true);
+      fetchInscriptionStats().finally(() => {
+        setStatsLoading(false);
+        setHasFetchedInscriptionStats(true);
+      });
+    }
+  }, [showTrending, fetchInscriptionStats, hasFetchedInscriptionStats]);
 
   // Main render
   return (
@@ -464,7 +575,24 @@ const AnalyticsPage = () => {
         ) : selectedView === 'blocks' ? (
           <section>
             {/* Render the Blocks view */}
-            <BitcoinBlockTable />
+            {showTrending && !loading && (
+              <>
+                <TrendingCollections
+                  collections={sortedCollections}
+                  handleSort={handleSort}
+                  sortConfig={sortConfig}
+                  toggleFloorPrice={toggleFloorPrice}
+                  fpInBTC={fpInBTC}
+                  onCollectionClick={handleCollectionClick}
+                  inscriptionStats={inscriptionStats}
+                  statsLoading={statsLoading}
+                  statsError={statsError}
+                />
+                {selectedCollection && (
+                  <TrendingChart collectionName={selectedCollection} />
+                )}
+              </>
+            )}
           </section>
         ) : selectedView === 'transactions' ? (
           <section>

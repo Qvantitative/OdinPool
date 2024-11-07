@@ -37,7 +37,7 @@ const AnalyticsPage = () => {
   const [searchType, setSearchType] = useState('Transaction ID');
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [selectedView, setSelectedView] = useState('blocks');
-  const [selectedCollection, setSelectedCollection] = useState('bitcoin-puppets');
+  const [selectedCollection, setSelectedCollection] = useState(null);
   const [showBubbleChart, setShowBubbleChart] = useState(false);
   const [projectRankings, setProjectRankings] = useState([]);
   const [rankingsLoading, setRankingsLoading] = useState(false);
@@ -262,6 +262,7 @@ const AnalyticsPage = () => {
       return;
     }
     setLoading(true);
+    setError(prev => ({ ...prev, trending: null }));
     try {
       const response = await fetch(`/api/trending-collections?name=${collectionName}`);
       if (!response.ok) {
@@ -278,6 +279,8 @@ const AnalyticsPage = () => {
         return [...prevCollections, data];
       });
     } catch (error) {
+      // Add error handling here
+      //setError(prev => ({ ...prev, trending: 'Failed to fetch trending data.' }));
       console.error('Error fetching trending collections:', error);
     } finally {
       setLoading(false);
@@ -455,14 +458,14 @@ const AnalyticsPage = () => {
   }
 
   useEffect(() => {
+    // Set initial view and fetch data
     setSelectedView('blocks');
     setShowTrending(true);
-    if (selectedCollection) {
-      fetchTrendingCollections(selectedCollection);
-      fetchInscriptionStats();
-    }
-  }, [selectedCollection, fetchTrendingCollections, fetchInscriptionStats]);
+    fetchTrendingCollections();
+    fetchInscriptionStats();
+  }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
 
+  // Only fetch trending collections if `showTrending` is true and `selectedCollection` is defined
   useEffect(() => {
     if (showTrending && selectedCollection) {
       fetchTrendingCollections(selectedCollection);
@@ -597,7 +600,10 @@ const AnalyticsPage = () => {
           </section>
         ) : selectedView === 'blocks' ? (
           <section>
-            {showTrending && !loading && collections.length > 0 && (
+            {console.log('Selected View:', selectedView)}
+            {console.log('ShowTrending:', showTrending)}
+            {console.log('Loading:', loading)}
+            {showTrending && !loading && (
               <TrendingCollections
                 collections={sortedCollections}
                 handleSort={handleSort}

@@ -387,7 +387,6 @@ const AnalyticsPage = () => {
     setSelectedBlock(null);
   };
 
-  const handleShowBlocks = () => setSelectedView('blocks');
   const handleShowTransactions = () => setSelectedView('transactions');
   const handleShowAnalytics = () => setSelectedView('analytics');
   const handleShowCharts = () => setSelectedView('charts');
@@ -452,6 +451,21 @@ const AnalyticsPage = () => {
       });
     }
   }, [showTrending, fetchInscriptionStats, hasFetchedInscriptionStats]);
+
+  const handleShowBlocks = () => {
+    setSelectedView('blocks');
+    setShowTrending(true);  // Add this line to automatically show trending data in blocks view
+    fetchTrendingCollections();  // Add this to fetch data when switching to blocks view
+    fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
+  }
+
+  useEffect(() => {
+    // Set initial view and fetch data
+    setSelectedView('blocks');
+    setShowTrending(true);
+    fetchTrendingCollections();
+    fetchInscriptionStats();
+  }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
 
   // Main render
   return (

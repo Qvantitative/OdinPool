@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const Transactions = ({ transactionData, handleTransactionClick }) => {
+const Transactions = ({ transactionData, handleTransactionClick, isLoading }) => {
   const [detailedData, setDetailedData] = useState({});
   const [inscriptionData, setInscriptionData] = useState({});
   const [runeData, setRuneData] = useState({});
@@ -20,6 +20,14 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
     indexOfLastTransaction
   );
   const totalPages = Math.ceil(transactionData.length / transactionsPerPage);
+
+  // Initial loading screen component
+  const LoadingScreen = () => (
+    <div className="flex flex-col items-center justify-center min-h-[400px] bg-gray-900 rounded-lg">
+      <div className="animate-spin h-12 w-12 border-4 border-blue-500 rounded-full border-t-transparent mb-4"></div>
+      <p className="text-white text-lg">Loading transactions...</p>
+    </div>
+  );
 
   useEffect(() => {
     const fetchAllDetails = async (txid) => {
@@ -298,18 +306,24 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-semibold mb-4 text-center text-white">
-        Transactions ({transactionData.length} total)
-      </h3>
-      <div className="space-y-4">
-        {currentTransactions.map(renderTransaction)}
-      </div>
-      <Pagination />
-      <div className="text-center text-sm text-gray-400 mt-2">
-        Page {currentPage} of {totalPages} |
-        Showing transactions {indexOfFirstTransaction + 1}-
-        {Math.min(indexOfLastTransaction, transactionData.length)} of {transactionData.length}
-      </div>
+      {isLoading ? (
+        <LoadingScreen />
+      ) : (
+        <>
+          <h3 className="text-xl font-semibold mb-4 text-center text-white">
+            Transactions ({transactionData.length} total)
+          </h3>
+          <div className="space-y-4">
+            {currentTransactions.map(renderTransaction)}
+          </div>
+          <Pagination />
+          <div className="text-center text-sm text-gray-400 mt-2">
+            Page {currentPage} of {totalPages} |
+            Showing transactions {indexOfFirstTransaction + 1}-
+            {Math.min(indexOfLastTransaction, transactionData.length)} of {transactionData.length}
+          </div>
+        </>
+      )}
     </div>
   );
 };

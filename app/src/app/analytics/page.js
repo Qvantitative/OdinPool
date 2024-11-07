@@ -37,7 +37,7 @@ const AnalyticsPage = () => {
   const [searchType, setSearchType] = useState('Transaction ID');
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [selectedView, setSelectedView] = useState('blocks');
-  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [selectedCollection, setSelectedCollection] = useState('bitcoin-puppets');
   const [showBubbleChart, setShowBubbleChart] = useState(false);
   const [projectRankings, setProjectRankings] = useState([]);
   const [rankingsLoading, setRankingsLoading] = useState(false);
@@ -256,9 +256,12 @@ const AnalyticsPage = () => {
     }
   }, []);
 
-  const fetchTrendingCollections = useCallback(async (collectionName = 'bitcoin-puppets') => {
+  const fetchTrendingCollections = useCallback(async (collectionName) => {
+    if (!collectionName) {
+      console.error("Collection name is undefined");
+      return;
+    }
     setLoading(true);
-    setError(prev => ({ ...prev, trending: null }));
     try {
       const response = await fetch(`/api/trending-collections?name=${collectionName}`);
       if (!response.ok) {
@@ -354,7 +357,7 @@ const AnalyticsPage = () => {
   const handleShowTrending = useCallback(() => {
       setShowTrending(true);
       setError(prev => ({ ...prev, trending: null }));
-      fetchTrendingCollections('bitcoin-puppets');  // Add default collection name
+      fetchTrendingCollections();
       fetchInscriptionStats();
   }, [fetchTrendingCollections, fetchInscriptionStats]);
 
@@ -444,46 +447,27 @@ const AnalyticsPage = () => {
     setSelectedCollection(collection);
   }, []);
 
-  const handleShowBlocks = useCallback(() => {
-      setSelectedView('blocks');
-      setShowTrending(true);
-      if (!collections.length || !inscriptionStats.length) {
-        setLoading(true);
-        Promise.all([
-          fetchTrendingCollections('bitcoin-puppets'),  // Add default collection name
-          fetchInscriptionStats()
-        ]).finally(() => {
-          setLoading(false);
-        });
-      }
-  }, [collections.length, inscriptionStats.length, fetchTrendingCollections, fetchInscriptionStats]);
+  const handleShowBlocks = () => {
+    setSelectedView('blocks');
+    setShowTrending(true);  // Add this line to automatically show trending data in blocks view
+    fetchTrendingCollections();  // Add this to fetch data when switching to blocks view
+    fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
+  }
 
   useEffect(() => {
-    const initializeData = async () => {
-      setSelectedView('blocks');
-      setShowTrending(true);
+    setSelectedView('blocks');
+    setShowTrending(true);
+    if (selectedCollection) {
+      fetchTrendingCollections(selectedCollection);
+      fetchInscriptionStats();
+    }
+  }, [selectedCollection, fetchTrendingCollections, fetchInscriptionStats]);
 
-      try {
-        setLoading(true);
-        setStatsLoading(true);
-
-        await Promise.all([
-          fetchTrendingCollections('bitcoin-puppets'),  // Add default collection name
-          fetchInscriptionStats()
-        ]);
-
-        setHasFetchedInscriptionStats(true);
-      } catch (error) {
-        console.error('Error initializing data:', error);
-        setError(prev => ({ ...prev, initialization: 'Failed to initialize data.' }));
-      } finally {
-        setLoading(false);
-        setStatsLoading(false);
-      }
-    };
-
-    initializeData();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  useEffect(() => {
+    if (showTrending && selectedCollection) {
+      fetchTrendingCollections(selectedCollection);
+    }
+  }, [showTrending, selectedCollection, fetchTrendingCollections]);
 
   // Main render
   return (
@@ -613,10 +597,7 @@ const AnalyticsPage = () => {
           </section>
         ) : selectedView === 'blocks' ? (
           <section>
-            {console.log('Selected View:', selectedView)}
-            {console.log('ShowTrending:', showTrending)}
-            {console.log('Loading:', loading)}
-            {showTrending && !loading && (
+            {showTrending && !loading && collections.length > 0 && (
               <TrendingCollections
                 collections={sortedCollections}
                 handleSort={handleSort}

@@ -324,7 +324,6 @@ const Portfolio = () => {
         ordinalAddress={ordinalAddress}
         onShowOrdinals={handleShowOrdinals}
         onShowRunes={handleShowRunes}
-        onShowTrending={handleShowTrending}
         onWalletChange={handleWalletChange}
         onMint={handleShowBubbleChart}
       />
@@ -356,26 +355,6 @@ const Portfolio = () => {
             fetchProjectRankings(collection);
           }}
         />
-      )}
-
-      {/* Show Trending Collections */}
-      {showTrending && !loading && (
-        <>
-          <TrendingCollections
-            collections={sortedCollections}
-            handleSort={handleSort}
-            sortConfig={sortConfig}
-            toggleFloorPrice={toggleFloorPrice}
-            fpInBTC={fpInBTC}
-            onCollectionClick={handleCollectionClick}
-            inscriptionStats={inscriptionStats}
-            statsLoading={statsLoading}
-            statsError={statsError}
-          />
-          {selectedCollection && (
-            <TrendingChart collectionName={selectedCollection} />
-          )}
-        </>
       )}
 
       {/* Show Runes Balance */}

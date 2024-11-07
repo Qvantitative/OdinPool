@@ -152,6 +152,33 @@ const Portfolio = () => {
     }
   }, []);
 
+  const fetchTrendingCollections = useCallback(async (collectionName) => {
+    setLoading(true);
+    setError(prev => ({ ...prev, trending: null }));
+    try {
+      const response = await fetch(`/api/trending-collections?name=${collectionName}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch trending collection data');
+      }
+      const data = await response.json();
+      setCollections(prevCollections => {
+        const index = prevCollections.findIndex(c => c.name === collectionName);
+        if (index !== -1) {
+          const newCollections = [...prevCollections];
+          newCollections[index] = { ...newCollections[index], ...data };
+          return newCollections;
+        }
+        return [...prevCollections, data];
+      });
+    } catch (error) {
+      // Add error handling here
+      //setError(prev => ({ ...prev, trending: 'Failed to fetch trending data.' }));
+      console.error('Error fetching trending collections:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const fetchInscriptionStats = useCallback(async () => {
     setStatsLoading(true);
     try {
@@ -243,6 +270,11 @@ const Portfolio = () => {
     }
   }, []);
 
+  const handleCollectionClick = useCallback((collectionName) => {
+    setSelectedCollection(collectionName);
+    fetchTrendingCollections(collectionName);
+  }, [fetchTrendingCollections]);
+
   const handleWalletChange = useCallback((newAddress) => {
     setOrdinalAddress(newAddress);
     setError({});
@@ -280,8 +312,20 @@ const Portfolio = () => {
       setShowBubbleChart(false);  // Hide BubbleMaps
   }, [fetchRunesBalance]);
 
+  const handleShowTrending = useCallback(() => {
+      setShowTrending(true);
+      setShowRunes(false);
+      setInscriptions([]);
+      setShowBubbleChart(false);  // Hide BubbleMaps
+      setError(prev => ({ ...prev, trending: null }));
+      fetchTrendingCollections();
+      fetchInscriptionStats();
+  }, [fetchTrendingCollections, fetchInscriptionStats]);
+
   const handleShowBubbleChart = useCallback(() => {
       setShowBubbleChart(true);
+      setShowTrending(false);
+      setShowRunes(false);
       setSelectedCollection(prev => prev || 'bitcoin-puppets');
       fetchProjectRankings(selectedCollection || 'bitcoin-puppets');
   }, [selectedCollection, fetchProjectRankings]);
@@ -324,6 +368,7 @@ const Portfolio = () => {
         ordinalAddress={ordinalAddress}
         onShowOrdinals={handleShowOrdinals}
         onShowRunes={handleShowRunes}
+        onShowTrending={handleShowTrending}
         onWalletChange={handleWalletChange}
         onMint={handleShowBubbleChart}
       />
@@ -355,6 +400,26 @@ const Portfolio = () => {
             fetchProjectRankings(collection);
           }}
         />
+      )}
+
+      {/* Show Trending Collections */}
+      {showTrending && !loading && (
+        <>
+          <TrendingCollections
+            collections={sortedCollections}
+            handleSort={handleSort}
+            sortConfig={sortConfig}
+            toggleFloorPrice={toggleFloorPrice}
+            fpInBTC={fpInBTC}
+            onCollectionClick={handleCollectionClick}
+            inscriptionStats={inscriptionStats}
+            statsLoading={statsLoading}
+            statsError={statsError}
+          />
+          {selectedCollection && (
+            <TrendingChart collectionName={selectedCollection} />
+          )}
+        </>
       )}
 
       {/* Show Runes Balance */}

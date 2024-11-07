@@ -256,11 +256,7 @@ const AnalyticsPage = () => {
     }
   }, []);
 
-  const fetchTrendingCollections = useCallback(async (collectionName) => {
-    if (!collectionName) {
-      console.error("Collection name is undefined");
-      return;
-    }
+  const fetchTrendingCollections = useCallback(async (collectionName = 'bitcoin-puppets') => {
     setLoading(true);
     setError(prev => ({ ...prev, trending: null }));
     try {
@@ -279,8 +275,6 @@ const AnalyticsPage = () => {
         return [...prevCollections, data];
       });
     } catch (error) {
-      // Add error handling here
-      //setError(prev => ({ ...prev, trending: 'Failed to fetch trending data.' }));
       console.error('Error fetching trending collections:', error);
     } finally {
       setLoading(false);
@@ -360,7 +354,7 @@ const AnalyticsPage = () => {
   const handleShowTrending = useCallback(() => {
       setShowTrending(true);
       setError(prev => ({ ...prev, trending: null }));
-      fetchTrendingCollections();
+      fetchTrendingCollections('bitcoin-puppets');  // Add default collection name
       fetchInscriptionStats();
   }, [fetchTrendingCollections, fetchInscriptionStats]);
 
@@ -450,37 +444,46 @@ const AnalyticsPage = () => {
     setSelectedCollection(collection);
   }, []);
 
+  const handleShowBlocks = useCallback(() => {
+      setSelectedView('blocks');
+      setShowTrending(true);
+      if (!collections.length || !inscriptionStats.length) {
+        setLoading(true);
+        Promise.all([
+          fetchTrendingCollections('bitcoin-puppets'),  // Add default collection name
+          fetchInscriptionStats()
+        ]).finally(() => {
+          setLoading(false);
+        });
+      }
+  }, [collections.length, inscriptionStats.length, fetchTrendingCollections, fetchInscriptionStats]);
+
   useEffect(() => {
-    if (showTrending && !hasFetchedInscriptionStats) {
-      setStatsLoading(true);
-      fetchInscriptionStats().finally(() => {
-        setStatsLoading(false);
+    const initializeData = async () => {
+      setSelectedView('blocks');
+      setShowTrending(true);
+
+      try {
+        setLoading(true);
+        setStatsLoading(true);
+
+        await Promise.all([
+          fetchTrendingCollections('bitcoin-puppets'),  // Add default collection name
+          fetchInscriptionStats()
+        ]);
+
         setHasFetchedInscriptionStats(true);
-      });
-    }
-  }, [showTrending, fetchInscriptionStats, hasFetchedInscriptionStats]);
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setError(prev => ({ ...prev, initialization: 'Failed to initialize data.' }));
+      } finally {
+        setLoading(false);
+        setStatsLoading(false);
+      }
+    };
 
-  const handleShowBlocks = () => {
-    setSelectedView('blocks');
-    setShowTrending(true);  // Add this line to automatically show trending data in blocks view
-    fetchTrendingCollections();  // Add this to fetch data when switching to blocks view
-    fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
-  }
-
-  useEffect(() => {
-    // Set initial view and fetch data
-    setSelectedView('blocks');
-    setShowTrending(true);
-    fetchTrendingCollections();
-    fetchInscriptionStats();
-  }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
-
-  // Only fetch trending collections if `showTrending` is true and `selectedCollection` is defined
-  useEffect(() => {
-    if (showTrending && selectedCollection) {
-      fetchTrendingCollections(selectedCollection);
-    }
-  }, [showTrending, selectedCollection, fetchTrendingCollections]);
+    initializeData();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // Main render
   return (

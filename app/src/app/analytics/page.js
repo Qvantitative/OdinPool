@@ -349,6 +349,13 @@ const AnalyticsPage = () => {
     }
   };
 
+  const handleShowTrending = useCallback(() => {
+      setShowTrending(true);
+      setError(prev => ({ ...prev, trending: null }));
+      fetchTrendingCollections();
+      fetchInscriptionStats();
+  }, [fetchTrendingCollections, fetchInscriptionStats]);
+
   // Update the handleShowBubbleChart function
   const handleShowBubbleChart = useCallback(() => {
     setShowBubbleChart(true);
@@ -574,24 +581,21 @@ const AnalyticsPage = () => {
           </section>
         ) : selectedView === 'blocks' ? (
           <section>
-            {/* Render the Blocks view */}
+            {console.log('Selected View:', selectedView)}
+            {console.log('ShowTrending:', showTrending)}
+            {console.log('Loading:', loading)}
             {showTrending && !loading && (
-              <>
-                <TrendingCollections
-                  collections={sortedCollections}
-                  handleSort={handleSort}
-                  sortConfig={sortConfig}
-                  toggleFloorPrice={toggleFloorPrice}
-                  fpInBTC={fpInBTC}
-                  onCollectionClick={handleCollectionClick}
-                  inscriptionStats={inscriptionStats}
-                  statsLoading={statsLoading}
-                  statsError={statsError}
-                />
-                {selectedCollection && (
-                  <TrendingChart collectionName={selectedCollection} />
-                )}
-              </>
+              <TrendingCollections
+                collections={sortedCollections}
+                handleSort={handleSort}
+                sortConfig={sortConfig}
+                toggleFloorPrice={toggleFloorPrice}
+                fpInBTC={fpInBTC}
+                onCollectionClick={handleCollectionClick}
+                inscriptionStats={inscriptionStats}
+                statsLoading={statsLoading}
+                statsError={statsError}
+              />
             )}
           </section>
         ) : selectedView === 'transactions' ? (

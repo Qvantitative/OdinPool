@@ -452,6 +452,21 @@ const AnalyticsPage = () => {
     }
   }, [showTrending, fetchInscriptionStats, hasFetchedInscriptionStats]);
 
+  const handleShowBlocks = () => {
+    setSelectedView('blocks');
+    setShowTrending(true);  // Add this line to automatically show trending data in blocks view
+    fetchTrendingCollections();  // Add this to fetch data when switching to blocks view
+    fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
+  }
+
+  useEffect(() => {
+    // Set initial view and fetch data
+    setSelectedView('blocks');
+    setShowTrending(true);
+    fetchTrendingCollections();
+    fetchInscriptionStats();
+  }, []);
+
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">

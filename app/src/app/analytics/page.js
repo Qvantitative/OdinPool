@@ -475,6 +475,13 @@ const AnalyticsPage = () => {
     fetchInscriptionStats();
   }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
 
+  // Only fetch trending collections if `showTrending` is true and `selectedCollection` is defined
+  useEffect(() => {
+    if (showTrending && selectedCollection) {
+      fetchTrendingCollections(selectedCollection);
+    }
+  }, [showTrending, selectedCollection, fetchTrendingCollections]);
+
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">

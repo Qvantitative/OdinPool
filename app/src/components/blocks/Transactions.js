@@ -8,6 +8,19 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
   const [errors, setErrors] = useState({});
   const [expandedOpReturns, setExpandedOpReturns] = useState({});
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [transactionsPerPage] = useState(10);
+
+  // Calculate pagination values
+  const indexOfLastTransaction = currentPage * transactionsPerPage;
+  const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
+  const currentTransactions = transactionData.slice(
+    indexOfFirstTransaction,
+    indexOfLastTransaction
+  );
+  const totalPages = Math.ceil(transactionData.length / transactionsPerPage);
+
   useEffect(() => {
     const fetchAllDetails = async (txid) => {
       try {
@@ -34,12 +47,13 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
       }
     };
 
-    transactionData.forEach(tx => {
+    // Only fetch details for transactions on the current page
+    currentTransactions.forEach(tx => {
       if (!detailedData[tx.txid]) {
         fetchAllDetails(tx.txid);
       }
     });
-  }, [transactionData]);
+  }, [currentPage, transactionData, detailedData]);
 
   const handleOpReturnClick = async (txid, index) => {
     const currentKey = `${txid}-${index}`;
@@ -66,6 +80,89 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
 
   const formatBTC = (value) => parseFloat(value).toFixed(8);
 
+  const Pagination = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    return (
+      <div className="flex items-center justify-center space-x-2 mt-4">
+        <button
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded bg-gray-700 text-white disabled:opacity-50"
+        >
+          &lt;&lt;
+        </button>
+        <button
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 rounded bg-gray-700 text-white disabled:opacity-50"
+        >
+          &lt;
+        </button>
+
+        {startPage > 1 && (
+          <>
+            <button
+              onClick={() => setCurrentPage(1)}
+              className={`px-3 py-1 rounded ${currentPage === 1 ? 'bg-blue-500' : 'bg-gray-700'}`}
+            >
+              1
+            </button>
+            {startPage > 2 && <span className="px-2">...</span>}
+          </>
+        )}
+
+        {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map(number => (
+          <button
+            key={number}
+            onClick={() => setCurrentPage(number)}
+            className={`px-3 py-1 rounded ${
+              currentPage === number ? 'bg-blue-500' : 'bg-gray-700'
+            } text-white`}
+          >
+            {number}
+          </button>
+        ))}
+
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <span className="px-2">...</span>}
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              className={`px-3 py-1 rounded ${
+                currentPage === totalPages ? 'bg-blue-500' : 'bg-gray-700'
+              }`}
+            >
+              {totalPages}
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 rounded bg-gray-700 text-white disabled:opacity-50"
+        >
+          &gt;
+        </button>
+        <button
+          onClick={() => setCurrentPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 rounded bg-gray-700 text-white disabled:opacity-50"
+        >
+          &gt;&gt;
+        </button>
+      </div>
+    );
+  };
+
   const renderTransaction = (tx) => {
     const txDetails = detailedData[tx.txid];
     const isLoading = loading[tx.txid];
@@ -81,7 +178,6 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
       );
     }
 
-    // Merge basic and detailed data
     const transaction = txDetails?.transaction || {
       txid: tx.txid,
       total_input_value: tx.total_input_value,
@@ -205,7 +301,15 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
       <h3 className="text-xl font-semibold mb-4 text-center text-white">
         Transactions ({transactionData.length} total)
       </h3>
-      {transactionData.map(renderTransaction)}
+      <div className="space-y-4">
+        {currentTransactions.map(renderTransaction)}
+      </div>
+      <Pagination />
+      <div className="text-center text-sm text-gray-400 mt-2">
+        Page {currentPage} of {totalPages} |
+        Showing transactions {indexOfFirstTransaction + 1}-
+        {Math.min(indexOfLastTransaction, transactionData.length)} of {transactionData.length}
+      </div>
     </div>
   );
 };

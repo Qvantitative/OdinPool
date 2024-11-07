@@ -459,14 +459,6 @@ const AnalyticsPage = () => {
     fetchInscriptionStats();     // Add this to fetch stats when switching to blocks view
   }
 
-  useEffect(() => {
-    // Set initial view and fetch data
-    setSelectedView('blocks');
-    setShowTrending(true);
-    fetchTrendingCollections();
-    fetchInscriptionStats();
-  }, [fetchTrendingCollections, fetchInscriptionStats]); // Add dependencies
-
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">

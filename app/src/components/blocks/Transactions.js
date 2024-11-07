@@ -83,7 +83,8 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
                       <span>{formatBTC(output.value)} BTC</span>
                     </div>
                   </li>
-                ))}
+                );
+              })}
             </ul>
           </div>
         </div>

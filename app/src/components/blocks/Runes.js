@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+// app/components/blocks/Runes
 
-const Runes = ({ runes }) => {
+import React, { useState } from 'react';
+import { Coins } from 'lucide-react';
+
+const Runes = ({ runes, loading = false }) => {
   const [expandedRune, setExpandedRune] = useState(null);
 
   const handleRuneClick = (index) => {
@@ -10,6 +13,29 @@ const Runes = ({ runes }) => {
       setExpandedRune(index);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold mb-4">Runes in Block</h3>
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!runes || runes.length === 0) {
+    return (
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold mb-4">Runes in Block</h3>
+        <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
+          <Coins className="w-12 h-12 text-gray-400" />
+          <p className="mt-2">No runes</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-8">

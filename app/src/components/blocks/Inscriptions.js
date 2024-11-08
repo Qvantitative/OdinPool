@@ -33,47 +33,47 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
         const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
         const details = detailsResponse.data;
 
+        // Fetch the content and determine content type
         const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: contentResponse.headers['content-type'] === 'image/svg+xml' ? 'text' : 'blob',
+          responseType: 'blob',
         });
         const contentType = contentResponse.headers['content-type'];
 
+        // Handle image or SVG
         if (contentType.startsWith('image/')) {
+          let imageUrl;
           if (contentType === 'image/svg+xml') {
-            // Handle SVG images by creating a data URL from the SVG text content
-            const svgContent = contentResponse.data;
-            const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
-            const imageUrl = URL.createObjectURL(svgBlob);
-            images[inscriptionId] = {
-              url: imageUrl,
-              type: 'image',
-              rune: details.rune,
-              details: details // Store the full details
-            };
+            // If SVG, handle as text and create a Blob for the SVG content
+            const svgText = await contentResponse.data.text();
+            const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+            imageUrl = URL.createObjectURL(svgBlob);
           } else {
-            // Handle other image types as blobs
+            // For other images, handle as blob directly
             const blob = new Blob([contentResponse.data]);
-            const imageUrl = URL.createObjectURL(blob);
-            images[inscriptionId] = {
-              url: imageUrl,
-              type: 'image',
-              rune: details.rune,
-              details: details // Store the full details
-            };
+            imageUrl = URL.createObjectURL(blob);
           }
+
+          images[inscriptionId] = {
+            url: imageUrl,
+            type: 'image',
+            rune: details.rune,
+            details: details, // Store the full details
+          };
         } else if (contentType.startsWith('text/')) {
+          // Handle text content
           const textContent = await contentResponse.data.text();
           images[inscriptionId] = {
             content: textContent,
             type: 'text',
             rune: details.rune,
-            details: details // Store the full details
+            details: details, // Store the full details
           };
         } else {
+          // Handle unsupported content
           images[inscriptionId] = {
             type: 'unsupported',
             rune: details.rune,
-            details: details // Store the full details
+            details: details, // Store the full details
           };
         }
       } catch (err) {

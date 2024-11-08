@@ -218,7 +218,7 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
         )}
 
         <h2
-          className="text-lg font-bold mb-4 text-center cursor-pointer hover:text-blue-400"
+          className="text-lg font-bold mb-4 text-center cursor-pointer hover:text-blue-400 truncate overflow-auto max-w-full"
           onClick={() => handleTransactionClick(transaction.txid)}
         >
           {transaction.txid}

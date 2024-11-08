@@ -30,23 +30,26 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   await Promise.all(
     inscriptionsList.map(async (inscriptionId) => {
       try {
+        // First get the inscription details which should include content type
         const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
         const details = detailsResponse.data;
 
-        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: contentType === 'image/svg+xml' ? 'text' : 'blob',  // Use 'text' for SVGs
-        });
-        const contentType = contentResponse.headers['content-type'];
+        // Determine the correct response type based on content type
+        const responseType = details.content_type === 'image/svg+xml' ? 'text' : 'blob';
 
-        if (contentType === 'image/svg+xml') {
-          // For SVGs, store the raw SVG string
+        // Now fetch the content with the correct response type
+        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
+          responseType: responseType
+        });
+
+        if (details.content_type === 'image/svg+xml') {
           images[inscriptionId] = {
-            content: contentResponse.data,  // This will be the SVG string
+            content: contentResponse.data,
             type: 'svg',
             rune: details.rune,
             details: details
           };
-        } else if (contentType.startsWith('image/')) {
+        } else if (details.content_type.startsWith('image/')) {
           const blob = new Blob([contentResponse.data]);
           const imageUrl = URL.createObjectURL(blob);
           images[inscriptionId] = {
@@ -61,13 +64,13 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
             content: textContent,
             type: 'text',
             rune: details.rune,
-            details: details
+            details: details  // Store the full details
           };
         } else {
           images[inscriptionId] = {
             type: 'unsupported',
             rune: details.rune,
-            details: details
+            details: details  // Store the full details
           };
         }
       } catch (err) {
@@ -79,57 +82,6 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
 
   setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
   setLoading(false);
-};
-
-const renderInscriptionItem = (inscriptionId, inscriptionData, index) => {
-  return (
-    <div
-      key={index}
-      className="flex flex-col items-center"
-      onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
-    >
-      <div className="w-full aspect-square rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer">
-        {inscriptionData ? (
-          inscriptionData.type === 'svg' ? (
-            <div
-              className="w-full h-full flex items-center justify-center bg-gray-800"
-              dangerouslySetInnerHTML={{ __html: inscriptionData.content }}
-            />
-          ) : inscriptionData.type === 'image' ? (
-            <img
-              src={inscriptionData.url}
-              alt={`Inscription ${inscriptionId}`}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : inscriptionData.type === 'text' ? (
-            <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
-              <pre className="text-xs overflow-auto max-h-full max-w-full text-center">
-                {inscriptionData.content}
-              </pre>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
-              Unsupported content type
-            </div>
-          )
-        ) : (
-          <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
-            Loading content...
-          </div>
-        )}
-      </div>
-      {inscriptionData && inscriptionData.rune ? (
-        <p className="mt-3 text-xs text-center truncate max-w-full text-gray-200">
-          {inscriptionData.rune}
-        </p>
-      ) : (
-        <p className="mt-3 text-xs text-center truncate max-w-full text-gray-500">
-          {inscriptionId.slice(0, 8)}...
-        </p>
-      )}
-    </div>
-  );
 };
 
 const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {

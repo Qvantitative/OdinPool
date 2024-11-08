@@ -5,7 +5,6 @@ import axios from 'axios';
 import https from 'https';
 import { ImageOff } from 'lucide-react';
 
-// Axios instances remain the same...
 const axiosInstanceWithSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000'
@@ -20,7 +19,6 @@ const axiosInstanceWithoutSSL = axios.create({
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
-// fetchInscriptionImages and handleInscriptionClick functions remain the same...
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, setLoading) => {
   if (!inscriptionsList || inscriptionsList.length === 0) {
     setLoading(false);
@@ -47,6 +45,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
             url: imageUrl,
             type: 'image',
             rune: details.rune,
+            details: details  // Store the full details
           };
         } else if (contentType.startsWith('text/')) {
           const textContent = await contentResponse.data.text();
@@ -54,9 +53,14 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
             content: textContent,
             type: 'text',
             rune: details.rune,
+            details: details  // Store the full details
           };
         } else {
-          images[inscriptionId] = { type: 'unsupported', rune: details.rune };
+          images[inscriptionId] = {
+            type: 'unsupported',
+            rune: details.rune,
+            details: details  // Store the full details
+          };
         }
       } catch (err) {
         console.error(`Error fetching data for inscription ${inscriptionId}:`, err);
@@ -69,10 +73,16 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   setLoading(false);
 };
 
-const handleInscriptionClick = async (inscriptionId, setInscriptionData) => {
+const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
+  // Log all available data
+  console.log('Inscription ID:', inscriptionId);
+  console.log('Inscription Data:', inscriptionData);
+
+  // Make the API call and log the response
   try {
     const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
-    setInscriptionData(response.data);
+    console.log('API Response:', response.data);
+    setSelectedInscription(response.data);
   } catch (error) {
     console.error('Error fetching inscription data:', error);
   }
@@ -81,7 +91,7 @@ const handleInscriptionClick = async (inscriptionId, setInscriptionData) => {
 const Inscriptions = ({ blockDetails }) => {
   const [inscriptionImages, setInscriptionImages] = useState({});
   const [hideTextInscriptions, setHideTextInscriptions] = useState(true);
-  const [inscriptionData, setInscriptionData] = useState(null);
+  const [selectedInscription, setSelectedInscription] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -111,7 +121,7 @@ const Inscriptions = ({ blockDetails }) => {
       <div
         key={index}
         className="flex flex-col items-center"
-        onClick={() => handleInscriptionClick(inscriptionId, setInscriptionData)}
+        onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
       >
         <div className="w-full aspect-square rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer">
           {inscriptionData ? (
@@ -152,7 +162,35 @@ const Inscriptions = ({ blockDetails }) => {
     );
   };
 
-  // Helper functions remain the same...
+  // Selected inscription details panel
+  const renderSelectedInscriptionDetails = () => {
+    if (!selectedInscription) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold text-white">Inscription Details</h3>
+            <button
+              onClick={() => setSelectedInscription(null)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-4">
+            {Object.entries(selectedInscription).map(([key, value]) => (
+              <div key={key} className="flex flex-col">
+                <span className="text-gray-400 text-sm">{key}</span>
+                <span className="text-white break-all">{JSON.stringify(value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const hasNonTextInscriptions = () => {
     return Object.values(inscriptionImages).some(data => data && data.type === 'image');
   };
@@ -206,6 +244,7 @@ const Inscriptions = ({ blockDetails }) => {
           })}
         </div>
       )}
+      {renderSelectedInscriptionDetails()}
     </div>
   );
 };

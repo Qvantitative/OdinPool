@@ -137,6 +137,12 @@ const Inscriptions = ({ blockDetails }) => {
     );
   };
 
+  // Check if there are inscriptions to display based on the filter
+  const filteredInscriptions = blockDetails?.inscriptions?.filter((inscriptionId) => {
+    const inscriptionData = inscriptionImages[inscriptionId];
+    return !hideTextInscriptions || (inscriptionData && inscriptionData.type !== 'text');
+  });
+
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4">
@@ -148,9 +154,9 @@ const Inscriptions = ({ blockDetails }) => {
           {hideTextInscriptions ? 'Show Text' : 'Hide Text'}
         </button>
       </div>
-      {blockDetails?.inscriptions?.length > 0 ? (
+      {filteredInscriptions && filteredInscriptions.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {blockDetails.inscriptions.map((inscriptionId, index) => {
+          {filteredInscriptions.map((inscriptionId, index) => {
             const inscriptionData = inscriptionImages[inscriptionId];
             if (
               hideTextInscriptions &&
@@ -163,7 +169,10 @@ const Inscriptions = ({ blockDetails }) => {
           })}
         </div>
       ) : (
-        <div className="text-center text-gray-500">No Inscriptions</div>
+        <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
+          <img src="/path/to/icon.png" alt="No inscriptions icon" className="w-16 h-16 mb-2" />
+          <p>No inscriptions</p>
+        </div>
       )}
     </div>
   );

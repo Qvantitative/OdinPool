@@ -30,33 +30,22 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   await Promise.all(
     inscriptionsList.map(async (inscriptionId) => {
       try {
-        // First get the inscription details which should include content type
         const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
         const details = detailsResponse.data;
 
-        // Determine the correct response type based on content type
-        const responseType = details.content_type === 'image/svg+xml' ? 'text' : 'blob';
-
-        // Now fetch the content with the correct response type
         const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: responseType
+          responseType: 'blob',
         });
+        const contentType = contentResponse.headers['content-type'];
 
-        if (details.content_type === 'image/svg+xml') {
-          images[inscriptionId] = {
-            content: contentResponse.data,
-            type: 'svg',
-            rune: details.rune,
-            details: details
-          };
-        } else if (details.content_type.startsWith('image/')) {
+        if (contentType.startsWith('image/')) {
           const blob = new Blob([contentResponse.data]);
           const imageUrl = URL.createObjectURL(blob);
           images[inscriptionId] = {
             url: imageUrl,
             type: 'image',
             rune: details.rune,
-            details: details
+            details: details  // Store the full details
           };
         } else if (contentType.startsWith('text/')) {
           const textContent = await contentResponse.data.text();

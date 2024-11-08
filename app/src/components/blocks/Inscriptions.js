@@ -35,17 +35,20 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
 
         // Fetch the content and determine content type
         const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: contentResponse.headers?.['content-type']?.includes('text/html') ? 'text' : 'blob',
+          responseType: 'blob',
         });
-        const contentType = contentResponse.headers['content-type'] || '';
+        const contentType = contentResponse.headers['content-type'];
 
+        // Handle image or SVG
         if (contentType.startsWith('image/')) {
           let imageUrl;
           if (contentType === 'image/svg+xml') {
+            // If SVG, handle as text and create a Blob for the SVG content
             const svgText = await contentResponse.data.text();
             const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
             imageUrl = URL.createObjectURL(svgBlob);
           } else {
+            // For other images, handle as blob directly
             const blob = new Blob([contentResponse.data]);
             imageUrl = URL.createObjectURL(blob);
           }
@@ -54,34 +57,23 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
             url: imageUrl,
             type: 'image',
             rune: details.rune,
-            details: details,
-          };
-        } else if (contentType.startsWith('text/html')) {
-          const htmlContent = contentResponse.data;
-          images[inscriptionId] = {
-            content: htmlContent,
-            type: 'html',
-            rune: details.rune,
-            details: details,
+            details: details, // Store the full details
           };
         } else if (contentType.startsWith('text/')) {
-          let textContent = '';
-          try {
-            textContent = await contentResponse.data.text();
-          } catch (error) {
-            console.error('Error parsing text content:', error);
-          }
+          // Handle text content
+          const textContent = await contentResponse.data.text();
           images[inscriptionId] = {
             content: textContent,
             type: 'text',
             rune: details.rune,
-            details: details,
+            details: details, // Store the full details
           };
         } else {
+          // Handle unsupported content
           images[inscriptionId] = {
             type: 'unsupported',
             rune: details.rune,
-            details: details,
+            details: details, // Store the full details
           };
         }
       } catch (err) {
@@ -160,11 +152,6 @@ const Inscriptions = ({ blockDetails }) => {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-            ) : inscriptionData.type === 'html' ? (
-              <div
-                className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg"
-                dangerouslySetInnerHTML={{ __html: inscriptionData.content }}
-              ></div>
             ) : inscriptionData.type === 'text' ? (
               <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
                 <pre className="text-xs overflow-auto max-h-full max-w-full text-center">

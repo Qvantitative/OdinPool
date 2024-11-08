@@ -181,10 +181,13 @@ const Inscriptions = ({ blockDetails }) => {
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
-          <img src="/path/to/icon.png" alt="No inscriptions icon" className="w-16 h-16 mb-2" />
-          <p>No inscriptions</p>
-        </div>
+        // Display "No Inscriptions" message only if loading is false and there are no inscriptions
+        !loading && (
+          <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
+            <img src="/path/to/icon.png" alt="No inscriptions icon" className="w-16 h-16 mb-2" />
+            <p>No inscriptions</p>
+          </div>
+        )
       )}
     </div>
   );

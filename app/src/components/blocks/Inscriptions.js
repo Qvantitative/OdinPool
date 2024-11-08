@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import https from 'https';
+import { ImageOff } from 'lucide-react';
 
-// Existing axios instances remain the same...
+// Axios instances remain the same...
 const axiosInstanceWithSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000'
@@ -19,7 +20,7 @@ const axiosInstanceWithoutSSL = axios.create({
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
-// Existing fetchInscriptionImages and handleInscriptionClick functions remain the same...
+// fetchInscriptionImages and handleInscriptionClick functions remain the same...
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, setLoading) => {
   if (!inscriptionsList || inscriptionsList.length === 0) {
     setLoading(false);
@@ -96,6 +97,15 @@ const Inscriptions = ({ blockDetails }) => {
     setHideTextInscriptions(!hideTextInscriptions);
   };
 
+  const navItems = [
+    {
+      label: 'ImageOff',
+      icon: <ImageOff className="w-12 h-12 text-gray-400" />,
+      onClick: () => {},
+      active: false
+    },
+  ];
+
   const renderInscriptionItem = (inscriptionId, inscriptionData, index) => {
     return (
       <div
@@ -142,23 +152,20 @@ const Inscriptions = ({ blockDetails }) => {
     );
   };
 
-  // Helper function to check if there are any non-text inscriptions
+  // Helper functions remain the same...
   const hasNonTextInscriptions = () => {
     return Object.values(inscriptionImages).some(data => data && data.type === 'image');
   };
 
-  // Helper function to check if there are any text inscriptions
   const hasTextInscriptions = () => {
     return Object.values(inscriptionImages).some(data => data && data.type === 'text');
   };
 
-  // Updated filtering logic
   const filteredInscriptions = blockDetails?.inscriptions?.filter((inscriptionId) => {
     const inscriptionData = inscriptionImages[inscriptionId];
     return !hideTextInscriptions || (inscriptionData && inscriptionData.type !== 'text');
   });
 
-  // Determine if we should show the "No Inscriptions" message
   const shouldShowNoInscriptions = !loading && (
     (hideTextInscriptions && !hasNonTextInscriptions()) ||
     (!hideTextInscriptions && !hasTextInscriptions() && !hasNonTextInscriptions())
@@ -181,8 +188,8 @@ const Inscriptions = ({ blockDetails }) => {
         </div>
       ) : shouldShowNoInscriptions ? (
         <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
-          <img src="/path/to/icon.png" alt="No inscriptions icon" className="w-16 h-16 mb-2" />
-          <p>No inscriptions</p>
+          {navItems[0].icon}
+          <p className="mt-2">No inscriptions</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">

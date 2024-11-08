@@ -108,24 +108,24 @@ const Inscriptions = ({ blockDetails }) => {
                 loading="lazy"
               />
             ) : inscriptionData.type === 'text' ? (
-              <div className="flex items-center justify-center h-full p-4 bg-gray-100">
+              <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
                 <pre className="text-xs overflow-auto max-h-full max-w-full text-center">
                   {inscriptionData.content}
                 </pre>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-sm bg-gray-200">
+              <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
                 Unsupported content type
               </div>
             )
           ) : (
-            <div className="flex items-center justify-center h-full text-sm bg-gray-100">
+            <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
               Loading content...
             </div>
           )}
         </div>
         {inscriptionData && inscriptionData.rune ? (
-          <p className="mt-3 text-xs text-center truncate max-w-full">
+          <p className="mt-3 text-xs text-center truncate max-w-full text-gray-200">
             {inscriptionData.rune}
           </p>
         ) : (

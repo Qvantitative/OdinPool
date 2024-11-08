@@ -19,7 +19,6 @@ const axiosInstanceWithoutSSL = axios.create({
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
-
 // Function to fetch inscription images with retry mechanism
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) => {
   if (!inscriptionsList || inscriptionsList.length === 0) return;
@@ -149,19 +148,23 @@ const Inscriptions = ({ blockDetails }) => {
           {hideTextInscriptions ? 'Show Text' : 'Hide Text'}
         </button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {blockDetails?.inscriptions?.map((inscriptionId, index) => {
-          const inscriptionData = inscriptionImages[inscriptionId];
-          if (
-            hideTextInscriptions &&
-            inscriptionData &&
-            (inscriptionData.type === 'text' || inscriptionData.type === 'unsupported')
-          ) {
-            return null;
-          }
-          return renderInscriptionItem(inscriptionId, inscriptionData, index);
-        })}
-      </div>
+      {blockDetails?.inscriptions?.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          {blockDetails.inscriptions.map((inscriptionId, index) => {
+            const inscriptionData = inscriptionImages[inscriptionId];
+            if (
+              hideTextInscriptions &&
+              inscriptionData &&
+              (inscriptionData.type === 'text' || inscriptionData.type === 'unsupported')
+            ) {
+              return null;
+            }
+            return renderInscriptionItem(inscriptionId, inscriptionData, index);
+          })}
+        </div>
+      ) : (
+        <div className="text-center text-gray-500">No Inscriptions</div>
+      )}
     </div>
   );
 };

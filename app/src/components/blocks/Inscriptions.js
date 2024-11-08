@@ -74,13 +74,14 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
 };
 
 const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
-  // Log all available data
-  console.log('Inscription ID:', inscriptionId);
-  console.log('Inscription Data:', inscriptionData);
-
-  // Make the API call and log the response
   try {
-    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+    // Add headers to request JSON specifically
+    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
     console.log('API Response:', response.data);
     setSelectedInscription(response.data);
   } catch (error) {

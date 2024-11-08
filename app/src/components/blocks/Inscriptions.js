@@ -4,22 +4,22 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import https from 'https';
 
-// Create axios instances with base URLs
+// Existing axios instances remain the same...
 const axiosInstanceWithSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'  // Local development
-    : '/ord',  // Production (using Next.js rewrites)
+    ? 'http://localhost:3000'
+    : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const axiosInstanceWithoutSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'  // Local development
-    : '/ord',  // Production (using Next.js rewrites)
+    ? 'http://localhost:3000'
+    : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
-// Function to fetch inscription images with retry mechanism
+// Existing fetchInscriptionImages and handleInscriptionClick functions remain the same...
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, setLoading) => {
   if (!inscriptionsList || inscriptionsList.length === 0) {
     setLoading(false);
@@ -68,7 +68,6 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   setLoading(false);
 };
 
-// Function to handle click events on inscriptions
 const handleInscriptionClick = async (inscriptionId, setInscriptionData) => {
   try {
     const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
@@ -78,17 +77,15 @@ const handleInscriptionClick = async (inscriptionId, setInscriptionData) => {
   }
 };
 
-// Component definition
 const Inscriptions = ({ blockDetails }) => {
   const [inscriptionImages, setInscriptionImages] = useState({});
   const [hideTextInscriptions, setHideTextInscriptions] = useState(true);
   const [inscriptionData, setInscriptionData] = useState(null);
-  const [loading, setLoading] = useState(true); // Loading state
+  const [loading, setLoading] = useState(true);
 
-  // Fetch inscriptions when blockDetails change
   useEffect(() => {
     if (blockDetails && blockDetails.inscriptions) {
-      setLoading(true); // Set loading state to true before fetching
+      setLoading(true);
       fetchInscriptionImages(blockDetails.inscriptions, setInscriptionImages, setLoading);
     } else {
       setLoading(false);
@@ -145,11 +142,27 @@ const Inscriptions = ({ blockDetails }) => {
     );
   };
 
-  // Check if there are inscriptions to display based on the filter
+  // Helper function to check if there are any non-text inscriptions
+  const hasNonTextInscriptions = () => {
+    return Object.values(inscriptionImages).some(data => data && data.type === 'image');
+  };
+
+  // Helper function to check if there are any text inscriptions
+  const hasTextInscriptions = () => {
+    return Object.values(inscriptionImages).some(data => data && data.type === 'text');
+  };
+
+  // Updated filtering logic
   const filteredInscriptions = blockDetails?.inscriptions?.filter((inscriptionId) => {
     const inscriptionData = inscriptionImages[inscriptionId];
     return !hideTextInscriptions || (inscriptionData && inscriptionData.type !== 'text');
   });
+
+  // Determine if we should show the "No Inscriptions" message
+  const shouldShowNoInscriptions = !loading && (
+    (hideTextInscriptions && !hasNonTextInscriptions()) ||
+    (!hideTextInscriptions && !hasTextInscriptions() && !hasNonTextInscriptions())
+  );
 
   return (
     <div className="mb-8">
@@ -166,7 +179,12 @@ const Inscriptions = ({ blockDetails }) => {
         <div className="flex items-center justify-center h-32">
           <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
         </div>
-      ) : filteredInscriptions && filteredInscriptions.length > 0 ? (
+      ) : shouldShowNoInscriptions ? (
+        <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
+          <img src="/path/to/icon.png" alt="No inscriptions icon" className="w-16 h-16 mb-2" />
+          <p>No inscriptions</p>
+        </div>
+      ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {filteredInscriptions.map((inscriptionId, index) => {
             const inscriptionData = inscriptionImages[inscriptionId];
@@ -179,11 +197,6 @@ const Inscriptions = ({ blockDetails }) => {
             }
             return renderInscriptionItem(inscriptionId, inscriptionData, index);
           })}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
-          <img src="/path/to/icon.png" alt="No inscriptions icon" className="w-16 h-16 mb-2" />
-          <p>No inscriptions</p>
         </div>
       )}
     </div>

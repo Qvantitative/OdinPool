@@ -74,9 +74,17 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
 };
 
 const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
-  // Use the already fetched data instead of making a new request
-  if (inscriptionData && inscriptionData.details) {
-    setSelectedInscription(inscriptionData.details);
+  // Log all available data
+  console.log('Inscription ID:', inscriptionId);
+  console.log('Inscription Data:', inscriptionData);
+
+  // Make the API call and log the response
+  try {
+    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+    console.log('API Response:', response.data);
+    setSelectedInscription(response.data);
+  } catch (error) {
+    console.error('Error fetching inscription data:', error);
   }
 };
 

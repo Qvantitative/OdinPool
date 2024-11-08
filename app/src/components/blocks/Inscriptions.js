@@ -20,8 +20,11 @@ const axiosInstanceWithoutSSL = axios.create({
 });
 
 // Function to fetch inscription images with retry mechanism
-const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) => {
-  if (!inscriptionsList || inscriptionsList.length === 0) return;
+const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, setLoading) => {
+  if (!inscriptionsList || inscriptionsList.length === 0) {
+    setLoading(false);
+    return;
+  }
 
   const images = {};
 
@@ -62,6 +65,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages) =>
   );
 
   setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
+  setLoading(false);
 };
 
 // Function to handle click events on inscriptions
@@ -79,11 +83,15 @@ const Inscriptions = ({ blockDetails }) => {
   const [inscriptionImages, setInscriptionImages] = useState({});
   const [hideTextInscriptions, setHideTextInscriptions] = useState(true);
   const [inscriptionData, setInscriptionData] = useState(null);
+  const [loading, setLoading] = useState(true); // Loading state
 
   // Fetch inscriptions when blockDetails change
   useEffect(() => {
     if (blockDetails && blockDetails.inscriptions) {
-      fetchInscriptionImages(blockDetails.inscriptions, setInscriptionImages);
+      setLoading(true); // Set loading state to true before fetching
+      fetchInscriptionImages(blockDetails.inscriptions, setInscriptionImages, setLoading);
+    } else {
+      setLoading(false);
     }
   }, [blockDetails]);
 
@@ -154,7 +162,11 @@ const Inscriptions = ({ blockDetails }) => {
           {hideTextInscriptions ? 'Show Text' : 'Hide Text'}
         </button>
       </div>
-      {filteredInscriptions && filteredInscriptions.length > 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
+        </div>
+      ) : filteredInscriptions && filteredInscriptions.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {filteredInscriptions.map((inscriptionId, index) => {
             const inscriptionData = inscriptionImages[inscriptionId];

@@ -30,22 +30,33 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   await Promise.all(
     inscriptionsList.map(async (inscriptionId) => {
       try {
+        // First get the inscription details which should include content type
         const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
         const details = detailsResponse.data;
 
-        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: 'blob',
-        });
-        const contentType = contentResponse.headers['content-type'];
+        // Determine the correct response type based on content type
+        const responseType = details.content_type === 'image/svg+xml' ? 'text' : 'blob';
 
-        if (contentType.startsWith('image/')) {
+        // Now fetch the content with the correct response type
+        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
+          responseType: responseType
+        });
+
+        if (details.content_type === 'image/svg+xml') {
+          images[inscriptionId] = {
+            content: contentResponse.data,
+            type: 'svg',
+            rune: details.rune,
+            details: details
+          };
+        } else if (details.content_type.startsWith('image/')) {
           const blob = new Blob([contentResponse.data]);
           const imageUrl = URL.createObjectURL(blob);
           images[inscriptionId] = {
             url: imageUrl,
             type: 'image',
             rune: details.rune,
-            details: details  // Store the full details
+            details: details
           };
         } else if (contentType.startsWith('text/')) {
           const textContent = await contentResponse.data.text();
@@ -80,7 +91,13 @@ const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelecte
 
   // Make the API call and log the response
   try {
-    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+    // Add headers to request JSON specifically
+    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
     console.log('API Response:', response.data);
     setSelectedInscription(response.data);
   } catch (error) {

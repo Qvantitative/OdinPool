@@ -35,7 +35,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
 
         // Fetch the content and determine content type
         const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: 'blob',
+          responseType: contentResponse.headers['content-type'] === 'text/html' ? 'text' : 'blob',
         });
         const contentType = contentResponse.headers['content-type'];
 
@@ -59,8 +59,17 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
             rune: details.rune,
             details: details, // Store the full details
           };
+        } else if (contentType.startsWith('text/html')) {
+          // Handle HTML content
+          const htmlContent = contentResponse.data; // Already text format due to responseType 'text'
+          images[inscriptionId] = {
+            content: htmlContent,
+            type: 'html',
+            rune: details.rune,
+            details: details, // Store the full details
+          };
         } else if (contentType.startsWith('text/')) {
-          // Handle text content
+          // Handle plain text content
           const textContent = await contentResponse.data.text();
           images[inscriptionId] = {
             content: textContent,
@@ -86,6 +95,7 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
   setLoading(false);
 };
+
 
 const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
   // Log all available data
@@ -183,30 +193,53 @@ const Inscriptions = ({ blockDetails }) => {
   };
 
   // Selected inscription details panel
-  const renderSelectedInscriptionDetails = () => {
-    if (!selectedInscription) return null;
-
+  const renderInscriptionItem = (inscriptionId, inscriptionData, index) => {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-white">Inscription Details</h3>
-            <button
-              onClick={() => setSelectedInscription(null)}
-              className="text-gray-400 hover:text-white"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="space-y-4">
-            {Object.entries(selectedInscription).map(([key, value]) => (
-              <div key={key} className="flex flex-col">
-                <span className="text-gray-400 text-sm">{key}</span>
-                <span className="text-white break-all">{JSON.stringify(value)}</span>
+      <div
+        key={index}
+        className="flex flex-col items-center"
+        onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
+      >
+        <div className="w-full aspect-square rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+          {inscriptionData ? (
+            inscriptionData.type === 'image' ? (
+              <img
+                src={inscriptionData.url}
+                alt={`Inscription ${inscriptionId}`}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : inscriptionData.type === 'html' ? (
+              <div
+                className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg"
+                dangerouslySetInnerHTML={{ __html: inscriptionData.content }}
+              ></div>
+            ) : inscriptionData.type === 'text' ? (
+              <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
+                <pre className="text-xs overflow-auto max-h-full max-w-full text-center">
+                  {inscriptionData.content}
+                </pre>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
+                Unsupported content type
+              </div>
+            )
+          ) : (
+            <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
+              Loading content...
+            </div>
+          )}
         </div>
+        {inscriptionData && inscriptionData.rune ? (
+          <p className="mt-3 text-xs text-center truncate max-w-full text-gray-200">
+            {inscriptionData.rune}
+          </p>
+        ) : (
+          <p className="mt-3 text-xs text-center truncate max-w-full text-gray-500">
+            {inscriptionId.slice(0, 8)}...
+          </p>
+        )}
       </div>
     );
   };

@@ -27,6 +27,12 @@ const nextConfig = {
         destination: process.env.NODE_ENV === 'development'
           ? 'http://localhost:3000/content/:path*'
           : 'http://68.9.235.71:3000/content/:path*',
+      },
+      {
+        source: '/ord/:path*',
+        destination: process.env.NODE_ENV === 'development'
+          ? 'http://localhost:3000/content/:path*'
+          : 'http://68.9.235.71:3000/content/:path*',
       }
     ];
   },

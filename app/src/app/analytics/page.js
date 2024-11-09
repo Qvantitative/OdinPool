@@ -477,14 +477,14 @@ const AnalyticsPage = () => {
             <BlockDataTable block={selectedBlock} />
           </section>
         ) : showBubbleChart ? (
-          <section className="container mx-auto p-8 pt-10">
+          <section className="container mx-auto">
             <button
               onClick={handleBackFromBubbleMap}
               className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
               Back to Analytics
             </button>
-            <div className="w-full h-screen relative">
+            <div className="w-full h-[calc(100vh-300px)]"> {/* Adjust height to account for header */}
               <BubbleMaps
                 projectRankings={projectRankings}
                 rankingsLoading={rankingsLoading}

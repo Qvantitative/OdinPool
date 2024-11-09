@@ -275,7 +275,7 @@ const BubbleMaps = ({
   return (
     <div
       ref={containerRef}
-      className="w-full h-screen bg-[#13111C] relative overflow-hidden"
+      className="w-full h-full bg-gray-800 relative overflow-hidden rounded-lg shadow-lg"
     >
       <div className="absolute top-4 right-4 z-10">
         <select

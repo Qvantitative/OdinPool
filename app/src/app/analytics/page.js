@@ -304,11 +304,12 @@ const AnalyticsPage = () => {
   // Update the handleShowBubbleChart function
   const handleShowBubbleChart = useCallback(() => {
     setShowBubbleChart(true);
+    setSelectedView('bubbleMap'); // Add this line
     setShowTrending(false);
     setShowRunes(false);
     setSelectedCollection(prev => prev || 'bitcoin-puppets');
-    setExpandedContent(null); // Reset expandedContent
-    setSelectedBlock(null);   // Reset selectedBlock
+    setExpandedContent(null);
+    setSelectedBlock(null);
   }, []);
 
   // Handle back button click from BubbleMaps
@@ -332,10 +333,20 @@ const AnalyticsPage = () => {
     setSelectedBlock(null);
   };
 
-  const handleShowBlocks = () => setSelectedView('blocks');
+  const handleShowBlocks = () => {
+    setSelectedView('blocks');
+    setShowBubbleChart(false); // Add this line
+  };
+
   const handleShowTransactions = () => setSelectedView('transactions');
-  const handleShowAnalytics = () => setSelectedView('analytics');
+
+  const handleShowAnalytics = () => {
+    setSelectedView('analytics');
+    setShowBubbleChart(false); // Add this line
+  };
+
   const handleShowCharts = () => setSelectedView('charts');
+
   const handleShowSearch = () => {
     // Focus on your search input
     document.querySelector('input[type="text"]')?.focus();
@@ -476,24 +487,6 @@ const AnalyticsPage = () => {
             </button>
             <BlockDataTable block={selectedBlock} />
           </section>
-        ) : showBubbleChart ? (
-          <section className="container mx-auto">
-            <button
-              onClick={handleBackFromBubbleMap}
-              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Back to Analytics
-            </button>
-            <div className="w-full h-[calc(100vh-300px)]"> {/* Adjust height to account for header */}
-              <BubbleMaps
-                projectRankings={projectRankings}
-                rankingsLoading={rankingsLoading}
-                rankingsError={rankingsError}
-                selectedCollection={selectedCollection}
-                onCollectionChange={handleCollectionChange}
-              />
-            </div>
-          </section>
         ) : selectedView === 'blocks' ? (
           <section>
             {/* Render the Blocks view */}
@@ -550,6 +543,24 @@ const AnalyticsPage = () => {
               <section className="p-6 bg-gray-500 rounded-lg shadow-lg transition duration-300">
                 {tablesCards.find((item) => item.value === selectedTableCard)?.component}
               </section>
+            </div>
+          </section>
+        ) : selectedView === 'bubbleMap' && showBubbleChart ? (
+          <section className="container mx-auto">
+            <button
+              onClick={handleBackFromBubbleMap}
+              className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Back to Analytics
+            </button>
+            <div className="w-full h-[calc(100vh-300px)]">
+              <BubbleMaps
+                projectRankings={projectRankings}
+                rankingsLoading={rankingsLoading}
+                rankingsError={rankingsError}
+                selectedCollection={selectedCollection}
+                onCollectionChange={handleCollectionChange}
+              />
             </div>
           </section>
         ) : (

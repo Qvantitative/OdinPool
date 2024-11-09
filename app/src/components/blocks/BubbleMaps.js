@@ -11,12 +11,12 @@ const Tooltip = ({ holder, x, y }) => {
 
   return (
     <div
-      className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white"
+      className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
       style={{
-        left: x + 20,
-        top: y + 20,
+        left: `${x}px`,
+        top: `${y}px`,
         maxWidth: '300px',
-        transform: 'translate(0, -50%)',
+        transform: 'translate(-50%, -120%)'
       }}
     >
       <div className="space-y-2">
@@ -53,12 +53,15 @@ const BubbleMaps = ({
   selectedCollection,
   onCollectionChange,
 }) => {
+  const containerRef = useRef(null);
   const [selectedHolder, setSelectedHolder] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const containerRef = useCallback((node) => {
+  // Initialize container and set dimensions
+  const initializeContainer = useCallback((node) => {
     if (node !== null) {
+      containerRef.current = node;
       setDimensions({
         width: node.offsetWidth,
         height: window.innerHeight * 0.8,
@@ -66,28 +69,22 @@ const BubbleMaps = ({
     }
   }, []);
 
+  // Handle window resize
   useEffect(() => {
-    const updateDimensions = () => {
-      if (dimensions.width === 0) {
-        const node = containerRef.current;
-        if (node) {
-          setDimensions({
-            width: node.offsetWidth,
-            height: window.innerHeight * 0.8,
-          });
-        }
-      } else {
+    const handleResize = () => {
+      if (containerRef.current) {
         setDimensions({
-          width: dimensions.width,
+          width: containerRef.current.offsetWidth,
           height: window.innerHeight * 0.8,
         });
       }
     };
 
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, [dimensions.width]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
+  // Generate pseudo-random number for bubble positioning
   const getPseudoRandomNumber = (seed) => {
     let x = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -97,7 +94,8 @@ const BubbleMaps = ({
     return (x >>> 0) / 4294967295;
   };
 
-  const getBubbleProperties = (holder) => {
+  // Calculate bubble properties based on holder data
+  const getBubbleProperties = useCallback((holder) => {
     if (holder.rank > 100) return null;
 
     const totalSupply = holder.total_project_supply;
@@ -114,21 +112,20 @@ const BubbleMaps = ({
     const randomFactor = getPseudoRandomNumber('distance' + holder.address);
 
     const maxDistance = Math.min(dimensions.width, dimensions.height) * 0.45;
-    const distance =
-      maxDistance * Math.pow(1 - centerPullFactor, 0.7) * (0.6 + randomFactor * 0.4);
+    const distance = maxDistance * Math.pow(1 - centerPullFactor, 0.7) * (0.6 + randomFactor * 0.4);
 
     const x = dimensions.width / 2 + Math.cos(angle) * distance;
     const y = dimensions.height / 2 + Math.sin(angle) * distance;
 
     let color;
     if (holder.rank <= 3) {
-      color = 'rgba(77, 255, 77, 0.7)';
+      color = 'rgba(77, 255, 77, 0.7)'; // Top 3 - bright green
     } else if (holder.rank <= 10) {
-      color = 'rgba(255, 77, 77, 0.7)';
+      color = 'rgba(255, 77, 77, 0.7)'; // Top 4-10 - bright red
     } else if (holder.rank <= 50) {
-      color = 'rgba(147, 51, 234, 0.6)';
+      color = 'rgba(147, 51, 234, 0.6)'; // Top 11-50 - medium purple
     } else {
-      color = 'rgba(147, 51, 234, 0.4)';
+      color = 'rgba(147, 51, 234, 0.4)'; // Top 51-100 - light purple
     }
 
     return {
@@ -138,8 +135,9 @@ const BubbleMaps = ({
       color,
       holdingPercentage: (holdingPercentage * 100).toFixed(2),
     };
-  };
+  }, [dimensions, projectRankings]);
 
+  // Generate bubble properties list
   const bubblePropsList = useMemo(() => {
     if (!projectRankings || projectRankings.length === 0 || dimensions.width === 0) return [];
     return projectRankings
@@ -149,8 +147,9 @@ const BubbleMaps = ({
         bubbleProps: getBubbleProperties(holder),
       }))
       .filter((item) => item.bubbleProps !== null);
-  }, [projectRankings, dimensions]);
+  }, [projectRankings, dimensions.width, getBubbleProperties]);
 
+  // Generate connection lines between bubbles
   const connectionLines = useMemo(() => {
     const connections = [];
     const maxConnections = 2;
@@ -201,6 +200,13 @@ const BubbleMaps = ({
     return connections;
   }, [bubblePropsList]);
 
+  // Handle bubble hover events
+  const handleBubbleHover = useCallback((holder, x, y) => {
+    setSelectedHolder(holder);
+    setTooltipPosition({ x, y });
+  }, []);
+
+  // Loading state
   if (rankingsLoading) {
     return (
       <div className="w-full h-screen bg-[#13111C] flex flex-col items-center justify-center">
@@ -223,6 +229,7 @@ const BubbleMaps = ({
     );
   }
 
+  // Error state
   if (rankingsError) {
     return (
       <div className="w-full h-screen bg-[#13111C] flex flex-col items-center justify-center">
@@ -245,6 +252,7 @@ const BubbleMaps = ({
     );
   }
 
+  // Empty state
   if (!projectRankings?.length) {
     return (
       <div className="w-full h-screen bg-[#13111C] flex flex-col items-center justify-center">
@@ -272,9 +280,10 @@ const BubbleMaps = ({
     );
   }
 
+  // Main render
   return (
     <div
-      ref={containerRef}
+      ref={initializeContainer}
       className="w-full h-full bg-gray-800 relative overflow-hidden rounded-lg shadow-lg"
     >
       <div className="absolute top-4 right-4 z-10">
@@ -325,22 +334,8 @@ const BubbleMaps = ({
                 <g
                   key={holder.address}
                   className="holder-bubble group"
-                  onMouseEnter={(e) => {
-                    setSelectedHolder(holder);
-                    setTooltipPosition({
-                      x: e.clientX,
-                      y: e.clientY
-                    });
-                  }}
-                  onMouseMove={(e) => {
-                    setTooltipPosition({
-                      x: e.clientX,
-                      y: e.clientY
-                    });
-                  }}
-                  onMouseLeave={() => {
-                    setSelectedHolder(null);
-                  }}
+                  onMouseEnter={() => handleBubbleHover(holder, x, y)}
+                  onMouseLeave={() => setSelectedHolder(null)}
                 >
                   <circle
                     cx={x}

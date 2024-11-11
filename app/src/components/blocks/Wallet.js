@@ -6,12 +6,16 @@ import https from 'https';
 import { ImageOff } from 'lucide-react';
 
 const axiosInstanceWithSSL = axios.create({
-  baseURL: '',  // Leave empty since we're using full paths with the rewrite rules
+  baseURL: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const axiosInstanceWithoutSSL = axios.create({
-  baseURL: '',  // Leave empty since we're using full paths with the rewrite rules
+  baseURL: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
@@ -30,26 +34,19 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    // Use the correct path that matches your rewrite rules
+    // Now we can use the same paths as Inscriptions.js
     const addressResponse = await axiosInstanceWithoutSSL.get(
-      `/ord/address/${address}`  // Changed from /address/ to /ord/address/
+      `/address/${address}`  // No need for /ord/ prefix as it's in the baseURL
     );
 
     const inscriptionsList = addressResponse.data?.inscriptions || [];
 
-    if (!inscriptionsList || inscriptionsList.length === 0) {
-      setInscriptionImages({});
-      setLoading(false);
-      return;
-    }
-
-    const images = {};
-
+    // Rest of the function remains the same but using paths without /ord/ prefix
     await Promise.all(
       inscriptionsList.map(async (inscriptionId) => {
         try {
           const detailsResponse = await axiosInstanceWithoutSSL.get(
-            `/ord/inscription/${inscriptionId}`  // Changed path to match rewrite rules
+            `/inscription/${inscriptionId}`
           );
           const details = detailsResponse.data;
 

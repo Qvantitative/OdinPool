@@ -35,7 +35,14 @@ const fetchWalletInscriptions = async (
 
   try {
     // Correct endpoint
-    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`);
+    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`, {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log('API Response:', addressResponse.data);
+
     const inscriptionsList = addressResponse.data?.inscriptions || [];
 
     if (!inscriptionsList || inscriptionsList.length === 0) {

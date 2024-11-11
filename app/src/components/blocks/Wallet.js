@@ -6,21 +6,20 @@ import https from 'https';
 import { ImageOff } from 'lucide-react';
 
 const axiosInstanceWithSSL = axios.create({
-  baseURL:
-    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
+  baseURL: '',  // Leave empty since we're using full paths with the rewrite rules
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const axiosInstanceWithoutSSL = axios.create({
-  baseURL:
-    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
+  baseURL: '',  // Leave empty since we're using full paths with the rewrite rules
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const fetchWalletInscriptions = async (
   address,
   setInscriptionImages,
-  setLoading
+  setLoading,
+  setError
 ) => {
   if (!address) {
     setLoading(false);
@@ -28,15 +27,18 @@ const fetchWalletInscriptions = async (
   }
 
   setLoading(true);
+  setError(null);
 
   try {
-    // Fetch the list of inscriptions associated with the address
+    // Use the correct path that matches your rewrite rules
     const addressResponse = await axiosInstanceWithoutSSL.get(
-      `/address/${address}`
+      `/ord/address/${address}`  // Changed from /address/ to /ord/address/
     );
-    const inscriptionsList = addressResponse.data.inscriptions;
+
+    const inscriptionsList = addressResponse.data?.inscriptions || [];
 
     if (!inscriptionsList || inscriptionsList.length === 0) {
+      setInscriptionImages({});
       setLoading(false);
       return;
     }
@@ -47,62 +49,35 @@ const fetchWalletInscriptions = async (
       inscriptionsList.map(async (inscriptionId) => {
         try {
           const detailsResponse = await axiosInstanceWithoutSSL.get(
-            `/inscription/${inscriptionId}`
+            `/ord/inscription/${inscriptionId}`  // Changed path to match rewrite rules
           );
           const details = detailsResponse.data;
 
-          // Fetch the content and determine content type
-          const contentResponse = await axiosInstanceWithSSL.get(
-            `/content/${inscriptionId}`,
-            {
-              responseType: 'blob',
+          if (details) {
+            try {
+              const contentResponse = await axiosInstanceWithSSL.get(
+                `/ord/content/${inscriptionId}`,  // Changed path to match rewrite rules
+                {
+                  responseType: 'blob',
+                }
+              );
+              // Rest of the function remains the same...
+            } catch (contentErr) {
+              console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
+              images[inscriptionId] = {
+                type: 'error',
+                error: 'Content unavailable',
+                rune: details.rune,
+                details: details,
+              };
             }
-          );
-          const contentType = contentResponse.headers['content-type'];
-
-          // Handle image or SVG
-          if (contentType.startsWith('image/')) {
-            let imageUrl;
-            if (contentType === 'image/svg+xml') {
-              // If SVG, handle as text and create a Blob for the SVG content
-              const svgText = await contentResponse.data.text();
-              const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-              imageUrl = URL.createObjectURL(svgBlob);
-            } else {
-              // For other images, handle as blob directly
-              const blob = new Blob([contentResponse.data]);
-              imageUrl = URL.createObjectURL(blob);
-            }
-
-            images[inscriptionId] = {
-              url: imageUrl,
-              type: 'image',
-              rune: details.rune,
-              details: details, // Store the full details
-            };
-          } else if (contentType.startsWith('text/')) {
-            // Handle text content
-            const textContent = await contentResponse.data.text();
-            images[inscriptionId] = {
-              content: textContent,
-              type: 'text',
-              rune: details.rune,
-              details: details, // Store the full details
-            };
-          } else {
-            // Handle unsupported content
-            images[inscriptionId] = {
-              type: 'unsupported',
-              rune: details.rune,
-              details: details, // Store the full details
-            };
           }
         } catch (err) {
-          console.error(
-            `Error fetching data for inscription ${inscriptionId}:`,
-            err
-          );
-          images[inscriptionId] = null;
+          console.error(`Error fetching data for inscription ${inscriptionId}:`, err);
+          images[inscriptionId] = {
+            type: 'error',
+            error: err.message || 'Network Error',
+          };
         }
       })
     );
@@ -110,6 +85,7 @@ const fetchWalletInscriptions = async (
     setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
   } catch (error) {
     console.error(`Error fetching data for address ${address}:`, error);
+    setError(`Error loading wallet: ${error.message}`);
   } finally {
     setLoading(false);
   }

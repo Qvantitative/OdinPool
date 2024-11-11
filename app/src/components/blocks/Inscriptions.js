@@ -232,30 +232,31 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
 
     const { inscriptionData, ...details } = selectedInscription;
 
-    // Format the details to ensure consistent key names
+    // Format the details to ensure consistent key names and include top-level address field
     const formattedDetails = {
+      address: details.address || details.output_address || details.satpoint?.split(':')[0] || '',  // Add satpoint parsing
       ...details,
-      // If address comes in a different format, ensure it's standardized
-      address: details.address || details.output_address || details.wallet_address
     };
 
     const renderValue = (key, value) => {
       // Check if the key is exactly "address" or contains "address" (case-insensitive)
       const isAddress = key === 'address' || key.toLowerCase().includes('address');
 
-      // Added console.log for debugging
-      console.log('Key:', key, 'Is Address:', isAddress);
+      // Add more debug logging
+      console.log('Key:', key, 'Value:', value, 'Is Address:', isAddress);
 
-      if (isAddress && onAddressClick && value) {
+      if (isAddress && onAddressClick && value && typeof value === 'string') {
+        // Clean up the address if it's part of a satpoint
+        const cleanAddress = value.split(':')[0];
         return (
           <span
             className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
             onClick={(e) => {
               e.stopPropagation(); // Prevent event bubbling
-              onAddressClick(value);
+              onAddressClick(cleanAddress);
             }}
           >
-            {value}
+            {cleanAddress}
           </span>
         );
       }
@@ -267,6 +268,13 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
         </span>
       );
     };
+
+    // Move the address field to the top of the details list
+    const orderedEntries = Object.entries(formattedDetails).sort(([keyA], [keyB]) => {
+      if (keyA === 'address') return -1;
+      if (keyB === 'address') return 1;
+      return 0;
+    });
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -285,7 +293,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
               {inscriptionData.type === 'image' ? (
                 <img
                   src={inscriptionData.url}
-                  alt={`Inscription ${formattedDetails.inscriptionId}`}
+                  alt={`Inscription ${formattedDetails.id}`}
                   className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-md"
                 />
               ) : inscriptionData.type === 'text' ? (
@@ -301,7 +309,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
               )}
             </div>
             <div className="w-1/3 pl-6 space-y-4">
-              {Object.entries(formattedDetails).map(([key, value]) => (
+              {orderedEntries.map(([key, value]) => (
                 <div key={key} className="flex flex-col">
                   <span className="text-gray-400 text-sm font-medium">{key}</span>
                   {renderValue(key, value)}

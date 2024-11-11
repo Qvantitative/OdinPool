@@ -470,7 +470,7 @@ const AnalyticsPage = () => {
             ) : expandedContent.type === 'Wallet' ? (
               <Wallet
                 address={expandedContent.addressData.address}
-                onAddressClick={handleAddressClick}  /
+                onAddressClick={handleAddressClick}
               />
             ) : null}
           </section>

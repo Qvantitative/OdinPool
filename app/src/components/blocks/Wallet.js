@@ -143,7 +143,7 @@ const handleInscriptionClick = async (
   }
 };
 
-const Wallet = ({ address }) => {
+const Wallet = ({ address, onAddressClick }) => {
   const [inscriptionImages, setInscriptionImages] = useState({});
   const [hideTextInscriptions, setHideTextInscriptions] = useState(true);
   const [selectedInscription, setSelectedInscription] = useState(null);
@@ -249,8 +249,8 @@ const Wallet = ({ address }) => {
           <span
             className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
             onClick={(e) => {
-              e.stopPropagation(); // Prevent event bubbling
-              window.location.href = `/wallet/${cleanAddress}`;  // Navigate to wallet page
+              e.stopPropagation();
+              onAddressClick?.(cleanAddress);  // Use the prop instead of window.location
             }}
           >
             {cleanAddress}

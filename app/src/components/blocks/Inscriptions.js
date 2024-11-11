@@ -87,14 +87,25 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   setLoading(false);
 };
 
-const handleInscriptionClick = (inscriptionId, inscriptionData, setSelectedInscription) => {
+const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
+  // Log all available data
   console.log('Inscription ID:', inscriptionId);
   console.log('Inscription Data:', inscriptionData);
 
-  setSelectedInscription({
-    inscriptionId,
-    ...inscriptionData,
-  });
+  // Make the API call and log the response
+  try {
+    // Add headers to request JSON specifically
+    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('API Response:', response.data);
+    setSelectedInscription(response.data);
+  } catch (error) {
+    console.error('Error fetching inscription data:', error);
+  }
 };
 
 const Inscriptions = ({ blockDetails }) => {
@@ -177,7 +188,7 @@ const Inscriptions = ({ blockDetails }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-semibold text-white">Inscription Details</h3>
             <button
@@ -187,34 +198,13 @@ const Inscriptions = ({ blockDetails }) => {
               ✕
             </button>
           </div>
-          <div className="flex">
-            <div className="w-1/2 pr-4">
-              {selectedInscription.type === 'image' ? (
-                <img
-                  src={selectedInscription.url}
-                  alt={`Inscription ${selectedInscription.inscriptionId}`}
-                  className="w-full h-auto object-contain"
-                />
-              ) : selectedInscription.type === 'text' ? (
-                <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
-                  <pre className="text-xs overflow-auto max-h-full max-w-full text-center">
-                    {selectedInscription.content}
-                  </pre>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
-                  Unsupported content type
-                </div>
-              )}
-            </div>
-            <div className="w-1/2 pl-4 space-y-4">
-              {selectedInscription.details && Object.entries(selectedInscription.details).map(([key, value]) => (
-                <div key={key} className="flex flex-col">
-                  <span className="text-gray-400 text-sm">{key}</span>
-                  <span className="text-white break-all">{JSON.stringify(value)}</span>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-4">
+            {Object.entries(selectedInscription).map(([key, value]) => (
+              <div key={key} className="flex flex-col">
+                <span className="text-gray-400 text-sm">{key}</span>
+                <span className="text-white break-all">{JSON.stringify(value)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

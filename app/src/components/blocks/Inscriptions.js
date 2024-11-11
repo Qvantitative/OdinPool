@@ -192,21 +192,11 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
 
     const { inscriptionData, ...details } = selectedInscription;
 
-    // Format the details to ensure consistent key names
-    const formattedDetails = {
-      ...details,
-      // If address comes in a different format, ensure it's standardized
-      address: details.address || details.output_address || details.wallet_address
-    };
-
     const renderValue = (key, value) => {
-      // Check if the key is exactly "address" or contains "address" (case-insensitive)
-      const isAddress = key === 'address' || key.toLowerCase().includes('address');
+      // Check if the key contains 'address' (case-insensitive)
+      const isAddress = key.toLowerCase().includes('address');
 
-      // Added console.log for debugging
-      console.log('Key:', key, 'Is Address:', isAddress);
-
-      if (isAddress && onAddressClick && value) {
+      if (isAddress && onAddressClick) { // Add check for onAddressClick
         return (
           <span
             className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
@@ -245,7 +235,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
               {inscriptionData.type === 'image' ? (
                 <img
                   src={inscriptionData.url}
-                  alt={`Inscription ${formattedDetails.inscriptionId}`}
+                  alt={`Inscription ${details.inscriptionId}`}
                   className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-md"
                 />
               ) : inscriptionData.type === 'text' ? (
@@ -261,7 +251,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
               )}
             </div>
             <div className="w-1/3 pl-6 space-y-4">
-              {Object.entries(formattedDetails).map(([key, value]) => (
+              {Object.entries(details).map(([key, value]) => (
                 <div key={key} className="flex flex-col">
                   <span className="text-gray-400 text-sm font-medium">{key}</span>
                   {renderValue(key, value)}

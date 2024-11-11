@@ -46,7 +46,7 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    const addressResponse = await axiosInstance.get(`/address/${address}`);
+    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`);
     console.log('Address Response:', addressResponse.data);
     const inscriptionsList = addressResponse.data?.inscriptions || [];
     console.log('Inscriptions List:', inscriptionsList);

@@ -64,7 +64,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
       // Set the image URL directly from `/content/${inscriptionId}`
       images[inscriptionId] = {
         type: 'image',
-        url: `/content/${inscriptionId}`,  // Use /content/ path for all images
+        url: `/ord/content/${inscriptionId}`,  // Use /content/ path for all images
       };
     });
 

@@ -147,7 +147,7 @@ const Inscriptions = ({ blockDetails }) => {
         className="flex flex-col items-center"
         onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
       >
-        <div className="w-full aspect-square rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+        <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-white">
           {inscriptionData ? (
             inscriptionData.type === 'image' ? (
               <img
@@ -157,28 +157,28 @@ const Inscriptions = ({ blockDetails }) => {
                 loading="lazy"
               />
             ) : inscriptionData.type === 'text' ? (
-              <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
-                <pre className="text-xs overflow-auto max-h-full max-w-full text-center">
+              <div className="flex items-center justify-center h-full p-4 bg-blue-50 text-gray-800 rounded-2xl">
+                <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
                   {inscriptionData.content}
                 </pre>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
+              <div className="flex items-center justify-center h-full text-sm bg-gray-200 text-gray-500 rounded-2xl">
                 Unsupported content type
               </div>
             )
           ) : (
-            <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
+            <div className="flex items-center justify-center h-full text-sm bg-gray-200 text-gray-500 rounded-2xl">
               Loading content...
             </div>
           )}
         </div>
         {inscriptionData && inscriptionData.rune ? (
-          <p className="mt-3 text-xs text-center truncate max-w-full text-gray-200">
+          <p className="mt-3 text-sm text-center truncate max-w-full text-gray-800">
             {inscriptionData.rune}
           </p>
         ) : (
-          <p className="mt-3 text-xs text-center truncate max-w-full text-gray-500">
+          <p className="mt-3 text-sm text-center truncate max-w-full text-gray-500">
             {inscriptionId.slice(0, 8)}...
           </p>
         )}
@@ -194,41 +194,43 @@ const Inscriptions = ({ blockDetails }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-2xl p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-white">Inscription Details</h3>
+            <h3 className="text-2xl font-semibold text-gray-800">Inscription Details</h3>
             <button
               onClick={() => setSelectedInscription(null)}
-              className="text-gray-400 hover:text-white"
+              className="text-gray-500 hover:text-gray-800 text-2xl"
             >
-              ✕
+              ×
             </button>
           </div>
           <div className="flex">
-            <div className="w-1/2 pr-4">
+            <div className="w-1/2 pr-6 border-r border-gray-200">
               {inscriptionData.type === 'image' ? (
                 <img
                   src={inscriptionData.url}
                   alt={`Inscription ${details.inscriptionId}`}
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto object-contain rounded-2xl shadow-md"
                 />
               ) : inscriptionData.type === 'text' ? (
-                <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-lg">
-                  <pre className="text-xs overflow-auto max-h-full max-w-full text-center">
+                <div className="flex items-center justify-center h-full p-4 bg-blue-50 text-gray-800 rounded-2xl shadow-md">
+                  <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
                     {inscriptionData.content}
                   </pre>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-lg">
+                <div className="flex items-center justify-center h-full text-sm bg-gray-200 text-gray-500 rounded-2xl">
                   Unsupported content type
                 </div>
               )}
             </div>
-            <div className="w-1/2 pl-4 space-y-4">
+            <div className="w-1/2 pl-6 space-y-4">
               {Object.entries(details).map(([key, value]) => (
                 <div key={key} className="flex flex-col">
-                  <span className="text-gray-400 text-sm">{key}</span>
-                  <span className="text-white break-all">{JSON.stringify(value)}</span>
+                  <span className="text-gray-500 text-sm font-medium">{key}</span>
+                  <span className="text-gray-800 break-all">
+                    {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
+                  </span>
                 </div>
               ))}
             </div>
@@ -258,18 +260,18 @@ const Inscriptions = ({ blockDetails }) => {
 
   return (
     <div className="mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold">Inscriptions in Block</h3>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-2xl font-semibold text-gray-800">Inscriptions in Block</h3>
         <button
           onClick={toggleTextInscriptions}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
         >
-          {hideTextInscriptions ? 'Show Text' : 'Hide Text'}
+          {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
         </button>
       </div>
       {loading ? (
         <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
         </div>
       ) : shouldShowNoInscriptions ? (
         <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
@@ -277,7 +279,7 @@ const Inscriptions = ({ blockDetails }) => {
           <p className="mt-2">No inscriptions</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredInscriptions.map((inscriptionId, index) => {
             const inscriptionData = inscriptionImages[inscriptionId];
             if (

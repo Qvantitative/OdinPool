@@ -55,15 +55,16 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
     // Find all <a> tags under <dd class="thumbnails">
     const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
 
-    // Extract inscription IDs and hrefs
+    // Extract inscription IDs
     const images = {};
     inscriptionElements.forEach(element => {
       const href = element.getAttribute('href');
       const inscriptionId = href.split('/').pop();  // Get the last part of the URL path
 
+      // Set the image URL directly from `/content/${inscriptionId}`
       images[inscriptionId] = {
-          type: 'image',
-          url: `https://www.odinpool.ai/ord${href}`, // Ensure full URL path here
+        type: 'image',
+        url: `/content/${inscriptionId}`,  // Use /content/ path for all images
       };
     });
 

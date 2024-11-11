@@ -46,27 +46,68 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
     });
 
     const htmlString = response.data;
-    console.log("Fetched HTML String:", htmlString); // Log the raw HTML string
+    console.log("Fetched HTML String:", htmlString);
 
-    // Parse the HTML string using DOMParser (available in the browser)
+    // Parse the HTML string using DOMParser
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
-
-    // Find all <a> tags under <dd class="thumbnails">
     const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
 
-    // Extract inscription IDs
     const images = {};
-    inscriptionElements.forEach(element => {
-      const href = element.getAttribute('href');
-      const inscriptionId = href.split('/').pop();  // Get the last part of the URL path
 
-      // Set the image URL directly from `/content/${inscriptionId}`
-      images[inscriptionId] = {
-        type: 'image',
-        url: `/ord/content/${inscriptionId}`,  // Use /content/ path for all images
-      };
-    });
+    await Promise.all(
+      Array.from(inscriptionElements).map(async (element) => {
+        const href = element.getAttribute('href');
+        const inscriptionId = href.split('/').pop();
+
+        try {
+          // Fetch content and determine content type
+          const contentResponse = await axiosInstanceWithoutSSL.get(`/content/${inscriptionId}`, {
+            responseType: 'blob',
+          });
+
+          const contentType = contentResponse.headers['content-type'];
+
+          if (contentType.startsWith('image/')) {
+            let imageUrl;
+            if (contentType === 'image/svg+xml') {
+              // Handle SVG as text and create a Blob for the SVG content
+              const svgText = await contentResponse.data.text();
+              const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+              imageUrl = URL.createObjectURL(svgBlob);
+            } else {
+              // For other image types, create a Blob directly
+              const blob = new Blob([contentResponse.data]);
+              imageUrl = URL.createObjectURL(blob);
+            }
+
+            images[inscriptionId] = {
+              url: imageUrl,
+              type: 'image',
+            };
+          } else if (contentType.startsWith('text/')) {
+            // Handle text content
+            const textContent = await contentResponse.data.text();
+            images[inscriptionId] = {
+              content: textContent,
+              type: 'text',
+            };
+          } else {
+            // Handle unsupported content type
+            images[inscriptionId] = {
+              type: 'unsupported',
+              error: 'Unsupported content type',
+            };
+          }
+        } catch (contentErr) {
+          console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
+          images[inscriptionId] = {
+            type: 'error',
+            error: 'Content unavailable',
+          };
+        }
+      })
+    );
 
     setInscriptionImages(images);
   } catch (error) {

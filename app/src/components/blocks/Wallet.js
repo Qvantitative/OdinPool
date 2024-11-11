@@ -52,10 +52,12 @@ const fetchWalletInscriptions = async (
     });
 
     const htmlString = response.data;
+    console.log("Fetched HTML String:", htmlString); // Log the raw HTML string
 
     // Parse the HTML and convert it into JSON
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
+    console.log("Parsed Document:", doc); // Log the parsed document object
 
     // Extract inscriptions from the HTML structure, update the selector as per your HTML structure
     const inscriptions = Array.from(doc.querySelectorAll('.inscription-item')).map(el => ({
@@ -64,6 +66,8 @@ const fetchWalletInscriptions = async (
       content: el.querySelector('.content')?.innerText || el.innerHTML, // Use innerText or innerHTML as needed
       type: el.querySelector('.type')?.innerText || 'text', // Adjust based on how type is displayed
     }));
+
+    console.log("Extracted Inscriptions:", inscriptions); // Log the array of extracted inscriptions
 
     // Convert extracted data into the format for inscriptions
     const images = {};
@@ -74,6 +78,8 @@ const fetchWalletInscriptions = async (
         content: inscription.content,
       };
     });
+
+    console.log("Formatted Inscription Images Object:", images); // Log the final formatted object
 
     setInscriptionImages(images);
   } catch (error) {

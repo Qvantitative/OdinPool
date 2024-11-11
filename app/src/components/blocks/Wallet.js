@@ -55,23 +55,17 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
     // Find all <a> tags under <dd class="thumbnails">
     const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
 
-    // Extract inscription IDs from href attributes
-    const inscriptions = Array.from(inscriptionElements).map(element => {
+    // Extract inscription IDs and hrefs
+    const images = {};
+    inscriptionElements.forEach(element => {
       const href = element.getAttribute('href');
       const inscriptionId = href.split('/').pop();  // Get the last part of the URL path
-      return { id: inscriptionId, href };
-    });
 
-    console.log("Extracted Inscriptions:", inscriptions); // Log the inscriptions as JSON
-
-    // Convert extracted data to the format your component expects
-    const images = inscriptions.reduce((acc, inscription) => {
-      acc[inscription.id] = {
-        type: 'image', // Assuming all are images
-        url: `/preview/${inscription.id}`,  // Use preview path if available
+      images[inscriptionId] = {
+        type: 'image',
+        url: href,  // Use href as the direct image URL
       };
-      return acc;
-    }, {});
+    });
 
     setInscriptionImages(images);
   } catch (error) {
@@ -81,6 +75,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
     setLoading(false);
   }
 };
+
 
 const handleInscriptionClick = async (
   inscriptionId,

@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import https from 'https';
 import { ImageOff } from 'lucide-react';
-import { JSDOM } from 'jsdom';
-
 
 const axiosInstanceWithSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'development'
@@ -50,12 +48,12 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
     const htmlString = response.data;
     console.log("Fetched HTML String:", htmlString); // Log the raw HTML string
 
-    // Parse the HTML string and extract inscription IDs
-    const dom = new JSDOM(htmlString);  // Parse HTML with JSDOM
-    const document = dom.window.document;
+    // Parse the HTML string using DOMParser (available in the browser)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
 
     // Find all <a> tags under <dd class="thumbnails">
-    const inscriptionElements = document.querySelectorAll('dd.thumbnails a');
+    const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
 
     // Extract inscription IDs from href attributes
     const inscriptions = Array.from(inscriptionElements).map(element => {

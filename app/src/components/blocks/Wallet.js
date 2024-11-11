@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import https from 'https';
 import { ImageOff } from 'lucide-react';
+import { JSDOM } from 'jsdom';
+
 
 const axiosInstanceWithSSL = axios.create({
   baseURL: process.env.NODE_ENV === 'development'
@@ -31,12 +33,7 @@ const fetchWithRetry = async (url, options, retries = 3) => {
   }
 };
 
-const fetchWalletInscriptions = async (
-  address,
-  setInscriptionImages,
-  setLoading,
-  setError
-) => {
+const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading, setError) => {
   if (!address) {
     setLoading(false);
     return;
@@ -46,40 +43,37 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    // Fetch HTML data for the address
     const response = await axiosInstanceWithoutSSL.get(`/address/${address}`, {
-      headers: { Accept: 'text/html' } // Ensure we get HTML if it's available
+      headers: { Accept: 'text/html' }
     });
 
     const htmlString = response.data;
     console.log("Fetched HTML String:", htmlString); // Log the raw HTML string
 
-    // Parse the HTML and convert it into JSON
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlString, 'text/html');
-    console.log("Parsed Document:", doc); // Log the parsed document object
+    // Parse the HTML string and extract inscription IDs
+    const dom = new JSDOM(htmlString);  // Parse HTML with JSDOM
+    const document = dom.window.document;
 
-    // Extract inscriptions from the HTML structure, update the selector as per your HTML structure
-    const inscriptions = Array.from(doc.querySelectorAll('.inscription-item')).map(el => ({
-      id: el.dataset.inscriptionId,
-      rune: el.querySelector('.rune')?.innerText || '',
-      content: el.querySelector('.content')?.innerText || el.innerHTML, // Use innerText or innerHTML as needed
-      type: el.querySelector('.type')?.innerText || 'text', // Adjust based on how type is displayed
-    }));
+    // Find all <a> tags under <dd class="thumbnails">
+    const inscriptionElements = document.querySelectorAll('dd.thumbnails a');
 
-    console.log("Extracted Inscriptions:", inscriptions); // Log the array of extracted inscriptions
-
-    // Convert extracted data into the format for inscriptions
-    const images = {};
-    inscriptions.forEach(inscription => {
-      images[inscription.id] = {
-        type: inscription.type,
-        rune: inscription.rune,
-        content: inscription.content,
-      };
+    // Extract inscription IDs from href attributes
+    const inscriptions = Array.from(inscriptionElements).map(element => {
+      const href = element.getAttribute('href');
+      const inscriptionId = href.split('/').pop();  // Get the last part of the URL path
+      return { id: inscriptionId, href };
     });
 
-    console.log("Formatted Inscription Images Object:", images); // Log the final formatted object
+    console.log("Extracted Inscriptions:", inscriptions); // Log the inscriptions as JSON
+
+    // Convert extracted data to the format your component expects
+    const images = inscriptions.reduce((acc, inscription) => {
+      acc[inscription.id] = {
+        type: 'image', // Assuming all are images
+        url: `/preview/${inscription.id}`,  // Use preview path if available
+      };
+      return acc;
+    }, {});
 
     setInscriptionImages(images);
   } catch (error) {

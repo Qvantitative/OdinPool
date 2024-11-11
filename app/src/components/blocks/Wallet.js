@@ -46,87 +46,36 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`);
-    console.log('Address Response:', addressResponse.data);
-    const inscriptionsList = addressResponse.data?.inscriptions || [];
-    console.log('Inscriptions List:', inscriptionsList);
+    // Fetch HTML data for the address
+    const response = await axiosInstanceWithoutSSL.get(`/address/${address}`, {
+      headers: { Accept: 'text/html' } // Ensure we get HTML if it's available
+    });
 
-    if (!inscriptionsList || inscriptionsList.length === 0) {
-      setInscriptionImages({});
-      setLoading(false);
-      return;
-    }
+    const htmlString = response.data;
 
+    // Parse the HTML and convert it into JSON
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+
+    // Extract inscriptions from the HTML structure, update the selector as per your HTML structure
+    const inscriptions = Array.from(doc.querySelectorAll('.inscription-item')).map(el => ({
+      id: el.dataset.inscriptionId,
+      rune: el.querySelector('.rune')?.innerText || '',
+      content: el.querySelector('.content')?.innerText || el.innerHTML, // Use innerText or innerHTML as needed
+      type: el.querySelector('.type')?.innerText || 'text', // Adjust based on how type is displayed
+    }));
+
+    // Convert extracted data into the format for inscriptions
     const images = {};
+    inscriptions.forEach(inscription => {
+      images[inscription.id] = {
+        type: inscription.type,
+        rune: inscription.rune,
+        content: inscription.content,
+      };
+    });
 
-    await Promise.all(
-      inscriptionsList.map(async (inscriptionId) => {
-        try {
-          // Fetch details with retry
-          const detailsResponse = await fetchWithRetry(`/inscription/${inscriptionId}`);
-          const details = detailsResponse.data;
-
-          if (details) {
-            try {
-              // Fetch content with retry
-              const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, {
-                responseType: 'blob',
-              });
-              const contentType = contentResponse.headers['content-type'];
-
-              if (contentType.startsWith('image/')) {
-                let imageUrl;
-                if (contentType === 'image/svg+xml') {
-                  const svgText = await contentResponse.data.text();
-                  const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-                  imageUrl = URL.createObjectURL(svgBlob);
-                } else {
-                  const blob = new Blob([contentResponse.data]);
-                  imageUrl = URL.createObjectURL(blob);
-                }
-
-                images[inscriptionId] = {
-                  url: imageUrl,
-                  type: 'image',
-                  rune: details.rune,
-                  details: details,
-                };
-              } else if (contentType.startsWith('text/')) {
-                const textContent = await contentResponse.data.text();
-                images[inscriptionId] = {
-                  content: textContent,
-                  type: 'text',
-                  rune: details.rune,
-                  details: details,
-                };
-              } else {
-                images[inscriptionId] = {
-                  type: 'unsupported',
-                  rune: details.rune,
-                  details: details,
-                };
-              }
-            } catch (contentErr) {
-              console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
-              images[inscriptionId] = {
-                type: 'error',
-                error: 'Content unavailable',
-                rune: details.rune,
-                details: details,
-              };
-            }
-          }
-        } catch (err) {
-          console.error(`Error fetching data for inscription ${inscriptionId}:`, err);
-          images[inscriptionId] = {
-            type: 'error',
-            error: err.message || 'Network Error',
-          };
-        }
-      })
-    );
-
-    setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
+    setInscriptionImages(images);
   } catch (error) {
     console.error(`Error fetching data for address ${address}:`, error);
     setError(`Error loading wallet: ${error.message}`);

@@ -62,8 +62,8 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
       const inscriptionId = href.split('/').pop();  // Get the last part of the URL path
 
       images[inscriptionId] = {
-        type: 'image',
-        url: href,  // Use href as the direct image URL
+          type: 'image',
+          url: `https://www.odinpool.ai${href}`, // Ensure full URL path here
       };
     });
 

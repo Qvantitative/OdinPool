@@ -76,7 +76,6 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
   }
 };
 
-
 const handleInscriptionClick = async (
   inscriptionId,
   inscriptionData,
@@ -157,12 +156,6 @@ const Wallet = ({ address, onAddressClick }) => {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-            ) : inscriptionData.type === 'text' ? (
-              <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl">
-                <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
-                  {inscriptionData.content}
-                </pre>
-              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl">
                 Unsupported content type
@@ -174,15 +167,9 @@ const Wallet = ({ address, onAddressClick }) => {
             </div>
           )}
         </div>
-        {inscriptionData && inscriptionData.rune ? (
-          <p className="mt-3 text-sm text-center truncate max-w-full text-gray-200">
-            {inscriptionData.rune}
-          </p>
-        ) : (
-          <p className="mt-3 text-sm text-center truncate max-w-full text-gray-500">
-            {inscriptionId.slice(0, 8)}...
-          </p>
-        )}
+        <p className="mt-3 text-sm text-center truncate max-w-full text-gray-500">
+          {inscriptionId.slice(0, 8)}...
+        </p>
       </div>
     );
   };

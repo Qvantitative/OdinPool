@@ -30,55 +30,88 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   await Promise.all(
     inscriptionsList.map(async (inscriptionId) => {
       try {
-        const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+        // Add retry logic for network errors
+        const fetchWithRetry = async (url, options, retries = 3) => {
+          for (let i = 0; i < retries; i++) {
+            try {
+              const response = await axiosInstanceWithoutSSL.get(url, options);
+              return response;
+            } catch (err) {
+              if (i === retries - 1) throw err;
+              // Wait before retrying (exponential backoff)
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+            }
+          }
+        };
+
+        // Fetch details with retry
+        const detailsResponse = await fetchWithRetry(`/inscription/${inscriptionId}`);
         const details = detailsResponse.data;
 
-        // Fetch the content and determine content type
-        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
-          responseType: 'blob',
-        });
-        const contentType = contentResponse.headers['content-type'];
+        // Only try to fetch content if we successfully got the details
+        if (details) {
+          try {
+            // Fetch the content and determine content type
+            const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, {
+              responseType: 'blob',
+            });
 
-        // Handle image or SVG
-        if (contentType.startsWith('image/')) {
-          let imageUrl;
-          if (contentType === 'image/svg+xml') {
-            // If SVG, handle as text and create a Blob for the SVG content
-            const svgText = await contentResponse.data.text();
-            const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-            imageUrl = URL.createObjectURL(svgBlob);
-          } else {
-            // For other images, handle as blob directly
-            const blob = new Blob([contentResponse.data]);
-            imageUrl = URL.createObjectURL(blob);
+            const contentType = contentResponse.headers['content-type'];
+
+            // Handle image or SVG
+            if (contentType.startsWith('image/')) {
+              let imageUrl;
+              if (contentType === 'image/svg+xml') {
+                // If SVG, handle as text and create a Blob for the SVG content
+                const svgText = await contentResponse.data.text();
+                const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+                imageUrl = URL.createObjectURL(svgBlob);
+              } else {
+                // For other images, handle as blob directly
+                const blob = new Blob([contentResponse.data]);
+                imageUrl = URL.createObjectURL(blob);
+              }
+
+              images[inscriptionId] = {
+                url: imageUrl,
+                type: 'image',
+                rune: details.rune,
+                details: details,
+              };
+            } else if (contentType.startsWith('text/')) {
+              // Handle text content
+              const textContent = await contentResponse.data.text();
+              images[inscriptionId] = {
+                content: textContent,
+                type: 'text',
+                rune: details.rune,
+                details: details,
+              };
+            } else {
+              // Handle unsupported content
+              images[inscriptionId] = {
+                type: 'unsupported',
+                rune: details.rune,
+                details: details,
+              };
+            }
+          } catch (contentErr) {
+            console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
+            // Still store the details even if content fetch failed
+            images[inscriptionId] = {
+              type: 'error',
+              error: 'Content unavailable',
+              rune: details.rune,
+              details: details,
+            };
           }
-
-          images[inscriptionId] = {
-            url: imageUrl,
-            type: 'image',
-            rune: details.rune,
-            details: details, // Store the full details
-          };
-        } else if (contentType.startsWith('text/')) {
-          // Handle text content
-          const textContent = await contentResponse.data.text();
-          images[inscriptionId] = {
-            content: textContent,
-            type: 'text',
-            rune: details.rune,
-            details: details, // Store the full details
-          };
-        } else {
-          // Handle unsupported content
-          images[inscriptionId] = {
-            type: 'unsupported',
-            rune: details.rune,
-            details: details, // Store the full details
-          };
         }
       } catch (err) {
         console.error(`Error fetching data for inscription ${inscriptionId}:`, err);
-        images[inscriptionId] = null;
+        images[inscriptionId] = {
+          type: 'error',
+          error: err.message || 'Network Error',
+        };
       }
     })
   );
@@ -150,7 +183,14 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
       >
         <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
           {inscriptionData ? (
-            inscriptionData.type === 'image' ? (
+            inscriptionData.type === 'error' ? (
+              <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-red-400 rounded-2xl">
+                <div className="text-center">
+                  <p className="font-medium mb-2">Error Loading Inscription</p>
+                  <p className="text-sm opacity-75">{inscriptionData.error}</p>
+                </div>
+              </div>
+            ) : inscriptionData.type === 'image' ? (
               <img
                 src={inscriptionData.url}
                 alt={`Inscription ${inscriptionId}`}

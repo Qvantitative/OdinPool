@@ -20,7 +20,71 @@ const axiosInstanceWithoutSSL = axios.create({
 });
 
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, setLoading) => {
-  // [Function remains the same]
+  if (!inscriptionsList || inscriptionsList.length === 0) {
+    setLoading(false);
+    return;
+  }
+
+  const images = {};
+
+  await Promise.all(
+    inscriptionsList.map(async (inscriptionId) => {
+      try {
+        const detailsResponse = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`);
+        const details = detailsResponse.data;
+
+        // Fetch the content and determine content type
+        const contentResponse = await axiosInstanceWithSSL.get(`/content/${inscriptionId}`, {
+          responseType: 'blob',
+        });
+        const contentType = contentResponse.headers['content-type'];
+
+        // Handle image or SVG
+        if (contentType.startsWith('image/')) {
+          let imageUrl;
+          if (contentType === 'image/svg+xml') {
+            // If SVG, handle as text and create a Blob for the SVG content
+            const svgText = await contentResponse.data.text();
+            const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+            imageUrl = URL.createObjectURL(svgBlob);
+          } else {
+            // For other images, handle as blob directly
+            const blob = new Blob([contentResponse.data]);
+            imageUrl = URL.createObjectURL(blob);
+          }
+
+          images[inscriptionId] = {
+            url: imageUrl,
+            type: 'image',
+            rune: details.rune,
+            details: details, // Store the full details
+          };
+        } else if (contentType.startsWith('text/')) {
+          // Handle text content
+          const textContent = await contentResponse.data.text();
+          images[inscriptionId] = {
+            content: textContent,
+            type: 'text',
+            rune: details.rune,
+            details: details, // Store the full details
+          };
+        } else {
+          // Handle unsupported content
+          images[inscriptionId] = {
+            type: 'unsupported',
+            rune: details.rune,
+            details: details, // Store the full details
+          };
+        }
+      } catch (err) {
+        console.error(`Error fetching data for inscription ${inscriptionId}:`, err);
+        images[inscriptionId] = null;
+      }
+    })
+  );
+
+  setInscriptionImages((prevImages) => ({ ...prevImages, ...images }));
+  setLoading(false);
 };
 
 const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {

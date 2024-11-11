@@ -34,7 +34,8 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`);
+    // Update the path to match the rewrite rules in next.config.js
+    const addressResponse = await axiosInstanceWithoutSSL.get(`/inscription/${address}`);  // Change from /address/ to /inscription/
     const inscriptionsList = addressResponse.data?.inscriptions || [];
 
     if (!inscriptionsList || inscriptionsList.length === 0) {

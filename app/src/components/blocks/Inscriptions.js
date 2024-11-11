@@ -195,7 +195,7 @@ const Inscriptions = ({ blockDetails }) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-gray-800 rounded-2xl p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-gray-800 rounded-2xl p-6 max-w-7xl w-full max-h-[95vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-2xl font-semibold text-gray-200">Inscription Details</h3>
             <button
@@ -206,12 +206,12 @@ const Inscriptions = ({ blockDetails }) => {
             </button>
           </div>
           <div className="flex">
-            <div className="w-1/2 pr-6 border-r border-gray-700">
+            <div className="w-2/3 pr-6 border-r border-gray-700">
               {inscriptionData.type === 'image' ? (
                 <img
                   src={inscriptionData.url}
                   alt={`Inscription ${details.inscriptionId}`}
-                  className="w-full h-auto object-contain rounded-2xl shadow-md"
+                  className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-md"
                 />
               ) : inscriptionData.type === 'text' ? (
                 <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl shadow-md">
@@ -225,7 +225,7 @@ const Inscriptions = ({ blockDetails }) => {
                 </div>
               )}
             </div>
-            <div className="w-1/2 pl-6 space-y-4">
+            <div className="w-1/3 pl-6 space-y-4">
               {Object.entries(details).map(([key, value]) => (
                 <div key={key} className="flex flex-col">
                   <span className="text-gray-400 text-sm font-medium">{key}</span>

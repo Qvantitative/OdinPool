@@ -63,7 +63,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
 
       images[inscriptionId] = {
           type: 'image',
-          url: `https://www.odinpool.ai${href}`, // Ensure full URL path here
+          url: `https://www.odinpool.ai/ord${href}`, // Ensure full URL path here
       };
     });
 

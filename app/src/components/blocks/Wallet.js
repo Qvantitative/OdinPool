@@ -34,14 +34,17 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    // Now we can use the same paths as Inscriptions.js
-    const addressResponse = await axiosInstanceWithoutSSL.get(
-      `/address/${address}`  // No need for /ord/ prefix as it's in the baseURL
-    );
-
+    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`);
     const inscriptionsList = addressResponse.data?.inscriptions || [];
 
-    // Rest of the function remains the same but using paths without /ord/ prefix
+    if (!inscriptionsList || inscriptionsList.length === 0) {
+      setInscriptionImages({});
+      setLoading(false);
+      return;
+    }
+
+    const images = {};
+
     await Promise.all(
       inscriptionsList.map(async (inscriptionId) => {
         try {
@@ -53,12 +56,43 @@ const fetchWalletInscriptions = async (
           if (details) {
             try {
               const contentResponse = await axiosInstanceWithSSL.get(
-                `/ord/content/${inscriptionId}`,  // Changed path to match rewrite rules
-                {
-                  responseType: 'blob',
-                }
+                `/content/${inscriptionId}`,
+                { responseType: 'blob' }
               );
-              // Rest of the function remains the same...
+              const contentType = contentResponse.headers['content-type'];
+
+              if (contentType.startsWith('image/')) {
+                let imageUrl;
+                if (contentType === 'image/svg+xml') {
+                  const svgText = await contentResponse.data.text();
+                  const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
+                  imageUrl = URL.createObjectURL(svgBlob);
+                } else {
+                  const blob = new Blob([contentResponse.data]);
+                  imageUrl = URL.createObjectURL(blob);
+                }
+
+                images[inscriptionId] = {
+                  url: imageUrl,
+                  type: 'image',
+                  rune: details.rune,
+                  details: details,
+                };
+              } else if (contentType.startsWith('text/')) {
+                const textContent = await contentResponse.data.text();
+                images[inscriptionId] = {
+                  content: textContent,
+                  type: 'text',
+                  rune: details.rune,
+                  details: details,
+                };
+              } else {
+                images[inscriptionId] = {
+                  type: 'unsupported',
+                  rune: details.rune,
+                  details: details,
+                };
+              }
             } catch (contentErr) {
               console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
               images[inscriptionId] = {
@@ -93,26 +127,16 @@ const handleInscriptionClick = async (
   inscriptionData,
   setSelectedInscription
 ) => {
-  // Log all available data
-  console.log('Inscription ID:', inscriptionId);
-  console.log('Inscription Data:', inscriptionData);
-
-  // Make the API call and log the response
   try {
-    const response = await axiosInstanceWithoutSSL.get(
-      `/inscription/${inscriptionId}`,
-      {
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    console.log('API Response:', response.data);
-    // Include the image data in the selectedInscription state
+    const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`, {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
     setSelectedInscription({
       ...response.data,
-      inscriptionData, // This contains the image or content data
+      inscriptionData,
     });
   } catch (error) {
     console.error('Error fetching inscription data:', error);
@@ -124,14 +148,24 @@ const Wallet = ({ address }) => {
   const [hideTextInscriptions, setHideTextInscriptions] = useState(true);
   const [selectedInscription, setSelectedInscription] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);  // Added error state
 
   useEffect(() => {
     if (address) {
-      fetchWalletInscriptions(address, setInscriptionImages, setLoading);
+      fetchWalletInscriptions(address, setInscriptionImages, setLoading, setError);
     } else {
       setLoading(false);
     }
   }, [address]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-red-500">
+        <h3 className="text-xl font-semibold mb-4">Error</h3>
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   const toggleTextInscriptions = () => {
     setHideTextInscriptions(!hideTextInscriptions);
@@ -204,6 +238,34 @@ const Wallet = ({ address }) => {
 
     const { inscriptionData, ...details } = selectedInscription;
 
+    const renderValue = (key, value) => {
+      // Check if the key is exactly "address" or contains "address" (case-insensitive)
+      const isAddress = key === 'address' || key.toLowerCase().includes('address');
+
+      if (isAddress && value && typeof value === 'string') {
+        // Clean up the address if it's part of a satpoint
+        const cleanAddress = value.split(':')[0];
+        return (
+          <span
+            className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent event bubbling
+              window.location.href = `/wallet/${cleanAddress}`;  // Navigate to wallet page
+            }}
+          >
+            {cleanAddress}
+          </span>
+        );
+      }
+
+      // For non-address values, render normally
+      return (
+        <span className="text-gray-200 break-all">
+          {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
+        </span>
+      );
+    };
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div className="bg-gray-800 rounded-2xl p-6 max-w-7xl w-full max-h-[95vh] overflow-y-auto">
@@ -244,11 +306,7 @@ const Wallet = ({ address }) => {
                   <span className="text-gray-400 text-sm font-medium">
                     {key}
                   </span>
-                  <span className="text-gray-200 break-all">
-                    {typeof value === 'object'
-                      ? JSON.stringify(value, null, 2)
-                      : value}
-                  </span>
+                  {renderValue(key, value)}
                 </div>
               ))}
             </div>
@@ -290,43 +348,93 @@ const Wallet = ({ address }) => {
     <div className="mb-8">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-semibold text-gray-200">
-          Inscriptions for Address
+          Inscriptions for Address {address}
         </h3>
         <button
-          onClick={toggleTextInscriptions}
+          onClick={() => setHideTextInscriptions(!hideTextInscriptions)}
           className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
         >
           {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
         </button>
       </div>
+
       {loading ? (
         <div className="flex items-center justify-center h-32">
           <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
         </div>
-      ) : shouldShowNoInscriptions ? (
+      ) : !Object.keys(inscriptionImages).length ? (
         <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
-          {navItems[0].icon}
-          <p className="mt-2">No inscriptions</p>
+          <ImageOff className="w-12 h-12" />
+          <p className="mt-2">No inscriptions found for this address</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredInscriptions.map((inscriptionId, index) => {
-            const inscriptionData = inscriptionImages[inscriptionId];
-            if (
-              hideTextInscriptions &&
-              inscriptionData &&
-              (inscriptionData.type === 'text' ||
-                inscriptionData.type === 'unsupported')
-            ) {
+          {Object.entries(inscriptionImages).map(([inscriptionId, inscriptionData], index) => {
+            if (hideTextInscriptions && inscriptionData?.type === 'text') {
               return null;
             }
-            return renderInscriptionItem(inscriptionId, inscriptionData, index);
+            return (
+              <div
+                key={inscriptionId}
+                className="flex flex-col items-center"
+                onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
+              >
+                <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
+                  {renderInscriptionContent(inscriptionId, inscriptionData)}
+                </div>
+                {renderInscriptionCaption(inscriptionId, inscriptionData)}
+              </div>
+            );
           })}
         </div>
       )}
-      {renderSelectedInscriptionDetails()}
+
+      {selectedInscription && renderSelectedInscriptionDetails()}
     </div>
   );
 };
+
+const renderInscriptionContent = (inscriptionId, inscriptionData) => {
+  if (!inscriptionData) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl">
+        Loading content...
+      </div>
+    );
+  }
+
+  switch (inscriptionData.type) {
+    case 'image':
+      return (
+        <img
+          src={inscriptionData.url}
+          alt={`Inscription ${inscriptionId}`}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      );
+    case 'text':
+      return (
+        <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl">
+          <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
+            {inscriptionData.content}
+          </pre>
+        </div>
+      );
+    default:
+      return (
+        <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl">
+          Unsupported content type
+        </div>
+      );
+  }
+};
+
+const renderInscriptionCaption = (inscriptionId, inscriptionData) => (
+  <p className="mt-3 text-sm text-center truncate max-w-full text-gray-500">
+    {inscriptionData?.rune || inscriptionId.slice(0, 8) + '...'}
+  </p>
+);
+
 
 export default Wallet;

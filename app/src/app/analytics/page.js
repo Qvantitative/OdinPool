@@ -468,7 +468,10 @@ const AnalyticsPage = () => {
                 onAddressClick={handleAddressClick}
               />
             ) : expandedContent.type === 'Wallet' ? (
-              <Wallet address={expandedContent.addressData.address} />
+              <Wallet
+                address={expandedContent.addressData.address}
+                onAddressClick={handleAddressClick}  /
+              />
             ) : null}
           </section>
         ) : selectedBlock ? (

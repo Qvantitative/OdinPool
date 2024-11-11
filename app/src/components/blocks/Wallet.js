@@ -19,6 +19,18 @@ const axiosInstanceWithoutSSL = axios.create({
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
+const fetchWithRetry = async (url, options, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axiosInstanceWithoutSSL.get(url, options);
+      return response;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((resolve) => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+};
+
 const fetchWalletInscriptions = async (
   address,
   setInscriptionImages,
@@ -34,15 +46,7 @@ const fetchWalletInscriptions = async (
   setError(null);
 
   try {
-    // Correct endpoint
-    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`, {
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-    console.log('API Response:', addressResponse.data);
-
+    const addressResponse = await axiosInstanceWithoutSSL.get(`/address/${address}`);
     const inscriptionsList = addressResponse.data?.inscriptions || [];
 
     if (!inscriptionsList || inscriptionsList.length === 0) {
@@ -56,17 +60,16 @@ const fetchWalletInscriptions = async (
     await Promise.all(
       inscriptionsList.map(async (inscriptionId) => {
         try {
-          const detailsResponse = await axiosInstanceWithoutSSL.get(
-            `/inscription/${inscriptionId}`
-          );
+          // Fetch details with retry
+          const detailsResponse = await fetchWithRetry(`/inscription/${inscriptionId}`);
           const details = detailsResponse.data;
 
           if (details) {
             try {
-              const contentResponse = await axiosInstanceWithSSL.get(
-                `/content/${inscriptionId}`,
-                { responseType: 'blob' }
-              );
+              // Fetch content with retry
+              const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, {
+                responseType: 'blob',
+              });
               const contentType = contentResponse.headers['content-type'];
 
               if (contentType.startsWith('image/')) {

@@ -1,11 +1,9 @@
-// app/components/blocks/BlockDataTable
-
 import React, { useState, useEffect } from 'react';
 import Inscriptions from './Inscriptions';
 import Runes from './Runes';
 import Transactions from './Transactions';
 
-const BlockDataTable = ({ block }) => {
+const BlockDataTable = ({ block, onAddressClick }) => {  // Add onAddressClick prop here
   const [blockDetails, setBlockDetails] = useState(null);
   const [transactionData, setTransactionData] = useState([]);
   const [error, setError] = useState(null);
@@ -78,7 +76,10 @@ const BlockDataTable = ({ block }) => {
       </div>
 
       {activeSection === 'inscriptions' && (
-        <Inscriptions blockDetails={blockDetails} />
+        <Inscriptions
+          blockDetails={blockDetails}
+          onAddressClick={onAddressClick}  // Pass the prop here
+        />
       )}
 
       {activeSection === 'runes' && blockDetails && blockDetails.runes && (

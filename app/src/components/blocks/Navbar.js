@@ -105,7 +105,7 @@ const Navbar = ({
             >
               <option value="Transaction ID">Transaction ID</option>
               {/* <option value="Block Height">Block Height</option> */}
-              {/* <option value="Wallet Address">Wallet Address</option> */}
+              <option value="Wallet Address">Wallet Address</option>
             </select>
             <input
               type="text"

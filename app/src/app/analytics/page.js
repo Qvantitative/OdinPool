@@ -21,6 +21,7 @@ import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 import InscriptionsLatest from '../../components/blocks/InscriptionsLatest'
+import Wallet from '../../components/blocks/Wallet';
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
 const TrendingCollections = dynamic(() => import('../../components/wallet/TrendingCollections'), { ssr: false });
@@ -333,6 +334,13 @@ const AnalyticsPage = () => {
     setSelectedBlock(null);
   };
 
+  const handleAddressClick = (address) => {
+    setExpandedContent({
+      type: 'Wallet',
+      addressData: { address }
+    });
+  };
+
   const handleShowBlocks = () => {
     setSelectedView('blocks');
     setShowBubbleChart(false); // Add this line
@@ -455,26 +463,12 @@ const AnalyticsPage = () => {
             {expandedContent.type === 'Transaction' ? (
               <TransactionsDetails transactionId={expandedContent.id} />
             ) : expandedContent.type === 'Block' ? (
-              <BlockDataTable block={expandedContent.block} />
+              <BlockDataTable
+                block={expandedContent.block}
+                onAddressClick={handleAddressClick}
+              />
             ) : expandedContent.type === 'Wallet' ? (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Address Details</h2>
-                <div className="flex flex-wrap -mx-2">
-                  {expandedContent.addressData.inscriptions && (
-                    <div className="w-full lg:w-1/2 px-2">
-                      <h3 className="text-xl font-semibold mb-4">Inscriptions</h3>
-                      {/* Render inscriptions as in BlockDataTable */}
-                    </div>
-                  )}
-
-                  {expandedContent.addressData.outputs && (
-                    <div className="w-full lg:w-1/2 px-2">
-                      <h3 className="text-xl font-semibold mb-4">Outputs</h3>
-                      {/* Render outputs as in BlockDataTable */}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <Wallet address={expandedContent.addressData.address} />
             ) : null}
           </section>
         ) : selectedBlock ? (
@@ -485,7 +479,10 @@ const AnalyticsPage = () => {
             >
               Back to Analytics
             </button>
-            <BlockDataTable block={selectedBlock} />
+            <BlockDataTable
+              block={selectedBlock}
+              onAddressClick={handleAddressClick}
+            />
           </section>
         ) : selectedView === 'blocks' ? (
           <section>

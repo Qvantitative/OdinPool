@@ -273,24 +273,32 @@ const AnalyticsPage = () => {
   // Handle search input change
   const handleSearchChange = (e) => setSearchInput(e.target.value);
 
-  const handleSearchSubmit = async ({ type, value }) => {
-    try {
-      if (type === 'Transaction ID') {
-        setExpandedContent({ type: 'Transaction', id: value });
-      } else if (type === 'Block Height') {
-        const response = await fetch(`/api/ord/block/${value}`);
-        if (!response.ok) throw new Error(`Block not found for height: ${value}`);
+  // Handle search form submission
+  const handleSearchSubmit = async (e) => {
+    e.preventDefault();
+
+    if (searchType === 'Transaction ID') {
+      setExpandedContent({ type: 'Transaction', id: searchInput.trim() });
+    } else if (searchType === 'Block Height') {
+      try {
+        const response = await fetch(`/api/ord/block/${searchInput.trim()}`);
+        if (!response.ok) throw new Error(`Block not found for height: ${searchInput.trim()}`);
         const blockData = await response.json();
         setExpandedContent({ type: 'Block', block: blockData });
-      } else if (type === 'Wallet Address') {
-        const response = await fetch(`/api/ord/address/${value}`);
-        if (!response.ok) throw new Error(`Address not found: ${value}`);
+      } catch (error) {
+        console.error('Error fetching block:', error);
+        setError(`Error fetching block: ${error.message}`);
+      }
+    } else if (searchType === 'Wallet Address') {
+      try {
+        const response = await fetch(`/api/ord/address/${searchInput.trim()}`);
+        if (!response.ok) throw new Error(`Address not found: ${searchInput.trim()}`);
         const addressData = await response.json();
         setExpandedContent({ type: 'Wallet', addressData });
+      } catch (error) {
+        console.error('Error fetching address:', error);
+        setError(`Error fetching address: ${error.message}`);
       }
-    } catch (error) {
-      console.error(`Error fetching ${type.toLowerCase()}:`, error);
-      setError(`Error fetching ${type.toLowerCase()}: ${error.message}`);
     }
   };
 
@@ -379,40 +387,6 @@ const AnalyticsPage = () => {
     setSelectedCollection(collection);
   }, []);
 
-  const renderContent = () => {
-    if (error) {
-      return (
-        <div className="text-center text-red-500">
-          <h3 className="text-xl font-semibold mb-4">Error</h3>
-          <p>{error}</p>
-        </div>
-      );
-    }
-
-    if (expandedContent) {
-      return (
-        <section className="container mx-auto p-8">
-          <button onClick={handleBackClick} className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            Back to Analytics
-          </button>
-          {expandedContent.type === 'Transaction' && <TransactionsDetails transactionId={expandedContent.id} />}
-          {expandedContent.type === 'Block' && <BlockDataTable block={expandedContent.block} />}
-          {expandedContent.type === 'Wallet' && <Wallet address={expandedContent.addressData.address} />}
-        </section>
-      );
-    }
-
-    if (selectedView === 'blocks') {
-      return <BitcoinBlockTable />;
-    }
-
-    return (
-      <div className="text-center text-gray-300">
-        <p>No content selected</p>
-      </div>
-    );
-  };
-
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">
@@ -421,7 +395,6 @@ const AnalyticsPage = () => {
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
         onShowBubbleMap={handleShowBubbleChart}
-        onSearch={handleSearchSubmit}
         selectedView={selectedView}
         onSearch={async ({ type, value }) => {
           if (type === 'Transaction ID') {
@@ -462,15 +435,15 @@ const AnalyticsPage = () => {
             className="flex overflow-x-auto custom-scrollbar flex-grow"
             style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}
           >
-            {blockData.slice(0, 100).map((block) => (
-              <BlockDisplay key={block.block_height} block={block} />
+            {sortedBlockData.map((block) => (
+              <BlockDisplay key={block.block_height} block={block} onBlockClick={handleBlockClick} />
             ))}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-8 pt-40">
+      <main className="container mx-auto p-8 pt-80">
         {/* Page Header */}
         <section className="mb-10">
           <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Onchain Data Analytics</h1>
@@ -599,7 +572,6 @@ const AnalyticsPage = () => {
             </div>
           </section>
         )}
-        {renderContent()}
       </main>
     </div>
   );

@@ -9,8 +9,10 @@ const Runes = ({ runes, loading = false }) => {
   const [runeData, setRuneData] = useState([]);
   const [error, setError] = useState(null);
 
+  // Adjusted axios instance with full baseURL and keeping /rune path
   const axiosInstance = axios.create({
-    baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
+    baseURL:
+      process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
   });
 
@@ -21,33 +23,43 @@ const Runes = ({ runes, loading = false }) => {
           runes.map(async (rune) => {
             const response = await axiosInstance.get(`/rune/${rune}`, {
               headers: {
-                Accept: 'application/json'
+                Accept: 'application/json',
               },
             });
             const runeInfo = response.data;
 
-            const cap = runeInfo.entry?.terms?.cap;
-            const mints = runeInfo.entry?.mints;
+            // Parse cap and mints as integers
+            const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
+            const mints = parseInt(runeInfo.entry?.mints, 10);
 
-            if (cap != null && mints != null) {
+            // Check if cap and mints are valid numbers
+            if (!isNaN(cap) && !isNaN(mints)) {
               const status = mints < cap ? 'Minting' : 'Ended';
               const mintsRemaining = cap - mints;
-              const progress = ((cap - mintsRemaining) / cap) * 100;
+              const progress = (mints / cap) * 100; // Corrected progress calculation
+
+              // Log the details for each rune
+              console.log(`Rune: ${rune}`);
+              console.log(`Cap: ${cap}`);
+              console.log(`Mints: ${mints}`);
+              console.log(`Mints Remaining: ${mintsRemaining}`);
+              console.log(`Progress: ${progress.toFixed(2)}%`);
 
               return {
                 rune,
                 status,
                 mintsRemaining,
                 progress,
-                cap,
-                mints
               };
             } else {
+              console.warn(
+                `Rune data missing or invalid cap or mints for rune: ${rune}`
+              );
               return {
                 rune,
                 status: 'Not Mintable',
                 mintsRemaining: '-',
-                progress: null
+                progress: null, // No progress for Not Mintable items
               };
             }
           })
@@ -64,16 +76,12 @@ const Runes = ({ runes, loading = false }) => {
     }
   }, [runes]);
 
-  // Helper function to determine progress bar color
-  const getProgressBarColor = (mintsRemaining, cap) => {
-    if (mintsRemaining === 0) return 'bg-red-500';
-    return 'bg-green-500';
-  };
-
   if (loading) {
     return (
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">
+          New Etchings
+        </h3>
         <div className="flex items-center justify-center h-32">
           <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
         </div>
@@ -84,7 +92,9 @@ const Runes = ({ runes, loading = false }) => {
   if (error) {
     return (
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">
+          New Etchings
+        </h3>
         <div className="text-red-500 text-center">Error: {error}</div>
       </div>
     );
@@ -93,7 +103,9 @@ const Runes = ({ runes, loading = false }) => {
   if (!runes || runes.length === 0) {
     return (
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">
+          New Etchings
+        </h3>
         <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
           <Coins className="w-12 h-12 text-gray-400" />
           <p className="mt-2 text-lg">No new etchings</p>
@@ -104,7 +116,9 @@ const Runes = ({ runes, loading = false }) => {
 
   return (
     <div className="mb-8">
-      <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
+      <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">
+        New Etchings
+      </h3>
       <table className="min-w-full bg-[#1a1c2e] rounded-lg shadow-lg overflow-hidden">
         <thead>
           <tr className="bg-blue-600 text-white">
@@ -115,13 +129,20 @@ const Runes = ({ runes, loading = false }) => {
         </thead>
         <tbody>
           {runeData.map((data, index) => (
-            <tr key={index} className="text-gray-300 hover:bg-blue-700 transition-colors duration-200">
-              <td className="py-4 px-6 border-b border-gray-600 text-center">{data.rune}</td>
-              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold">
+            <tr
+              key={index}
+              className="text-gray-300 hover:bg-blue-700 transition-colors duration-200"
+            >
+              <td className="py-4 px-6 border-b border-gray-600 text-center">
+                {data.rune}
+              </td>
+              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold rounded-full relative">
                 <span
-                  className={`inline-block px-4 py-2 rounded-full ${
+                  className={`${
+                    data.status === 'Minting' ? 'radiating-glow' : ''
+                  } inline-block px-4 py-2 rounded-full ${
                     data.status === 'Minting'
-                      ? 'bg-green-600 text-white radiating-glow'
+                      ? 'bg-green-600 text-white'
                       : 'bg-red-600 text-white'
                   }`}
                 >
@@ -130,22 +151,21 @@ const Runes = ({ runes, loading = false }) => {
               </td>
               <td className="py-4 px-6 border-b border-gray-600 text-center">
                 {data.progress !== null ? (
-                  <div className="space-y-2">
+                  <>
                     <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className={`absolute h-full transition-all duration-500 ease-in-out ${
-                          getProgressBarColor(data.mintsRemaining, data.cap)
+                        className={`absolute h-full rounded-full ${
+                          data.mintsRemaining === 0
+                            ? 'bg-red-500'
+                            : 'bg-green-500'
                         }`}
-                        style={{
-                          width: `${data.progress}%`,
-                          transition: 'width 0.5s ease-in-out'
-                        }}
-                      />
+                        style={{ width: `${data.progress}%` }}
+                      ></div>
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="mt-1 text-sm text-gray-400">
                       {data.mintsRemaining.toLocaleString()} remaining
                     </p>
-                  </div>
+                  </>
                 ) : (
                   <p className="text-sm text-gray-400">-</p>
                 )}

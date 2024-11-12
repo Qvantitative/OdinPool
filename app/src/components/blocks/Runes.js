@@ -11,10 +11,7 @@ const Runes = ({ runes, loading = false }) => {
 
   // Adjusted axios instance with full baseURL
   const axiosInstance = axios.create({
-    baseURL:
-      process.env.NODE_ENV === 'development'
-        ? 'http://localhost:3000'
-        : 'https://www.odinpool.ai', // Ensure this matches your server's address
+    baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
   });
 
@@ -24,7 +21,7 @@ const Runes = ({ runes, loading = false }) => {
         const data = await Promise.all(
           runes.map(async (rune) => {
             console.log(`Fetching data for rune: ${rune}`);
-            const response = await axiosInstance.get(`/ord/runes/${rune}`, {
+            const response = await axiosInstance.get(`/rune/${rune}`, {
               headers: { Accept: 'text/html' },
             });
             const htmlString = response.data;

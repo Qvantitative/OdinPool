@@ -21,18 +21,13 @@ const Runes = ({ runes, loading = false }) => {
         const data = await Promise.all(
           runes.map(async (rune) => {
             console.log(`Fetching data for rune: ${rune}`);
-            // Keep the /rune/ path as it correctly matches the rewrite rule
             const response = await axiosInstance.get(`/rune/${rune}`, {
               headers: {
-                Accept: 'application/json' // Expect JSON response
+                Accept: 'application/json'
               },
             });
-            console.log(`Response for rune ${rune}:`, response.data);
-
-            // Assuming the response is JSON, we can use it directly
             const runeInfo = response.data;
 
-            // Calculating status and mints remaining
             const cap = runeInfo.entry.terms.cap;
             const mints = runeInfo.entry.mints;
             const status = mints < cap ? 'Minting' : 'Ended';
@@ -60,9 +55,9 @@ const Runes = ({ runes, loading = false }) => {
   if (loading) {
     return (
       <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
         <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-purple-500"></div>
         </div>
       </div>
     );
@@ -71,8 +66,8 @@ const Runes = ({ runes, loading = false }) => {
   if (error) {
     return (
       <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
-        <div className="text-red-500">Error: {error}</div>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
+        <div className="text-red-500 text-center">Error: {error}</div>
       </div>
     );
   }
@@ -80,10 +75,10 @@ const Runes = ({ runes, loading = false }) => {
   if (!runes || runes.length === 0) {
     return (
       <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
         <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
           <Coins className="w-12 h-12 text-gray-400" />
-          <p className="mt-2">No new etchings</p>
+          <p className="mt-2 text-lg">No new etchings</p>
         </div>
       </div>
     );
@@ -91,21 +86,25 @@ const Runes = ({ runes, loading = false }) => {
 
   return (
     <div className="mb-8">
-      <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
-      <table className="min-w-full bg-white dark:bg-gray-800">
+      <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
+      <table className="min-w-full bg-purple-100 rounded-lg shadow-lg overflow-hidden">
         <thead>
-          <tr>
-            <th className="py-2 border px-4">Rune</th>
-            <th className="py-2 border px-4">Status</th>
-            <th className="py-2 border px-4">Mints Remaining</th>
+          <tr className="bg-purple-500 text-white">
+            <th className="py-3 px-6 text-lg font-medium">Rune</th>
+            <th className="py-3 px-6 text-lg font-medium">Status</th>
+            <th className="py-3 px-6 text-lg font-medium">Mints Remaining</th>
           </tr>
         </thead>
         <tbody>
           {runeData.map((data, index) => (
-            <tr key={index}>
-              <td className="border px-4 py-2">{data.rune}</td>
-              <td className="border px-4 py-2">{data.status}</td>
-              <td className="border px-4 py-2">{data.mintsRemaining}</td>
+            <tr key={index} className="text-gray-700 hover:bg-purple-200 transition-colors duration-200">
+              <td className="py-4 px-6 border-b text-center">{data.rune}</td>
+              <td className={`py-4 px-6 border-b text-center font-semibold rounded-full ${
+                data.status === 'Minting' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+              }`}>
+                {data.status}
+              </td>
+              <td className="py-4 px-6 border-b text-center font-semibold">{data.mintsRemaining}</td>
             </tr>
           ))}
         </tbody>

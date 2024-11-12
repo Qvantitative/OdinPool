@@ -58,60 +58,65 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
         const inscriptionId = href.split('/').pop();
 
         try {
-          const contentResponse = await axiosInstanceWithoutSSL.get(`/content/${inscriptionId}`, {
-            responseType: 'blob',
-          });
+          // First, check the content type without getting the blob
+          const headResponse = await axiosInstanceWithoutSSL.head(`/content/${inscriptionId}`);
+          const contentType = headResponse.headers['content-type'];
 
-          const contentType = contentResponse.headers['content-type'];
+          if (contentType === 'application/json' || contentType === 'application/json;charset=utf-8') {
+            // For JSON, get as text instead of blob
+            const jsonResponse = await axiosInstanceWithoutSSL.get(`/content/${inscriptionId}`, {
+              responseType: 'text'
+            });
 
-          if (contentType.startsWith('image/')) {
+            try {
+              const parsedJson = JSON.parse(jsonResponse.data);
+              images[inscriptionId] = {
+                content: parsedJson,
+                type: 'json',
+                contentType: contentType
+              };
+            } catch (jsonError) {
+              images[inscriptionId] = {
+                content: jsonResponse.data,
+                type: 'json',
+                error: 'Invalid JSON format'
+              };
+            }
+          } else if (contentType.startsWith('image/')) {
+            const contentResponse = await axiosInstanceWithoutSSL.get(`/content/${inscriptionId}`, {
+              responseType: 'blob'
+            });
             let imageUrl;
             if (contentType === 'image/svg+xml') {
               const svgText = await contentResponse.data.text();
               const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
               imageUrl = URL.createObjectURL(svgBlob);
             } else {
-              const blob = new Blob([contentResponse.data]);
-              imageUrl = URL.createObjectURL(blob);
+              imageUrl = URL.createObjectURL(contentResponse.data);
             }
-
             images[inscriptionId] = {
               url: imageUrl,
-              type: 'image',
+              type: 'image'
             };
           } else if (contentType.startsWith('text/')) {
-            const textContent = await contentResponse.data.text();
+            const contentResponse = await axiosInstanceWithoutSSL.get(`/content/${inscriptionId}`, {
+              responseType: 'text'
+            });
             images[inscriptionId] = {
-              content: textContent,
-              type: 'text',
+              content: contentResponse.data,
+              type: 'text'
             };
-          } else if (contentType === 'application/json') {
-            const jsonContent = await contentResponse.data.text();
-            try {
-              const formattedJson = JSON.stringify(JSON.parse(jsonContent), null, 2);
-              images[inscriptionId] = {
-                content: formattedJson,
-                type: 'json',
-              };
-            } catch (jsonError) {
-              images[inscriptionId] = {
-                content: jsonContent,
-                type: 'json',
-                error: 'Invalid JSON format',
-              };
-            }
           } else {
             images[inscriptionId] = {
               type: 'unsupported',
-              error: 'Unsupported content type',
-              contentType: contentType, // Store the content type for reference
+              contentType: contentType
             };
           }
         } catch (contentErr) {
           console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
           images[inscriptionId] = {
             type: 'error',
-            error: 'Content unavailable',
+            error: 'Content unavailable'
           };
         }
       })
@@ -407,10 +412,23 @@ const renderInscriptionContent = (inscriptionId, inscriptionData) => {
       );
     case 'json':
       return (
-        <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-2xl font-mono">
-          <pre className="text-xs overflow-auto max-h-full max-w-full whitespace-pre-wrap break-all">
-            {inscriptionData.content}
-          </pre>
+        <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
+          <div className="p-2 bg-gray-800 text-xs text-gray-400">
+            application/json;charset=utf-8
+          </div>
+          <div className="flex-1 p-4 font-mono text-xs overflow-auto">
+            <pre className="whitespace-pre-wrap break-all">
+              {typeof inscriptionData.content === 'object'
+                ? JSON.stringify(inscriptionData.content, null, 2)
+                : inscriptionData.content}
+            </pre>
+          </div>
+          {inscriptionId && (
+            <div className="p-2 bg-gray-800 text-xs text-gray-400 border-t border-gray-700">
+              #{inscriptionId}
+              <div className="text-gray-500">JSON</div>
+            </div>
+          )}
         </div>
       );
     case 'text':
@@ -421,17 +439,13 @@ const renderInscriptionContent = (inscriptionId, inscriptionData) => {
           </pre>
         </div>
       );
-    case 'unsupported':
+    default:
       return (
         <div className="flex flex-col items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl p-4">
           <p>Unsupported content type</p>
-          <p className="text-xs mt-2 text-gray-400">{inscriptionData.contentType}</p>
-        </div>
-      );
-    default:
-      return (
-        <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl">
-          Unsupported content type
+          {inscriptionData.contentType && (
+            <p className="text-xs mt-2 text-gray-400">{inscriptionData.contentType}</p>
+          )}
         </div>
       );
   }

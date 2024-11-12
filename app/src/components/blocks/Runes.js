@@ -9,10 +9,14 @@ const Runes = ({ runes, loading = false }) => {
   const [runeData, setRuneData] = useState([]);
   const [error, setError] = useState(null);
 
-  // Adjusted axios instance with full baseURL and keeping /rune path
+  // Adjusted axios instance with full baseURL
   const axiosInstance = axios.create({
     baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+    headers: {
+      'Accept': 'application/json',  // Try requesting JSON first
+      'X-Requested-With': 'XMLHttpRequest'  // Indicate this is an AJAX request
+    }
   });
 
   useEffect(() => {
@@ -21,21 +25,42 @@ const Runes = ({ runes, loading = false }) => {
         const data = await Promise.all(
           runes.map(async (rune) => {
             console.log(`Fetching data for rune: ${rune}`);
-            // Keep the /rune/ path as it correctly matches the rewrite rule
-            const response = await axiosInstance.get(`/rune/${rune}`, {
-              headers: {
-                Accept: 'application/json' // Changed to expect JSON instead of HTML
-              },
-            });
-            console.log(`Response for rune ${rune}:`, response.data);
+            try {
+              // First attempt to get JSON data
+              const response = await axiosInstance.get(`/rune/${rune}.json`);
+              return {
+                rune,
+                status: response.data.status || 'Unknown',
+                mintsRemaining: response.data.mints_remaining || 'Unknown'
+              };
+            } catch (jsonError) {
+              console.log('JSON fetch failed, falling back to HTML:', jsonError);
 
-            // Assuming the response is JSON, we can use it directly
-            const runeInfo = response.data;
-            return {
-              rune,
-              status: runeInfo.status || 'Unknown',
-              mintsRemaining: runeInfo.mints_remaining || 'Unknown'
-            };
+              // Fallback to HTML if JSON fails
+              const htmlResponse = await axiosInstance.get(`/rune/${rune}`, {
+                headers: { 'Accept': 'text/html' }
+              });
+
+              // Create a temporary element to parse the HTML
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = htmlResponse.data;
+
+              // Try to find status and mints remaining in the HTML
+              // You might need to adjust these selectors based on the actual HTML structure
+              const statusText = tempDiv.querySelector('[data-status]')?.getAttribute('data-status') ||
+                               tempDiv.querySelector('.status')?.textContent ||
+                               'Unknown';
+
+              const mintsText = tempDiv.querySelector('[data-mints-remaining]')?.getAttribute('data-mints-remaining') ||
+                               tempDiv.querySelector('.mints-remaining')?.textContent ||
+                               'Unknown';
+
+              return {
+                rune,
+                status: statusText.trim(),
+                mintsRemaining: mintsText.trim()
+              };
+            }
           })
         );
         setRuneData(data);
@@ -50,6 +75,7 @@ const Runes = ({ runes, loading = false }) => {
     }
   }, [runes]);
 
+  // Rest of the component remains the same
   if (loading) {
     return (
       <div className="mb-8">

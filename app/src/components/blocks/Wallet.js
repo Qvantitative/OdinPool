@@ -1,6 +1,8 @@
 // app/components/blocks/Wallet.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, useGLTF } from '@react-three/drei';
 import axios from 'axios';
 import https from 'https';
 import { ImageOff } from 'lucide-react';
@@ -10,6 +12,12 @@ const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
+
+// Model component that loads and renders the GLTF
+const Model = ({ url }) => {
+  const { scene } = useGLTF(url);
+  return <primitive object={scene} />;
+};
 
 // Caches for storing fetched data
 const addressCache = {};
@@ -92,23 +100,14 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
             case contentType === 'model/gltf-json' ||
                  contentType === 'model/gltf+json': {
               const gltfResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text'
+                responseType: 'blob'
               });
-              let result;
-              try {
-                const parsedGltf = JSON.parse(gltfResponse.data);
-                result = {
-                  content: parsedGltf,
-                  type: 'gltf',
-                  contentType
-                };
-              } catch (gltfError) {
-                result = {
-                  content: gltfResponse.data,
-                  type: 'gltf',
-                  error: 'Invalid GLTF JSON format'
-                };
-              }
+              const gltfUrl = URL.createObjectURL(gltfResponse.data);
+              const result = {
+                url: gltfUrl,
+                type: 'gltf',
+                contentType
+              };
               inscriptionContentCache[inscriptionId] = result;
               images[inscriptionId] = result;
               break;
@@ -271,42 +270,30 @@ const Wallet = ({ address, onAddressClick }) => {
     }
 
     switch (inscriptionData.type) {
-      case 'video':
-        return (
-          <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
-            <div className="p-2 bg-gray-800 text-xs text-gray-400">
-              video/mp4
-            </div>
-            <div className="flex-1 relative">
-              <video
-                className="absolute inset-0 w-full h-full object-contain"
-                controls
-                playsInline
-              >
-                <source src={inscriptionData.url} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            </div>
-            {inscriptionId && (
-              <div className="p-2 bg-gray-800 text-xs text-gray-400 border-t border-gray-700">
-                #{inscriptionId}
-                <div className="text-gray-500">MP4</div>
-              </div>
-            )}
-          </div>
-        );
       case 'gltf':
         return (
           <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
             <div className="p-2 bg-gray-800 text-xs text-gray-400">
-              model/gltf-json
+              model/gltf+json
             </div>
-            <div className="flex-1 p-4 font-mono text-xs overflow-auto">
-              <pre className="whitespace-pre-wrap break-all">
-                {typeof inscriptionData.content === 'object'
-                  ? JSON.stringify(inscriptionData.content, null, 2)
-                  : inscriptionData.content}
-              </pre>
+            <div className="flex-1 relative">
+              <Canvas
+                camera={{ position: [0, 0, 5], fov: 45 }}
+                style={{ background: '#1f2937' }}
+              >
+                <ambientLight intensity={0.5} />
+                <pointLight position={[10, 10, 10]} />
+                <Suspense fallback={null}>
+                  <Model url={`/content/${inscriptionId}`} />
+                  <OrbitControls
+                    enableZoom={true}
+                    enablePan={true}
+                    enableRotate={true}
+                    autoRotate={true}
+                    autoRotateSpeed={2}
+                  />
+                </Suspense>
+              </Canvas>
             </div>
             {inscriptionId && (
               <div className="p-2 bg-gray-800 text-xs text-gray-400 border-t border-gray-700">

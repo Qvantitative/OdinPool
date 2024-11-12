@@ -20,7 +20,6 @@ const Runes = ({ runes, loading = false }) => {
       try {
         const data = await Promise.all(
           runes.map(async (rune) => {
-            console.log(`Fetching data for rune: ${rune}`);
             const response = await axiosInstance.get(`/rune/${rune}`, {
               headers: {
                 Accept: 'application/json'
@@ -55,9 +54,9 @@ const Runes = ({ runes, loading = false }) => {
   if (loading) {
     return (
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
         <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
         </div>
       </div>
     );
@@ -66,7 +65,7 @@ const Runes = ({ runes, loading = false }) => {
   if (error) {
     return (
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
         <div className="text-red-500 text-center">Error: {error}</div>
       </div>
     );
@@ -75,7 +74,7 @@ const Runes = ({ runes, loading = false }) => {
   if (!runes || runes.length === 0) {
     return (
       <div className="mb-8">
-        <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
+        <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
         <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
           <Coins className="w-12 h-12 text-gray-400" />
           <p className="mt-2 text-lg">No new etchings</p>
@@ -86,10 +85,10 @@ const Runes = ({ runes, loading = false }) => {
 
   return (
     <div className="mb-8">
-      <h3 className="text-2xl font-semibold mb-4 text-center text-purple-600">New Etchings</h3>
-      <table className="min-w-full bg-purple-100 rounded-lg shadow-lg overflow-hidden">
+      <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">New Etchings</h3>
+      <table className="min-w-full bg-[#1a1c2e] rounded-lg shadow-lg overflow-hidden">
         <thead>
-          <tr className="bg-purple-500 text-white">
+          <tr className="bg-blue-600 text-white">
             <th className="py-3 px-6 text-lg font-medium">Rune</th>
             <th className="py-3 px-6 text-lg font-medium">Status</th>
             <th className="py-3 px-6 text-lg font-medium">Mints Remaining</th>
@@ -97,14 +96,14 @@ const Runes = ({ runes, loading = false }) => {
         </thead>
         <tbody>
           {runeData.map((data, index) => (
-            <tr key={index} className="text-gray-700 hover:bg-purple-200 transition-colors duration-200">
-              <td className="py-4 px-6 border-b text-center">{data.rune}</td>
-              <td className={`py-4 px-6 border-b text-center font-semibold rounded-full ${
-                data.status === 'Minting' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+            <tr key={index} className="text-gray-300 hover:bg-blue-700 transition-colors duration-200">
+              <td className="py-4 px-6 border-b border-gray-600 text-center">{data.rune}</td>
+              <td className={`py-4 px-6 border-b border-gray-600 text-center font-semibold rounded-full ${
+                data.status === 'Minting' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
               }`}>
                 {data.status}
               </td>
-              <td className="py-4 px-6 border-b text-center font-semibold">{data.mintsRemaining}</td>
+              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold">{data.mintsRemaining}</td>
             </tr>
           ))}
         </tbody>

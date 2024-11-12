@@ -9,11 +9,24 @@ const Runes = ({ runes, loading = false }) => {
   const [runeData, setRuneData] = useState([]);
   const [error, setError] = useState(null);
 
-  // Adjusted axios instance with full baseURL and keeping /rune path
   const axiosInstance = axios.create({
     baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
   });
+
+  const calculateRuneStatus = (entry) => {
+    if (!entry || !entry.terms || !entry.mints) {
+      return 'Unknown';
+    }
+    return entry.mints < entry.terms.cap ? 'Minting' : 'Ended';
+  };
+
+  const calculateMintsRemaining = (entry) => {
+    if (!entry || !entry.terms || !entry.mints) {
+      return 'Unknown';
+    }
+    return entry.terms.cap - entry.mints;
+  };
 
   useEffect(() => {
     const fetchRuneData = async () => {
@@ -21,20 +34,18 @@ const Runes = ({ runes, loading = false }) => {
         const data = await Promise.all(
           runes.map(async (rune) => {
             console.log(`Fetching data for rune: ${rune}`);
-            // Keep the /rune/ path as it correctly matches the rewrite rule
             const response = await axiosInstance.get(`/rune/${rune}`, {
               headers: {
-                Accept: 'application/json' // Changed to expect JSON instead of HTML
+                Accept: 'application/json'
               },
             });
             console.log(`Response for rune ${rune}:`, response.data);
 
-            // Assuming the response is JSON, we can use it directly
-            const runeInfo = response.data;
+            const runeInfo = response.data.entry;
             return {
               rune,
-              status: runeInfo.status || 'Unknown',
-              mintsRemaining: runeInfo.mints_remaining || 'Unknown'
+              status: calculateRuneStatus(runeInfo),
+              mintsRemaining: calculateMintsRemaining(runeInfo)
             };
           })
         );
@@ -97,8 +108,18 @@ const Runes = ({ runes, loading = false }) => {
           {runeData.map((data, index) => (
             <tr key={index}>
               <td className="border px-4 py-2">{data.rune}</td>
-              <td className="border px-4 py-2">{data.status}</td>
-              <td className="border px-4 py-2">{data.mintsRemaining}</td>
+              <td className="border px-4 py-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  data.status === 'Minting' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {data.status}
+                </span>
+              </td>
+              <td className="border px-4 py-2">
+                {typeof data.mintsRemaining === 'number'
+                  ? data.mintsRemaining.toLocaleString()
+                  : data.mintsRemaining}
+              </td>
             </tr>
           ))}
         </tbody>

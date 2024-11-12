@@ -13,10 +13,6 @@ const Runes = ({ runes, loading = false }) => {
   const axiosInstance = axios.create({
     baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-    headers: {
-      'Accept': 'application/json',  // Try requesting JSON first
-      'X-Requested-With': 'XMLHttpRequest'  // Indicate this is an AJAX request
-    }
   });
 
   useEffect(() => {
@@ -25,42 +21,32 @@ const Runes = ({ runes, loading = false }) => {
         const data = await Promise.all(
           runes.map(async (rune) => {
             console.log(`Fetching data for rune: ${rune}`);
-            try {
-              // First attempt to get JSON data
-              const response = await axiosInstance.get(`/rune/${rune}.json`);
-              return {
-                rune,
-                status: response.data.status || 'Unknown',
-                mintsRemaining: response.data.mints_remaining || 'Unknown'
-              };
-            } catch (jsonError) {
-              console.log('JSON fetch failed, falling back to HTML:', jsonError);
+            const response = await axiosInstance.get(`/rune/${rune}`, {
+              headers: { Accept: 'text/html' },
+            });
+            const htmlString = response.data;
+            console.log(`HTML response for rune ${rune}:`, htmlString);
 
-              // Fallback to HTML if JSON fails
-              const htmlResponse = await axiosInstance.get(`/rune/${rune}`, {
-                headers: { 'Accept': 'text/html' }
-              });
+            // Parse the HTML to extract status and mints remaining
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
 
-              // Create a temporary element to parse the HTML
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = htmlResponse.data;
+            // Adjust selectors based on actual HTML structure
+            const statusElement = doc.querySelector('#status');
+            const mintsRemainingElement = doc.querySelector('#mints-remaining');
 
-              // Try to find status and mints remaining in the HTML
-              // You might need to adjust these selectors based on the actual HTML structure
-              const statusText = tempDiv.querySelector('[data-status]')?.getAttribute('data-status') ||
-                               tempDiv.querySelector('.status')?.textContent ||
-                               'Unknown';
+            const status = statusElement
+              ? statusElement.textContent.trim()
+              : 'Unknown';
+            const mintsRemaining = mintsRemainingElement
+              ? mintsRemainingElement.textContent.trim()
+              : 'Unknown';
 
-              const mintsText = tempDiv.querySelector('[data-mints-remaining]')?.getAttribute('data-mints-remaining') ||
-                               tempDiv.querySelector('.mints-remaining')?.textContent ||
-                               'Unknown';
+            console.log(
+              `Extracted data for rune ${rune}: status=${status}, mintsRemaining=${mintsRemaining}`
+            );
 
-              return {
-                rune,
-                status: statusText.trim(),
-                mintsRemaining: mintsText.trim()
-              };
-            }
+            return { rune, status, mintsRemaining };
           })
         );
         setRuneData(data);
@@ -75,7 +61,6 @@ const Runes = ({ runes, loading = false }) => {
     }
   }, [runes]);
 
-  // Rest of the component remains the same
   if (loading) {
     return (
       <div className="mb-8">
@@ -88,12 +73,7 @@ const Runes = ({ runes, loading = false }) => {
   }
 
   if (error) {
-    return (
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
-        <div className="text-red-500">Error: {error}</div>
-      </div>
-    );
+    return <div className="text-red-500">Error: {error}</div>;
   }
 
   if (!runes || runes.length === 0) {

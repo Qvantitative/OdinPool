@@ -46,9 +46,6 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
     });
 
     const htmlString = response.data;
-    console.log("Fetched HTML String:", htmlString);
-
-    // Parse the HTML string using DOMParser
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
     const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
@@ -61,7 +58,6 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
         const inscriptionId = href.split('/').pop();
 
         try {
-          // Fetch content and determine content type
           const contentResponse = await axiosInstanceWithoutSSL.get(`/content/${inscriptionId}`, {
             responseType: 'blob',
           });
@@ -71,12 +67,10 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
           if (contentType.startsWith('image/')) {
             let imageUrl;
             if (contentType === 'image/svg+xml') {
-              // Handle SVG as text and create a Blob for the SVG content
               const svgText = await contentResponse.data.text();
               const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
               imageUrl = URL.createObjectURL(svgBlob);
             } else {
-              // For other image types, create a Blob directly
               const blob = new Blob([contentResponse.data]);
               imageUrl = URL.createObjectURL(blob);
             }
@@ -86,17 +80,31 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
               type: 'image',
             };
           } else if (contentType.startsWith('text/')) {
-            // Handle text content
             const textContent = await contentResponse.data.text();
             images[inscriptionId] = {
               content: textContent,
               type: 'text',
             };
+          } else if (contentType === 'application/json') {
+            const jsonContent = await contentResponse.data.text();
+            try {
+              const formattedJson = JSON.stringify(JSON.parse(jsonContent), null, 2);
+              images[inscriptionId] = {
+                content: formattedJson,
+                type: 'json',
+              };
+            } catch (jsonError) {
+              images[inscriptionId] = {
+                content: jsonContent,
+                type: 'json',
+                error: 'Invalid JSON format',
+              };
+            }
           } else {
-            // Handle unsupported content type
             images[inscriptionId] = {
               type: 'unsupported',
               error: 'Unsupported content type',
+              contentType: contentType, // Store the content type for reference
             };
           }
         } catch (contentErr) {
@@ -397,12 +405,27 @@ const renderInscriptionContent = (inscriptionId, inscriptionData) => {
           loading="lazy"
         />
       );
+    case 'json':
+      return (
+        <div className="flex items-center justify-center h-full p-4 bg-gray-800 text-gray-200 rounded-2xl font-mono">
+          <pre className="text-xs overflow-auto max-h-full max-w-full whitespace-pre-wrap break-all">
+            {inscriptionData.content}
+          </pre>
+        </div>
+      );
     case 'text':
       return (
         <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl">
           <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
             {inscriptionData.content}
           </pre>
+        </div>
+      );
+    case 'unsupported':
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl p-4">
+          <p>Unsupported content type</p>
+          <p className="text-xs mt-2 text-gray-400">{inscriptionData.contentType}</p>
         </div>
       );
     default:

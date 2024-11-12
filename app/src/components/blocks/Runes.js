@@ -9,7 +9,7 @@ const Runes = ({ runes, loading = false }) => {
   const [runeData, setRuneData] = useState([]);
   const [error, setError] = useState(null);
 
-  // Adjusted axios instance with full baseURL
+  // Adjusted axios instance with full baseURL and keeping /rune path
   const axiosInstance = axios.create({
     baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
@@ -21,32 +21,21 @@ const Runes = ({ runes, loading = false }) => {
         const data = await Promise.all(
           runes.map(async (rune) => {
             console.log(`Fetching data for rune: ${rune}`);
+            // Keep the /rune/ path as it correctly matches the rewrite rule
             const response = await axiosInstance.get(`/rune/${rune}`, {
-              headers: { Accept: 'text/html' },
+              headers: {
+                Accept: 'application/json' // Changed to expect JSON instead of HTML
+              },
             });
-            const htmlString = response.data;
-            console.log(`HTML response for rune ${rune}:`, htmlString);
+            console.log(`Response for rune ${rune}:`, response.data);
 
-            // Parse the HTML to extract status and mints remaining
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlString, 'text/html');
-
-            // Adjust selectors based on actual HTML structure
-            const statusElement = doc.querySelector('#status');
-            const mintsRemainingElement = doc.querySelector('#mints-remaining');
-
-            const status = statusElement
-              ? statusElement.textContent.trim()
-              : 'Unknown';
-            const mintsRemaining = mintsRemainingElement
-              ? mintsRemainingElement.textContent.trim()
-              : 'Unknown';
-
-            console.log(
-              `Extracted data for rune ${rune}: status=${status}, mintsRemaining=${mintsRemaining}`
-            );
-
-            return { rune, status, mintsRemaining };
+            // Assuming the response is JSON, we can use it directly
+            const runeInfo = response.data;
+            return {
+              rune,
+              status: runeInfo.status || 'Unknown',
+              mintsRemaining: runeInfo.mints_remaining || 'Unknown'
+            };
           })
         );
         setRuneData(data);
@@ -73,7 +62,12 @@ const Runes = ({ runes, loading = false }) => {
   }
 
   if (error) {
-    return <div className="text-red-500">Error: {error}</div>;
+    return (
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
   }
 
   if (!runes || runes.length === 0) {

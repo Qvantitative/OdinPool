@@ -54,7 +54,7 @@ const Runes = ({ runes, loading = false }) => {
                 rune,
                 status: 'Not Mintable',
                 mintsRemaining: '-',
-                progress: 0
+                progress: null // No progress for Not Mintable items
               };
             }
           })
@@ -128,13 +128,19 @@ const Runes = ({ runes, loading = false }) => {
                 </span>
               </td>
               <td className="py-4 px-6 border-b border-gray-600 text-center">
-                <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="absolute h-full bg-green-500 rounded-full"
-                    style={{ width: `${data.progress}%` }}
-                  ></div>
-                </div>
-                <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining !== '-' ? data.mintsRemaining.toLocaleString() : '-'}</p>
+                {data.progress !== null ? (
+                  <>
+                    <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="absolute h-full bg-green-500 rounded-full"
+                        style={{ width: `${data.progress}%` }}
+                      ></div>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining.toLocaleString()} remaining</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400">-</p>
+                )}
               </td>
             </tr>
           ))}

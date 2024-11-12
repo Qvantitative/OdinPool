@@ -27,24 +27,36 @@ const Runes = ({ runes, loading = false }) => {
             });
             const runeInfo = response.data;
 
-            const cap = runeInfo.entry.terms.cap;
-            const mints = runeInfo.entry.mints;
-            const status = mints < cap ? 'Minting' : 'Ended';
-            const mintsRemaining = cap - mints;
-            const progress = ((cap - mintsRemaining) / cap) * 100; // Calculate progress percentage
+            // Null check for entry, entry.terms, and entry.terms.cap
+            const cap = runeInfo.entry?.terms?.cap;
+            const mints = runeInfo.entry?.mints;
 
-            // Log the details for each rune
-            console.log(`Rune: ${rune}`);
-            console.log(`Status: ${status}`);
-            console.log(`Mints Remaining: ${mintsRemaining}`);
-            console.log(`Progress: ${progress.toFixed(2)}%`);
+            if (cap != null && mints != null) {
+              const status = mints < cap ? 'Minting' : 'Ended';
+              const mintsRemaining = cap - mints;
+              const progress = ((cap - mintsRemaining) / cap) * 100; // Calculate progress percentage
 
-            return {
-              rune,
-              status,
-              mintsRemaining,
-              progress
-            };
+              // Log the details for each rune
+              console.log(`Rune: ${rune}`);
+              console.log(`Status: ${status}`);
+              console.log(`Mints Remaining: ${mintsRemaining}`);
+              console.log(`Progress: ${progress.toFixed(2)}%`);
+
+              return {
+                rune,
+                status,
+                mintsRemaining,
+                progress
+              };
+            } else {
+              console.warn(`Rune data missing cap or mints for rune: ${rune}`);
+              return {
+                rune,
+                status: 'Data Missing',
+                mintsRemaining: 'N/A',
+                progress: 0
+              };
+            }
           })
         );
         setRuneData(data);
@@ -122,7 +134,7 @@ const Runes = ({ runes, loading = false }) => {
                     style={{ width: `${data.progress}%` }}
                   ></div>
                 </div>
-                <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining.toLocaleString()} remaining</p>
+                <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining !== 'N/A' ? data.mintsRemaining.toLocaleString() : 'N/A'} remaining</p>
               </td>
             </tr>
           ))}

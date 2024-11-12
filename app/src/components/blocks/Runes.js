@@ -36,9 +36,9 @@ const Runes = ({ runes, loading = false }) => {
             if (!isNaN(cap) && !isNaN(mints)) {
               const status = mints < cap ? 'Minting' : 'Ended';
               const mintsRemaining = cap - mints;
-              const progress = (mints / cap) * 100; // Corrected progress calculation
+              // Changed progress calculation to fill as mintsRemaining approaches 0
+              const progress = ((cap - mintsRemaining) / cap) * 100;
 
-              // Log the details for each rune
               console.log(`Rune: ${rune}`);
               console.log(`Cap: ${cap}`);
               console.log(`Mints: ${mints}`);

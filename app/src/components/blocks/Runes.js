@@ -52,8 +52,8 @@ const Runes = ({ runes, loading = false }) => {
               console.warn(`Rune data missing cap or mints for rune: ${rune}`);
               return {
                 rune,
-                status: 'Data Missing',
-                mintsRemaining: 'N/A',
+                status: 'Not Mintable',
+                mintsRemaining: '-',
                 progress: 0
               };
             }
@@ -134,7 +134,7 @@ const Runes = ({ runes, loading = false }) => {
                     style={{ width: `${data.progress}%` }}
                   ></div>
                 </div>
-                <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining !== 'N/A' ? data.mintsRemaining.toLocaleString() : 'N/A'} remaining</p>
+                <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining !== '-' ? data.mintsRemaining.toLocaleString() : '-'}</p>
               </td>
             </tr>
           ))}

@@ -1,23 +1,71 @@
 // app/components/blocks/Runes
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import https from 'https';
 import { Coins } from 'lucide-react';
 
 const Runes = ({ runes, loading = false }) => {
-  const [expandedRune, setExpandedRune] = useState(null);
+  const [runeData, setRuneData] = useState([]);
+  const [error, setError] = useState(null);
 
-  const handleRuneClick = (index) => {
-    if (expandedRune === index) {
-      setExpandedRune(null);
-    } else {
-      setExpandedRune(index);
+  // Create an axios instance for making network requests
+  const axiosInstance = axios.create({
+    baseURL:
+      process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
+    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+  });
+
+  useEffect(() => {
+    const fetchRuneData = async () => {
+      try {
+        const data = await Promise.all(
+          runes.map(async (rune) => {
+            console.log(`Fetching data for rune: ${rune}`);
+            const response = await axiosInstance.get(`/runes/${rune}`, {
+              headers: { Accept: 'text/html' },
+            });
+            const htmlString = response.data;
+            console.log(`HTML response for rune ${rune}:`, htmlString);
+
+            // Parse the HTML to extract status and mints remaining
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+
+            // Adjust selectors based on actual HTML structure
+            const statusElement = doc.querySelector('#status');
+            const mintsRemainingElement = doc.querySelector('#mints-remaining');
+
+            const status = statusElement
+              ? statusElement.textContent.trim()
+              : 'Unknown';
+            const mintsRemaining = mintsRemainingElement
+              ? mintsRemainingElement.textContent.trim()
+              : 'Unknown';
+
+            console.log(
+              `Extracted data for rune ${rune}: status=${status}, mintsRemaining=${mintsRemaining}`
+            );
+
+            return { rune, status, mintsRemaining };
+          })
+        );
+        setRuneData(data);
+      } catch (err) {
+        console.error('Error fetching rune data:', err);
+        setError(err.message);
+      }
+    };
+
+    if (runes && runes.length > 0) {
+      fetchRuneData();
     }
-  };
+  }, [runes]);
 
   if (loading) {
     return (
       <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">Runes in Block</h3>
+        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
         <div className="flex items-center justify-center h-32">
           <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
         </div>
@@ -25,13 +73,17 @@ const Runes = ({ runes, loading = false }) => {
     );
   }
 
+  if (error) {
+    return <div className="text-red-500">Error: {error}</div>;
+  }
+
   if (!runes || runes.length === 0) {
     return (
       <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-4">Runes in Block</h3>
+        <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
         <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
           <Coins className="w-12 h-12 text-gray-400" />
-          <p className="mt-2">No runes</p>
+          <p className="mt-2">No new etchings</p>
         </div>
       </div>
     );
@@ -39,28 +91,25 @@ const Runes = ({ runes, loading = false }) => {
 
   return (
     <div className="mb-8">
-      <h3 className="text-xl font-semibold mb-4">Runes in Block</h3>
-      <div className="bg-gray-800 rounded-lg p-4 text-white font-mono">
-        <p>runes: Array({runes.length}) {'{'}</p>
-        {runes.map((rune, index) => (
-          <div key={index} className="ml-4">
-            <span 
-              className="cursor-pointer text-blue-400 hover:underline"
-              onClick={() => handleRuneClick(index)}
-            >
-              {index}: "{rune}"
-            </span>
-            {expandedRune === index && (
-              <div className="ml-4 mt-2 text-gray-400">
-                {/* Add more details here if available */}
-                <p>Additional rune details would go here</p>
-              </div>
-            )}
-          </div>
-        ))}
-        <p>{'}'}</p>
-        <p className="mt-2">length: {runes.length}</p>
-      </div>
+      <h3 className="text-xl font-semibold mb-4">New Etchings</h3>
+      <table className="min-w-full bg-white dark:bg-gray-800">
+        <thead>
+          <tr>
+            <th className="py-2 border px-4">Rune</th>
+            <th className="py-2 border px-4">Status</th>
+            <th className="py-2 border px-4">Mints Remaining</th>
+          </tr>
+        </thead>
+        <tbody>
+          {runeData.map((data, index) => (
+            <tr key={index}>
+              <td className="border px-4 py-2">{data.rune}</td>
+              <td className="border px-4 py-2">{data.status}</td>
+              <td className="border px-4 py-2">{data.mintsRemaining}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

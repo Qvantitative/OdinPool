@@ -125,14 +125,14 @@ const Runes = ({ runes, loading = false }) => {
       <style jsx>{`
         .radiating-glow {
           position: relative;
-          animation: pulse 2s infinite;
+          animation: pulse 2s infinite ease-in-out;
         }
         @keyframes pulse {
           0% {
             box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
           }
-          70% {
-            box-shadow: 0 0 20px 20px rgba(34, 197, 94, 0);
+          50% {
+            box-shadow: 0 0 15px 15px rgba(34, 197, 94, 0.3);
           }
           100% {
             box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);

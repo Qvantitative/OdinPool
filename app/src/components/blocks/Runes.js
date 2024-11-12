@@ -33,6 +33,12 @@ const Runes = ({ runes, loading = false }) => {
             const mintsRemaining = cap - mints;
             const progress = ((cap - mintsRemaining) / cap) * 100; // Calculate progress percentage
 
+            // Log the details for each rune
+            console.log(`Rune: ${rune}`);
+            console.log(`Status: ${status}`);
+            console.log(`Mints Remaining: ${mintsRemaining}`);
+            console.log(`Progress: ${progress.toFixed(2)}%`);
+
             return {
               rune,
               status,

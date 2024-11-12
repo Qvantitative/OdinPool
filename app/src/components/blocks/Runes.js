@@ -9,7 +9,6 @@ const Runes = ({ runes, loading = false }) => {
   const [runeData, setRuneData] = useState([]);
   const [error, setError] = useState(null);
 
-  // Adjusted axios instance with full baseURL and keeping /rune path
   const axiosInstance = axios.create({
     baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
@@ -27,34 +26,28 @@ const Runes = ({ runes, loading = false }) => {
             });
             const runeInfo = response.data;
 
-            // Null check for entry, entry.terms, and entry.terms.cap
             const cap = runeInfo.entry?.terms?.cap;
             const mints = runeInfo.entry?.mints;
 
             if (cap != null && mints != null) {
               const status = mints < cap ? 'Minting' : 'Ended';
               const mintsRemaining = cap - mints;
-              const progress = ((cap - mintsRemaining) / cap) * 100; // Calculate progress percentage
-
-              // Log the details for each rune
-              console.log(`Rune: ${rune}`);
-              console.log(`Status: ${status}`);
-              console.log(`Mints Remaining: ${mintsRemaining}`);
-              console.log(`Progress: ${progress.toFixed(2)}%`);
+              const progress = ((cap - mintsRemaining) / cap) * 100;
 
               return {
                 rune,
                 status,
                 mintsRemaining,
-                progress
+                progress,
+                cap,
+                mints
               };
             } else {
-              console.warn(`Rune data missing cap or mints for rune: ${rune}`);
               return {
                 rune,
                 status: 'Not Mintable',
                 mintsRemaining: '-',
-                progress: null // No progress for Not Mintable items
+                progress: null
               };
             }
           })
@@ -70,6 +63,12 @@ const Runes = ({ runes, loading = false }) => {
       fetchRuneData();
     }
   }, [runes]);
+
+  // Helper function to determine progress bar color
+  const getProgressBarColor = (mintsRemaining, cap) => {
+    if (mintsRemaining === 0) return 'bg-red-500';
+    return 'bg-green-500';
+  };
 
   if (loading) {
     return (
@@ -118,26 +117,35 @@ const Runes = ({ runes, loading = false }) => {
           {runeData.map((data, index) => (
             <tr key={index} className="text-gray-300 hover:bg-blue-700 transition-colors duration-200">
               <td className="py-4 px-6 border-b border-gray-600 text-center">{data.rune}</td>
-              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold rounded-full relative">
-                <span className={`${
-                  data.status === 'Minting' ? 'radiating-glow' : ''
-                } inline-block px-4 py-2 rounded-full ${
-                  data.status === 'Minting' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                }`}>
+              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold">
+                <span
+                  className={`inline-block px-4 py-2 rounded-full ${
+                    data.status === 'Minting'
+                      ? 'bg-green-600 text-white radiating-glow'
+                      : 'bg-red-600 text-white'
+                  }`}
+                >
                   {data.status}
                 </span>
               </td>
               <td className="py-4 px-6 border-b border-gray-600 text-center">
                 {data.progress !== null ? (
-                  <>
+                  <div className="space-y-2">
                     <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
                       <div
-                        className="absolute h-full bg-green-500 rounded-full"
-                        style={{ width: `${data.progress}%` }}
-                      ></div>
+                        className={`absolute h-full transition-all duration-500 ease-in-out ${
+                          getProgressBarColor(data.mintsRemaining, data.cap)
+                        }`}
+                        style={{
+                          width: `${data.progress}%`,
+                          transition: 'width 0.5s ease-in-out'
+                        }}
+                      />
                     </div>
-                    <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining.toLocaleString()} remaining</p>
-                  </>
+                    <p className="text-sm text-gray-400">
+                      {data.mintsRemaining.toLocaleString()} remaining
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-400">-</p>
                 )}

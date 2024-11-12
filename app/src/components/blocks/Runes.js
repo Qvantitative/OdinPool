@@ -31,11 +31,13 @@ const Runes = ({ runes, loading = false }) => {
             const mints = runeInfo.entry.mints;
             const status = mints < cap ? 'Minting' : 'Ended';
             const mintsRemaining = cap - mints;
+            const progress = ((cap - mintsRemaining) / cap) * 100; // Calculate progress percentage
 
             return {
               rune,
               status,
-              mintsRemaining
+              mintsRemaining,
+              progress
             };
           })
         );
@@ -98,16 +100,45 @@ const Runes = ({ runes, loading = false }) => {
           {runeData.map((data, index) => (
             <tr key={index} className="text-gray-300 hover:bg-blue-700 transition-colors duration-200">
               <td className="py-4 px-6 border-b border-gray-600 text-center">{data.rune}</td>
-              <td className={`py-4 px-6 border-b border-gray-600 text-center font-semibold rounded-full ${
-                data.status === 'Minting' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-              }`}>
-                {data.status}
+              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold rounded-full relative">
+                <span className={`${
+                  data.status === 'Minting' ? 'radiating-glow' : ''
+                } inline-block px-4 py-2 rounded-full ${
+                  data.status === 'Minting' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                }`}>
+                  {data.status}
+                </span>
               </td>
-              <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold">{data.mintsRemaining}</td>
+              <td className="py-4 px-6 border-b border-gray-600 text-center">
+                <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="absolute h-full bg-green-500 rounded-full"
+                    style={{ width: `${data.progress}%` }}
+                  ></div>
+                </div>
+                <p className="mt-1 text-sm text-gray-400">{data.mintsRemaining.toLocaleString()} remaining</p>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <style jsx>{`
+        .radiating-glow {
+          position: relative;
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 20px 20px rgba(34, 197, 94, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+          }
+        }
+      `}</style>
     </div>
   );
 };

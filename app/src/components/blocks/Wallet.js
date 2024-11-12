@@ -246,6 +246,18 @@ const Wallet = ({ address, onAddressClick }) => {
     }
   }, [address]);
 
+  // Add cleanup effect at component level
+  useEffect(() => {
+    // Cleanup function to revoke blob URLs when component unmounts
+    return () => {
+      Object.values(inscriptionImages).forEach(data => {
+        if (data.url && (data.type === 'gltf' || data.type === 'image' || data.type === 'video')) {
+          URL.revokeObjectURL(data.url);
+        }
+      });
+    };
+  }, [inscriptionImages]);
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-red-500">
@@ -284,7 +296,7 @@ const Wallet = ({ address, onAddressClick }) => {
                 <ambientLight intensity={0.5} />
                 <pointLight position={[10, 10, 10]} />
                 <Suspense fallback={null}>
-                  <Model url={`/content/${inscriptionId}`} />
+                  <Model url={inscriptionData.url} /> {/* Use the cached blob URL instead */}
                   <OrbitControls
                     enableZoom={true}
                     enablePan={true}

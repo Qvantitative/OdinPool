@@ -38,7 +38,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
         headers: { Accept: 'text/html' },
       });
       htmlString = response.data;
-      addressCache[address] = htmlString; // Cache the HTML response
+      addressCache[address] = htmlString;
     }
 
     const parser = new DOMParser();
@@ -52,7 +52,6 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
         const href = element.getAttribute('href');
         const inscriptionId = href.split('/').pop();
 
-        // Skip if we already have this inscription data
         if (images[inscriptionId]) {
           return;
         }
@@ -60,50 +59,90 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
         try {
           let contentType;
 
-          // Check if the content type is cached
           if (inscriptionContentTypeCache[inscriptionId]) {
             contentType = inscriptionContentTypeCache[inscriptionId];
           } else {
             const headResponse = await axiosInstance.head(`/content/${inscriptionId}`);
             contentType = headResponse.headers['content-type'];
-            inscriptionContentTypeCache[inscriptionId] = contentType; // Cache the content type
+            inscriptionContentTypeCache[inscriptionId] = contentType;
           }
 
-          // Fetch and cache the content based on the content type
-          if (contentType.includes('application/json')) {
-            let content;
-            if (inscriptionContentCache[inscriptionId]) {
-              content = inscriptionContentCache[inscriptionId];
-            } else {
-              const jsonResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text',
+          // Handle different content types
+          if (inscriptionContentCache[inscriptionId]) {
+            images[inscriptionId] = inscriptionContentCache[inscriptionId];
+            return;
+          }
+
+          switch (true) {
+            case contentType === 'video/mp4': {
+              const videoResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
+                responseType: 'blob'
               });
-              content = jsonResponse.data;
-              inscriptionContentCache[inscriptionId] = content; // Cache the content
+              const videoUrl = URL.createObjectURL(videoResponse.data);
+              const result = {
+                url: videoUrl,
+                type: 'video',
+                contentType
+              };
+              inscriptionContentCache[inscriptionId] = result;
+              images[inscriptionId] = result;
+              break;
             }
 
-            try {
-              const parsedJson = JSON.parse(content);
-              images[inscriptionId] = {
-                content: parsedJson,
-                type: 'json',
-                contentType: contentType,
-              };
-            } catch (jsonError) {
-              images[inscriptionId] = {
-                content: content,
-                type: 'json',
-                error: 'Invalid JSON format',
-              };
-            }
-          } else if (contentType.startsWith('image/')) {
-            let imageUrl;
-            if (inscriptionContentCache[inscriptionId]) {
-              imageUrl = inscriptionContentCache[inscriptionId];
-            } else {
-              const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob',
+            case contentType === 'model/gltf-json' ||
+                 contentType === 'model/gltf+json': {
+              const gltfResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
+                responseType: 'text'
               });
+              let result;
+              try {
+                const parsedGltf = JSON.parse(gltfResponse.data);
+                result = {
+                  content: parsedGltf,
+                  type: 'gltf',
+                  contentType
+                };
+              } catch (gltfError) {
+                result = {
+                  content: gltfResponse.data,
+                  type: 'gltf',
+                  error: 'Invalid GLTF JSON format'
+                };
+              }
+              inscriptionContentCache[inscriptionId] = result;
+              images[inscriptionId] = result;
+              break;
+            }
+
+            case contentType.includes('application/json'): {
+              const jsonResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
+                responseType: 'text'
+              });
+              let result;
+              try {
+                const parsedJson = JSON.parse(jsonResponse.data);
+                result = {
+                  content: parsedJson,
+                  type: 'json',
+                  contentType
+                };
+              } catch (jsonError) {
+                result = {
+                  content: jsonResponse.data,
+                  type: 'json',
+                  error: 'Invalid JSON format'
+                };
+              }
+              inscriptionContentCache[inscriptionId] = result;
+              images[inscriptionId] = result;
+              break;
+            }
+
+            case contentType.startsWith('image/'): {
+              const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
+                responseType: 'blob'
+              });
+              let imageUrl;
               if (contentType === 'image/svg+xml') {
                 const svgText = await contentResponse.data.text();
                 const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
@@ -111,39 +150,45 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
               } else {
                 imageUrl = URL.createObjectURL(contentResponse.data);
               }
-              inscriptionContentCache[inscriptionId] = imageUrl; // Cache the image URL
+              const result = {
+                url: imageUrl,
+                type: 'image'
+              };
+              inscriptionContentCache[inscriptionId] = result;
+              images[inscriptionId] = result;
+              break;
             }
-            images[inscriptionId] = {
-              url: imageUrl,
-              type: 'image',
-            };
-          } else if (contentType.startsWith('text/')) {
-            let content;
-            if (inscriptionContentCache[inscriptionId]) {
-              content = inscriptionContentCache[inscriptionId];
-            } else {
+
+            case contentType.startsWith('text/'): {
               const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text',
+                responseType: 'text'
               });
-              content = contentResponse.data;
-              inscriptionContentCache[inscriptionId] = content; // Cache the content
+              const result = {
+                content: contentResponse.data,
+                type: 'text'
+              };
+              inscriptionContentCache[inscriptionId] = result;
+              images[inscriptionId] = result;
+              break;
             }
-            images[inscriptionId] = {
-              content: content,
-              type: 'text',
-            };
-          } else {
-            images[inscriptionId] = {
-              type: 'unsupported',
-              contentType: contentType,
-            };
+
+            default: {
+              const result = {
+                type: 'unsupported',
+                contentType
+              };
+              inscriptionContentCache[inscriptionId] = result;
+              images[inscriptionId] = result;
+            }
           }
         } catch (contentErr) {
           console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
-          images[inscriptionId] = {
+          const errorResult = {
             type: 'error',
-            error: 'Content unavailable',
+            error: 'Content unavailable'
           };
+          inscriptionContentCache[inscriptionId] = errorResult;
+          images[inscriptionId] = errorResult;
         }
       })
     );
@@ -226,6 +271,51 @@ const Wallet = ({ address, onAddressClick }) => {
     }
 
     switch (inscriptionData.type) {
+      case 'video':
+        return (
+          <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
+            <div className="p-2 bg-gray-800 text-xs text-gray-400">
+              video/mp4
+            </div>
+            <div className="flex-1 relative">
+              <video
+                className="absolute inset-0 w-full h-full object-contain"
+                controls
+                playsInline
+              >
+                <source src={inscriptionData.url} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            {inscriptionId && (
+              <div className="p-2 bg-gray-800 text-xs text-gray-400 border-t border-gray-700">
+                #{inscriptionId}
+                <div className="text-gray-500">MP4</div>
+              </div>
+            )}
+          </div>
+        );
+      case 'gltf':
+        return (
+          <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
+            <div className="p-2 bg-gray-800 text-xs text-gray-400">
+              model/gltf-json
+            </div>
+            <div className="flex-1 p-4 font-mono text-xs overflow-auto">
+              <pre className="whitespace-pre-wrap break-all">
+                {typeof inscriptionData.content === 'object'
+                  ? JSON.stringify(inscriptionData.content, null, 2)
+                  : inscriptionData.content}
+              </pre>
+            </div>
+            {inscriptionId && (
+              <div className="p-2 bg-gray-800 text-xs text-gray-400 border-t border-gray-700">
+                #{inscriptionId}
+                <div className="text-gray-500">GLTF</div>
+              </div>
+            )}
+          </div>
+        );
       case 'image':
         return (
           <img
@@ -264,10 +354,17 @@ const Wallet = ({ address, onAddressClick }) => {
         );
       default:
         return (
-          <div className="flex flex-col items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl p-4">
-            <p>Unsupported content type</p>
-            {inscriptionData.contentType && (
-              <p className="text-xs mt-2 text-gray-400">{inscriptionData.contentType}</p>
+          <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
+            <div className="flex-1 flex flex-col items-center justify-center p-4">
+              <p className="text-sm text-gray-300">Unsupported content type</p>
+              {inscriptionData.contentType && (
+                <p className="text-xs mt-2 text-gray-400">{inscriptionData.contentType}</p>
+              )}
+            </div>
+            {inscriptionId && (
+              <div className="p-2 bg-gray-800 text-xs text-gray-400 border-t border-gray-700">
+                #{inscriptionId}
+              </div>
             )}
           </div>
         );

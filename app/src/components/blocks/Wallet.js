@@ -5,7 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff, Coins } from 'lucide-react';
+import { ImageOff, Coins } from 'lucide-react'; // Added Coins import
 
 // Create an axios instance for making network requests
 const axiosInstance = axios.create({
@@ -46,6 +46,7 @@ const fetchWalletData = async (
   try {
     let htmlString;
 
+    // Check if the HTML response for the address is cached
     if (addressCache[address]) {
       htmlString = addressCache[address];
     } else {
@@ -58,9 +59,6 @@ const fetchWalletData = async (
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
-
-    // Debug: Log the full HTML
-    console.log('Full HTML:', htmlString);
 
     // Existing code to extract inscriptions
     const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
@@ -223,57 +221,32 @@ const fetchWalletData = async (
       })
     );
 
-    // Extract runes balances with fixed parsing
+    // Extract runes balances and outputs
     const dtElements = doc.querySelectorAll('dt');
     const runesBalances = [];
     const outputs = [];
 
     dtElements.forEach((dt) => {
       const term = dt.textContent.trim().toLowerCase();
-      console.log('Found dt element with term:', term);
-
       const dd = dt.nextElementSibling;
-      if (!dd) {
-        console.log('No dd element found for term:', term);
-        return;
-      }
+      if (!dd) return;
 
       if (term === 'runes balances') {
-        console.log('Found runes balances section');
-        console.log('DD innerHTML:', dd.innerHTML);
-        console.log('DD textContent:', dd.textContent);
-
-        // Log each child node
-        dd.childNodes.forEach((node, index) => {
-          console.log(`Node ${index}:`, {
-            type: node.nodeType,
-            tagName: node.nodeType === 1 ? node.tagName : null,
-            textContent: node.textContent,
-            innerHTML: node.nodeType === 1 ? node.innerHTML : null,
-          });
-        });
-
-        // Try to parse runes
-        let runePairs = dd.textContent.split(',').map(pair => pair.trim());
-        console.log('Split rune pairs:', runePairs);
-
-        runePairs.forEach(pair => {
-          // Find the rune name (should be the text of the <a> tag)
-          const runeMatch = pair.match(/([^\s]+)\s+([\d,]+)/);
-          if (runeMatch) {
-            console.log('Found rune match:', runeMatch);
-            const [_, runeName, amount] = runeMatch;
-            runesBalances.push({
-              runeName: runeName.trim(),
-              href: `/rune/${runeName.trim()}`,
-              amount: amount.trim(),
-            });
-          } else {
-            console.log('No match found for pair:', pair);
+        dd.childNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
+            const runeName = node.textContent;
+            const href = node.getAttribute('href');
+            let amountText = '';
+            let nextSibling = node.nextSibling;
+            while (nextSibling && nextSibling.nodeType !== Node.TEXT_NODE) {
+              nextSibling = nextSibling.nextSibling;
+            }
+            if (nextSibling) {
+              amountText = nextSibling.textContent.trim();
+            }
+            runesBalances.push({ runeName, href, amount: amountText });
           }
         });
-
-        console.log('Final runesBalances array:', runesBalances);
       } else if (term === 'outputs') {
         const outputLinks = dd.querySelectorAll('li a.monospace');
         outputs.push(
@@ -363,80 +336,66 @@ const Wallet = ({ address, onAddressClick }) => {
   }, [address]);
 
   // Fetch rune data when runesBalances change
-    useEffect(() => {
-      const fetchRuneData = async () => {
-        if (runesBalances.length === 0) {
-          return;
-        }
-        setRuneLoading(true);
-        try {
-          const data = await Promise.all(
-            runesBalances.map(async (rune) => {
-              try {
-                // Remove any special characters from rune name for the API call
-                const runeName = encodeURIComponent(rune.runeName.trim());
-                const response = await axiosInstance.get(`/runes/${runeName}`, {  // Changed from /rune/ to /runes/
-                  headers: {
-                    Accept: 'application/json',
-                  },
-                });
-
-                console.log('Rune API response:', response.data); // Debug log
-
-                const runeInfo = response.data;
-
-                // Handle the case where runeInfo might not have the expected structure
-                const cap = parseInt(runeInfo?.entry?.terms?.cap || '0', 10);
-                const mints = parseInt(runeInfo?.entry?.mints || '0', 10);
-
-                // Default to showing just the balance if we can't get mint data
-                if (isNaN(cap) || isNaN(mints)) {
-                  return {
-                    runeName: rune.runeName,
-                    amount: rune.amount,
-                    status: 'Active',
-                    mintsRemaining: '-',
-                    progress: null,
-                  };
-                }
-
-                const status = mints < cap ? 'Minting' : 'Ended';
-                const mintsRemaining = Math.max(0, cap - mints);
-                const progress = ((cap - mintsRemaining) / cap) * 100;
-
-                return {
-                  runeName: rune.runeName,
-                  amount: rune.amount,
-                  status,
-                  mintsRemaining,
-                  progress,
-                };
-              } catch (error) {
-                console.error(`Error fetching data for rune ${rune.runeName}:`, error);
-                // Return a fallback object if the API call fails
-                return {
-                  runeName: rune.runeName,
-                  amount: rune.amount,
-                  status: 'Active',
-                  mintsRemaining: '-',
-                  progress: null,
-                };
-              }
-            })
-          );
-          setRuneData(data);
-        } catch (error) {
-          console.error('Error fetching rune data:', error);
-          setRuneError(error.message);
-        } finally {
-          setRuneLoading(false);
-        }
-      };
-
-      if (runesBalances && runesBalances.length > 0) {
-        fetchRuneData();
+  useEffect(() => {
+    const fetchRuneData = async () => {
+      if (runesBalances.length === 0) {
+        return;
       }
-    }, [runesBalances]);
+      setRuneLoading(true);
+      try {
+        const data = await Promise.all(
+          runesBalances.map(async (rune) => {
+            const runeName = rune.runeName;
+            const amount = rune.amount;
+            const response = await axiosInstance.get(`/rune/${runeName}`, {
+              headers: {
+                Accept: 'application/json',
+              },
+            });
+            const runeInfo = response.data;
+
+            // Parse cap and mints as integers
+            const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
+            const mints = parseInt(runeInfo.entry?.mints, 10);
+
+            // Check if cap and mints are valid numbers
+            if (!isNaN(cap) && !isNaN(mints)) {
+              const status = mints < cap ? 'Minting' : 'Ended';
+              const mintsRemaining = cap - mints;
+              // Changed progress calculation to fill as mintsRemaining approaches 0
+              const progress = ((cap - mintsRemaining) / cap) * 100;
+
+              return {
+                runeName,
+                amount,
+                status,
+                mintsRemaining,
+                progress,
+              };
+            } else {
+              return {
+                runeName,
+                amount,
+                status: 'Not Mintable',
+                mintsRemaining: '-',
+                progress: null, // No progress for Not Mintable items
+              };
+            }
+          })
+        );
+        setRuneData(data);
+      } catch (error) {
+        console.error('Error fetching rune data:', error);
+        setRuneError(error.message);
+      } finally {
+        setRuneLoading(false);
+      }
+    };
+
+    if (runesBalances && runesBalances.length > 0) {
+      fetchRuneData();
+    }
+  }, [runesBalances]);
 
   // Add cleanup effect at component level
   useEffect(() => {

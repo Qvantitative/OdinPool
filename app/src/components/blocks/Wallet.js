@@ -841,7 +841,7 @@ const Wallet = ({ address, onAddressClick }) => {
                   <li key={index}>
                     <a
                       className="text-blue-400 hover:text-blue-300 underline"
-                      href={`/output/${output.outputId}/`}
+                      href={`/output/${encodeURIComponent(output.outputId)}/`}
                     >
                       {output.outputId}
                     </a>

@@ -458,98 +458,106 @@ const Wallet = ({ address, onAddressClick }) => {
   };
 
   return (
-    <div className="mb-8">
-      {/* Tabs Navigation */}
-      <div className="tabs flex justify-center mb-6">
-        <button
-          onClick={() => setSelectedTab('Inscriptions')}
-          className={`px-4 py-2 ${
-            selectedTab === 'Inscriptions' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
-          } rounded-t-lg focus:outline-none`}
-        >
-          Inscriptions
-        </button>
-        <button
-          onClick={() => setSelectedTab('Runes')}
-          className={`px-4 py-2 ${
-            selectedTab === 'Runes' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
-          } rounded-t-lg focus:outline-none`}
-        >
-          Runes
-        </button>
-        <button
-          onClick={() => setSelectedTab('Transactions')}
-          className={`px-4 py-2 ${
-            selectedTab === 'Transactions' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
-          } rounded-t-lg focus:outline-none`}
-        >
-          Transactions
-        </button>
+    <div className="mb-8 flex">
+      {/* Sidebar Navigation */}
+      <div className="w-48 flex-shrink-0">
+        <div className="flex flex-col space-y-2">
+          <button
+            onClick={() => setSelectedTab('Inscriptions')}
+            className={`px-4 py-2 text-left ${
+              selectedTab === 'Inscriptions'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-700 text-gray-300'
+            } rounded-lg focus:outline-none`}
+          >
+            Inscriptions
+          </button>
+          <button
+            onClick={() => setSelectedTab('Runes')}
+            className={`px-4 py-2 text-left ${
+              selectedTab === 'Runes' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+            } rounded-lg focus:outline-none`}
+          >
+            Runes
+          </button>
+          <button
+            onClick={() => setSelectedTab('Transactions')}
+            className={`px-4 py-2 text-left ${
+              selectedTab === 'Transactions'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-700 text-gray-300'
+            } rounded-lg focus:outline-none`}
+          >
+            Transactions
+          </button>
+        </div>
       </div>
 
       {/* Content Based on Selected Tab */}
-      {selectedTab === 'Inscriptions' && (
-        <>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-2xl font-semibold text-gray-200">
-              Inscriptions for Address {address}
-            </h3>
-            <button
-              onClick={toggleTextInscriptions}
-              className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
-            >
-              {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
-            </button>
-          </div>
+      <div className="flex-1 ml-6">
+        {selectedTab === 'Inscriptions' && (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-semibold text-gray-200">
+                Inscriptions for Address {address}
+              </h3>
+              <button
+                onClick={toggleTextInscriptions}
+                className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
+              >
+                {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
+              </button>
+            </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
-            </div>
-          ) : shouldShowNoInscriptions ? (
-            <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
-              <ImageOff className="w-12 h-12" />
-              <p className="mt-2">No inscriptions found for this address</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredInscriptions.map((inscriptionId) => {
-                const inscriptionData = inscriptionImages[inscriptionId];
-                return (
-                  <div
-                    key={inscriptionId}
-                    className="flex flex-col items-center"
-                    onClick={() =>
-                      handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)
-                    }
-                  >
-                    <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
-                      {renderInscriptionContent(inscriptionId, inscriptionData)}
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+              </div>
+            ) : shouldShowNoInscriptions ? (
+              <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
+                <ImageOff className="w-12 h-12" />
+                <p className="mt-2">No inscriptions found for this address</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredInscriptions.map((inscriptionId) => {
+                  const inscriptionData = inscriptionImages[inscriptionId];
+                  return (
+                    <div
+                      key={inscriptionId}
+                      className="flex flex-col items-center"
+                      onClick={() =>
+                        handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)
+                      }
+                    >
+                      <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
+                        {renderInscriptionContent(inscriptionId, inscriptionData)}
+                      </div>
+                      {renderInscriptionCaption(inscriptionId, inscriptionData)}
                     </div>
-                    {renderInscriptionCaption(inscriptionId, inscriptionData)}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
 
-          {selectedInscription && renderSelectedInscriptionDetails()}
-        </>
-      )}
+            {selectedInscription && renderSelectedInscriptionDetails()}
+          </>
+        )}
 
-      {selectedTab === 'Runes' && (
-        <div className="p-4">
-          {/* Runes content goes here */}
-          <p className="text-gray-300">Runes content coming soon.</p>
-        </div>
-      )}
+        {selectedTab === 'Runes' && (
+          <div className="p-4">
+            {/* Runes content goes here */}
+            <p className="text-gray-300">Runes content coming soon.</p>
+          </div>
+        )}
 
-      {selectedTab === 'Transactions' && (
-        <div className="p-4">
-          {/* Transactions content goes here */}
-          <p className="text-gray-300">Transactions content coming soon.</p>
-        </div>
-      )}
+        {selectedTab === 'Transactions' && (
+          <div className="p-4">
+            {/* Transactions content goes here */}
+            <p className="text-gray-300">Transactions content coming soon.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

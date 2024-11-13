@@ -5,7 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff, Coins } from 'lucide-react'; // Added Coins import
+import { ImageOff, Coins } from 'lucide-react';
 
 // Create an axios instance for making network requests
 const axiosInstance = axios.create({
@@ -46,7 +46,6 @@ const fetchWalletData = async (
   try {
     let htmlString;
 
-    // Check if the HTML response for the address is cached
     if (addressCache[address]) {
       htmlString = addressCache[address];
     } else {
@@ -221,7 +220,7 @@ const fetchWalletData = async (
       })
     );
 
-    // Extract runes balances and outputs
+    // Extract runes balances with fixed parsing
     const dtElements = doc.querySelectorAll('dt');
     const runesBalances = [];
     const outputs = [];
@@ -232,21 +231,52 @@ const fetchWalletData = async (
       if (!dd) return;
 
       if (term === 'runes balances') {
-        dd.childNodes.forEach((node) => {
+        // Create a temporary div to hold the content for proper text extraction
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = dd.innerHTML;
+
+        // Get all text nodes and elements
+        const nodes = Array.from(tempDiv.childNodes);
+        let currentRuneName = '';
+        let currentAmount = '';
+
+        nodes.forEach((node) => {
           if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
-            const runeName = node.textContent;
-            const href = node.getAttribute('href');
-            let amountText = '';
-            let nextSibling = node.nextSibling;
-            while (nextSibling && nextSibling.nodeType !== Node.TEXT_NODE) {
-              nextSibling = nextSibling.nextSibling;
+            // If we have a previous rune name and amount, push it
+            if (currentRuneName && currentAmount) {
+              runesBalances.push({
+                runeName: currentRuneName,
+                href: `/rune/${currentRuneName}`,
+                amount: currentAmount.trim(),
+              });
             }
-            if (nextSibling) {
-              amountText = nextSibling.textContent.trim();
+            // Start a new rune entry
+            currentRuneName = node.textContent.trim();
+            currentAmount = '';
+          } else if (node.nodeType === Node.TEXT_NODE) {
+            // Capture amount text
+            const text = node.textContent.trim();
+            if (text && text !== ',' && currentRuneName) {
+              currentAmount = text;
+              runesBalances.push({
+                runeName: currentRuneName,
+                href: `/rune/${currentRuneName}`,
+                amount: currentAmount.trim(),
+              });
+              currentRuneName = '';
+              currentAmount = '';
             }
-            runesBalances.push({ runeName, href, amount: amountText });
           }
         });
+
+        // Handle the last rune if present
+        if (currentRuneName && currentAmount) {
+          runesBalances.push({
+            runeName: currentRuneName,
+            href: `/rune/${currentRuneName}`,
+            amount: currentAmount.trim(),
+          });
+        }
       } else if (term === 'outputs') {
         const outputLinks = dd.querySelectorAll('li a.monospace');
         outputs.push(

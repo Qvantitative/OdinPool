@@ -28,33 +28,29 @@ const Runes = ({ runes, loading = false }) => {
             });
             const runeInfo = response.data;
 
-            // Parse cap and mints as integers
-            const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
-            const mints = parseInt(runeInfo.entry?.mints, 10);
+            // Remove commas and parse cap and mints as numbers
+            const cap = Number(runeInfo.entry?.terms?.cap.replace(/,/g, ''));
+            const mints = Number(runeInfo.entry?.mints.replace(/,/g, ''));
 
-            // Modify the data processing section in Runes.js:
-            if (!isNaN(cap) && !isNaN(mints)) {
+            if (!isNaN(cap) && !isNaN(mints) && cap !== 0) {
               const mintsRemaining = cap - mints;
-              // Calculate progress based on how many have been minted
               const progress = Math.min((mints / cap) * 100, 100).toFixed(2);
 
               return {
                 rune,
                 status: mints < cap ? 'Minting' : 'Ended',
                 mintsRemaining,
-                progress: parseFloat(progress), // Convert back to number after fixing decimals
-                cap,     // Add these for debugging
-                mints    // Add these for debugging
+                progress: parseFloat(progress),
+                cap,
+                mints,
               };
             } else {
-              console.warn(
-                `Rune data missing or invalid cap or mints for rune: ${rune}`
-              );
+              console.warn(`Invalid cap or mints for rune: ${rune}`);
               return {
                 rune,
                 status: 'Not Mintable',
                 mintsRemaining: '-',
-                progress: null, // No progress for Not Mintable items
+                progress: null,
               };
             }
           })

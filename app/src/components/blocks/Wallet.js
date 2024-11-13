@@ -363,66 +363,80 @@ const Wallet = ({ address, onAddressClick }) => {
   }, [address]);
 
   // Fetch rune data when runesBalances change
-  useEffect(() => {
-    const fetchRuneData = async () => {
-      if (runesBalances.length === 0) {
-        return;
+    useEffect(() => {
+      const fetchRuneData = async () => {
+        if (runesBalances.length === 0) {
+          return;
+        }
+        setRuneLoading(true);
+        try {
+          const data = await Promise.all(
+            runesBalances.map(async (rune) => {
+              try {
+                // Remove any special characters from rune name for the API call
+                const runeName = encodeURIComponent(rune.runeName.trim());
+                const response = await axiosInstance.get(`/runes/${runeName}`, {  // Changed from /rune/ to /runes/
+                  headers: {
+                    Accept: 'application/json',
+                  },
+                });
+
+                console.log('Rune API response:', response.data); // Debug log
+
+                const runeInfo = response.data;
+
+                // Handle the case where runeInfo might not have the expected structure
+                const cap = parseInt(runeInfo?.entry?.terms?.cap || '0', 10);
+                const mints = parseInt(runeInfo?.entry?.mints || '0', 10);
+
+                // Default to showing just the balance if we can't get mint data
+                if (isNaN(cap) || isNaN(mints)) {
+                  return {
+                    runeName: rune.runeName,
+                    amount: rune.amount,
+                    status: 'Active',
+                    mintsRemaining: '-',
+                    progress: null,
+                  };
+                }
+
+                const status = mints < cap ? 'Minting' : 'Ended';
+                const mintsRemaining = Math.max(0, cap - mints);
+                const progress = ((cap - mintsRemaining) / cap) * 100;
+
+                return {
+                  runeName: rune.runeName,
+                  amount: rune.amount,
+                  status,
+                  mintsRemaining,
+                  progress,
+                };
+              } catch (error) {
+                console.error(`Error fetching data for rune ${rune.runeName}:`, error);
+                // Return a fallback object if the API call fails
+                return {
+                  runeName: rune.runeName,
+                  amount: rune.amount,
+                  status: 'Active',
+                  mintsRemaining: '-',
+                  progress: null,
+                };
+              }
+            })
+          );
+          setRuneData(data);
+        } catch (error) {
+          console.error('Error fetching rune data:', error);
+          setRuneError(error.message);
+        } finally {
+          setRuneLoading(false);
+        }
+      };
+
+      if (runesBalances && runesBalances.length > 0) {
+        fetchRuneData();
       }
-      setRuneLoading(true);
-      try {
-        const data = await Promise.all(
-          runesBalances.map(async (rune) => {
-            const runeName = rune.runeName;
-            const amount = rune.amount;
-            const response = await axiosInstance.get(`/rune/${runeName}`, {
-              headers: {
-                Accept: 'application/json',
-              },
-            });
-            const runeInfo = response.data;
-
-            // Parse cap and mints as integers
-            const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
-            const mints = parseInt(runeInfo.entry?.mints, 10);
-
-            // Check if cap and mints are valid numbers
-            if (!isNaN(cap) && !isNaN(mints)) {
-              const status = mints < cap ? 'Minting' : 'Ended';
-              const mintsRemaining = cap - mints;
-              // Changed progress calculation to fill as mintsRemaining approaches 0
-              const progress = ((cap - mintsRemaining) / cap) * 100;
-
-              return {
-                runeName,
-                amount,
-                status,
-                mintsRemaining,
-                progress,
-              };
-            } else {
-              return {
-                runeName,
-                amount,
-                status: 'Not Mintable',
-                mintsRemaining: '-',
-                progress: null, // No progress for Not Mintable items
-              };
-            }
-          })
-        );
-        setRuneData(data);
-      } catch (error) {
-        console.error('Error fetching rune data:', error);
-        setRuneError(error.message);
-      } finally {
-        setRuneLoading(false);
-      }
-    };
-
-    if (runesBalances && runesBalances.length > 0) {
-      fetchRuneData();
-    }
-  }, [runesBalances]);
+    }, [runesBalances]);
 
   // Add cleanup effect at component level
   useEffect(() => {

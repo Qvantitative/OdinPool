@@ -84,13 +84,13 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
           switch (true) {
             case contentType === 'video/mp4': {
               const videoResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob'
+                responseType: 'blob',
               });
               const videoUrl = URL.createObjectURL(videoResponse.data);
               const result = {
                 url: videoUrl,
                 type: 'video',
-                contentType
+                contentType,
               };
               inscriptionContentCache[inscriptionId] = result;
               images[inscriptionId] = result;
@@ -98,15 +98,15 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
             }
 
             case contentType === 'model/gltf-json' ||
-                 contentType === 'model/gltf+json': {
+              contentType === 'model/gltf+json': {
               const gltfResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob'
+                responseType: 'blob',
               });
               const gltfUrl = URL.createObjectURL(gltfResponse.data);
               const result = {
                 url: gltfUrl,
                 type: 'gltf',
-                contentType
+                contentType,
               };
               inscriptionContentCache[inscriptionId] = result;
               images[inscriptionId] = result;
@@ -115,7 +115,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
 
             case contentType.includes('application/json'): {
               const jsonResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text'
+                responseType: 'text',
               });
               let result;
               try {
@@ -123,13 +123,13 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
                 result = {
                   content: parsedJson,
                   type: 'json',
-                  contentType
+                  contentType,
                 };
               } catch (jsonError) {
                 result = {
                   content: jsonResponse.data,
                   type: 'json',
-                  error: 'Invalid JSON format'
+                  error: 'Invalid JSON format',
                 };
               }
               inscriptionContentCache[inscriptionId] = result;
@@ -139,7 +139,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
 
             case contentType.startsWith('image/'): {
               const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob'
+                responseType: 'blob',
               });
               let imageUrl;
               if (contentType === 'image/svg+xml') {
@@ -151,7 +151,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
               }
               const result = {
                 url: imageUrl,
-                type: 'image'
+                type: 'image',
               };
               inscriptionContentCache[inscriptionId] = result;
               images[inscriptionId] = result;
@@ -160,11 +160,11 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
 
             case contentType.startsWith('text/'): {
               const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text'
+                responseType: 'text',
               });
               const result = {
                 content: contentResponse.data,
-                type: 'text'
+                type: 'text',
               };
               inscriptionContentCache[inscriptionId] = result;
               images[inscriptionId] = result;
@@ -174,7 +174,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
             default: {
               const result = {
                 type: 'unsupported',
-                contentType
+                contentType,
               };
               inscriptionContentCache[inscriptionId] = result;
               images[inscriptionId] = result;
@@ -184,7 +184,7 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
           console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
           const errorResult = {
             type: 'error',
-            error: 'Content unavailable'
+            error: 'Content unavailable',
           };
           inscriptionContentCache[inscriptionId] = errorResult;
           images[inscriptionId] = errorResult;
@@ -236,21 +236,22 @@ const Wallet = ({ address, onAddressClick }) => {
   const [selectedInscription, setSelectedInscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedTab, setSelectedTab] = useState('Inscriptions'); // State for managing active tab
 
   // Fetch inscriptions when the address changes
   useEffect(() => {
-    if (address) {
+    if (address && selectedTab === 'Inscriptions') {
       fetchWalletInscriptions(address, setInscriptionImages, setLoading, setError);
     } else {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, selectedTab]);
 
   // Add cleanup effect at component level
   useEffect(() => {
     // Cleanup function to revoke blob URLs when component unmounts
     return () => {
-      Object.values(inscriptionImages).forEach(data => {
+      Object.values(inscriptionImages).forEach((data) => {
         if (data.url && (data.type === 'gltf' || data.type === 'image' || data.type === 'video')) {
           URL.revokeObjectURL(data.url);
         }
@@ -285,9 +286,7 @@ const Wallet = ({ address, onAddressClick }) => {
       case 'gltf':
         return (
           <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
-            <div className="p-2 bg-gray-800 text-xs text-gray-400">
-              model/gltf+json
-            </div>
+            <div className="p-2 bg-gray-800 text-xs text-gray-400">model/gltf+json</div>
             <div className="flex-1 relative">
               <Canvas
                 camera={{ position: [0, 0, 5], fov: 45 }}
@@ -460,46 +459,97 @@ const Wallet = ({ address, onAddressClick }) => {
 
   return (
     <div className="mb-8">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-2xl font-semibold text-gray-200">Inscriptions for Address {address}</h3>
+      {/* Tabs Navigation */}
+      <div className="tabs flex justify-center mb-6">
         <button
-          onClick={toggleTextInscriptions}
-          className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
+          onClick={() => setSelectedTab('Inscriptions')}
+          className={`px-4 py-2 ${
+            selectedTab === 'Inscriptions' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+          } rounded-t-lg focus:outline-none`}
         >
-          {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
+          Inscriptions
+        </button>
+        <button
+          onClick={() => setSelectedTab('Runes')}
+          className={`px-4 py-2 ${
+            selectedTab === 'Runes' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+          } rounded-t-lg focus:outline-none`}
+        >
+          Runes
+        </button>
+        <button
+          onClick={() => setSelectedTab('Transactions')}
+          className={`px-4 py-2 ${
+            selectedTab === 'Transactions' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+          } rounded-t-lg focus:outline-none`}
+        >
+          Transactions
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
-        </div>
-      ) : shouldShowNoInscriptions ? (
-        <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
-          <ImageOff className="w-12 h-12" />
-          <p className="mt-2">No inscriptions found for this address</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredInscriptions.map((inscriptionId) => {
-            const inscriptionData = inscriptionImages[inscriptionId];
-            return (
-              <div
-                key={inscriptionId}
-                className="flex flex-col items-center"
-                onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
-              >
-                <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
-                  {renderInscriptionContent(inscriptionId, inscriptionData)}
-                </div>
-                {renderInscriptionCaption(inscriptionId, inscriptionData)}
-              </div>
-            );
-          })}
+      {/* Content Based on Selected Tab */}
+      {selectedTab === 'Inscriptions' && (
+        <>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-semibold text-gray-200">
+              Inscriptions for Address {address}
+            </h3>
+            <button
+              onClick={toggleTextInscriptions}
+              className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
+            >
+              {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+            </div>
+          ) : shouldShowNoInscriptions ? (
+            <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
+              <ImageOff className="w-12 h-12" />
+              <p className="mt-2">No inscriptions found for this address</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {filteredInscriptions.map((inscriptionId) => {
+                const inscriptionData = inscriptionImages[inscriptionId];
+                return (
+                  <div
+                    key={inscriptionId}
+                    className="flex flex-col items-center"
+                    onClick={() =>
+                      handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)
+                    }
+                  >
+                    <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
+                      {renderInscriptionContent(inscriptionId, inscriptionData)}
+                    </div>
+                    {renderInscriptionCaption(inscriptionId, inscriptionData)}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedInscription && renderSelectedInscriptionDetails()}
+        </>
+      )}
+
+      {selectedTab === 'Runes' && (
+        <div className="p-4">
+          {/* Runes content goes here */}
+          <p className="text-gray-300">Runes content coming soon.</p>
         </div>
       )}
 
-      {selectedInscription && renderSelectedInscriptionDetails()}
+      {selectedTab === 'Transactions' && (
+        <div className="p-4">
+          {/* Transactions content goes here */}
+          <p className="text-gray-300">Transactions content coming soon.</p>
+        </div>
+      )}
     </div>
   );
 };

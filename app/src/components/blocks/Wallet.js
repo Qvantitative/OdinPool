@@ -59,6 +59,9 @@ const fetchWalletData = async (
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
 
+    // Debug: Log the full HTML
+    console.log('Full HTML:', htmlString);
+
     // Existing code to extract inscriptions
     const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
     const images = {};
@@ -227,56 +230,50 @@ const fetchWalletData = async (
 
     dtElements.forEach((dt) => {
       const term = dt.textContent.trim().toLowerCase();
+      console.log('Found dt element with term:', term);
+
       const dd = dt.nextElementSibling;
-      if (!dd) return;
+      if (!dd) {
+        console.log('No dd element found for term:', term);
+        return;
+      }
 
       if (term === 'runes balances') {
-        // Create a temporary div to hold the content for proper text extraction
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = dd.innerHTML;
+        console.log('Found runes balances section');
+        console.log('DD innerHTML:', dd.innerHTML);
+        console.log('DD textContent:', dd.textContent);
 
-        // Get all text nodes and elements
-        const nodes = Array.from(tempDiv.childNodes);
-        let currentRuneName = '';
-        let currentAmount = '';
+        // Log each child node
+        dd.childNodes.forEach((node, index) => {
+          console.log(`Node ${index}:`, {
+            type: node.nodeType,
+            tagName: node.nodeType === 1 ? node.tagName : null,
+            textContent: node.textContent,
+            innerHTML: node.nodeType === 1 ? node.innerHTML : null,
+          });
+        });
 
-        nodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
-            // If we have a previous rune name and amount, push it
-            if (currentRuneName && currentAmount) {
-              runesBalances.push({
-                runeName: currentRuneName,
-                href: `/rune/${currentRuneName}`,
-                amount: currentAmount.trim(),
-              });
-            }
-            // Start a new rune entry
-            currentRuneName = node.textContent.trim();
-            currentAmount = '';
-          } else if (node.nodeType === Node.TEXT_NODE) {
-            // Capture amount text
-            const text = node.textContent.trim();
-            if (text && text !== ',' && currentRuneName) {
-              currentAmount = text;
-              runesBalances.push({
-                runeName: currentRuneName,
-                href: `/rune/${currentRuneName}`,
-                amount: currentAmount.trim(),
-              });
-              currentRuneName = '';
-              currentAmount = '';
-            }
+        // Try to parse runes
+        let runePairs = dd.textContent.split(',').map(pair => pair.trim());
+        console.log('Split rune pairs:', runePairs);
+
+        runePairs.forEach(pair => {
+          // Find the rune name (should be the text of the <a> tag)
+          const runeMatch = pair.match(/([^\s]+)\s+([\d,]+)/);
+          if (runeMatch) {
+            console.log('Found rune match:', runeMatch);
+            const [_, runeName, amount] = runeMatch;
+            runesBalances.push({
+              runeName: runeName.trim(),
+              href: `/rune/${runeName.trim()}`,
+              amount: amount.trim(),
+            });
+          } else {
+            console.log('No match found for pair:', pair);
           }
         });
 
-        // Handle the last rune if present
-        if (currentRuneName && currentAmount) {
-          runesBalances.push({
-            runeName: currentRuneName,
-            href: `/rune/${currentRuneName}`,
-            amount: currentAmount.trim(),
-          });
-        }
+        console.log('Final runesBalances array:', runesBalances);
       } else if (term === 'outputs') {
         const outputLinks = dd.querySelectorAll('li a.monospace');
         outputs.push(

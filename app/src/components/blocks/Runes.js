@@ -9,64 +9,52 @@ const Runes = ({ runes, loading = false }) => {
   const [runeData, setRuneData] = useState([]);
   const [error, setError] = useState(null);
 
+  // Adjusted axios instance with full baseURL and keeping /rune path
   const axiosInstance = axios.create({
-    baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
+    baseURL:
+      process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
   });
-
-  // Helper function to safely parse number strings
-  const parseNumericValue = (value) => {
-    if (!value) return NaN;
-    // Handle both string and number inputs
-    const stringValue = String(value);
-    // Remove commas and convert to number
-    return Number(stringValue.replace(/,/g, ''));
-  };
 
   useEffect(() => {
     const fetchRuneData = async () => {
       try {
         const data = await Promise.all(
           runes.map(async (rune) => {
-            try {
-              const response = await axiosInstance.get(`/rune/${rune}`, {
-                headers: {
-                  Accept: 'application/json',
-                },
-              });
-              const runeInfo = response.data;
+            const response = await axiosInstance.get(`/rune/${rune}`, {
+              headers: {
+                Accept: 'application/json',
+              },
+            });
+            const runeInfo = response.data;
 
-              // Safely parse cap and mints using the helper function
-              const cap = parseNumericValue(runeInfo?.entry?.terms?.cap);
-              const mints = parseNumericValue(runeInfo?.entry?.mints);
+            // Parse cap and mints as integers
+            const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
+            const mints = parseInt(runeInfo.entry?.mints, 10);
 
-              if (!isNaN(cap) && !isNaN(mints) && cap !== 0) {
-                const mintsRemaining = cap - mints;
-                const progress = Math.min((mints / cap) * 100, 100).toFixed(2);
+            // Modify the data processing section in Runes.js:
+            if (!isNaN(cap) && !isNaN(mints)) {
+              const mintsRemaining = cap - mints;
+              // Calculate progress based on how many have been minted
+              const progress = Math.min((mints / cap) * 100, 100).toFixed(2);
 
-                return {
-                  rune,
-                  status: mints < cap ? 'Minting' : 'Ended',
-                  mintsRemaining,
-                  progress: parseFloat(progress),
-                  cap,
-                  mints,
-                };
-              } else {
-                return {
-                  rune,
-                  status: 'Not Mintable',
-                  mintsRemaining: '-',
-                  progress: null,
-                };
-              }
-            } catch (err) {
-              console.warn(`Error fetching data for rune ${rune}:`, err);
               return {
                 rune,
-                status: 'Error',
+                status: mints < cap ? 'Minting' : 'Ended',
+                mintsRemaining,
+                progress: parseFloat(progress), // Convert back to number after fixing decimals
+                cap,     // Add these for debugging
+                mints    // Add these for debugging
+              };
+            } else {
+              console.warn(
+                `Rune data missing or invalid cap or mints for rune: ${rune}`
+              );
+              return {
+                rune,
+                status: 'Not Mintable',
                 mintsRemaining: '-',
-                progress: null,
+                progress: null, // No progress for Not Mintable items
               };
             }
           })
@@ -74,7 +62,7 @@ const Runes = ({ runes, loading = false }) => {
         setRuneData(data);
       } catch (err) {
         console.error('Error fetching rune data:', err);
-        setError('Failed to fetch rune data. Please try again later.');
+        setError(err.message);
       }
     };
 
@@ -102,7 +90,7 @@ const Runes = ({ runes, loading = false }) => {
         <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">
           New Etchings
         </h3>
-        <div className="text-red-500 text-center">{error}</div>
+        <div className="text-red-500 text-center">Error: {error}</div>
       </div>
     );
   }
@@ -150,8 +138,6 @@ const Runes = ({ runes, loading = false }) => {
                   } inline-block px-4 py-2 rounded-full ${
                     data.status === 'Minting'
                       ? 'bg-green-600 text-white'
-                      : data.status === 'Error'
-                      ? 'bg-yellow-600 text-white'
                       : 'bg-red-600 text-white'
                   }`}
                 >

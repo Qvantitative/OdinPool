@@ -5,7 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff } from 'lucide-react';
+import { ImageOff, Coins } from 'lucide-react';
 
 // Create an axios instance for making network requests
 const axiosInstance = axios.create({
@@ -288,22 +288,35 @@ const Wallet = ({ address, onAddressClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTab, setSelectedTab] = useState('Inscriptions');
+  const [runeDetails, setRuneDetails] = useState({});
 
   // Fetch data when the address changes
   useEffect(() => {
     if (address) {
-      fetchWalletData(
-        address,
-        setInscriptionImages,
-        setRunesBalances,
-        setOutputs,
-        setLoading,
-        setError
-      );
+      if (selectedTab === 'Inscriptions') {
+        fetchWalletInscriptions(address, setInscriptionImages, setLoading, setError);
+      } else if (selectedTab === 'Runes' || selectedTab === 'Transactions') {
+        fetchWalletData();
+
+        // If Runes tab is selected, fetch details for each rune
+        if (selectedTab === 'Runes' && runesBalances.length > 0) {
+          const fetchAllRuneDetails = async () => {
+            const details = {};
+            await Promise.all(
+              runesBalances.map(async (rune) => {
+                details[rune.runeName] = await fetchRuneDetails(rune.runeName);
+              })
+            );
+            setRuneDetails(details);
+          };
+
+          fetchAllRuneDetails();
+        }
+      }
     } else {
       setLoading(false);
     }
-  }, [address]);
+  }, [address, selectedTab, runesBalances]);
 
   // Add cleanup effect at component level
   useEffect(() => {
@@ -325,6 +338,44 @@ const Wallet = ({ address, onAddressClick }) => {
       </div>
     );
   }
+
+  const fetchRuneDetails = async (runeName) => {
+    try {
+      const response = await axiosInstance.get(`/rune/${runeName}`, {
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      const runeInfo = response.data;
+
+      // Parse cap and mints as integers
+      const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
+      const mints = parseInt(runeInfo.entry?.mints, 10);
+
+      if (!isNaN(cap) && !isNaN(mints)) {
+        const status = mints < cap ? 'Minting' : 'Ended';
+        const mintsRemaining = cap - mints;
+        const progress = ((cap - mintsRemaining) / cap) * 100;
+
+        return {
+          status,
+          mintsRemaining,
+          progress,
+          cap,
+          mints,
+        };
+      }
+
+      return {
+        status: 'Not Mintable',
+        mintsRemaining: '-',
+        progress: null,
+      };
+    } catch (err) {
+      console.error('Error fetching rune details:', err);
+      return null;
+    }
+  };
 
   const toggleTextInscriptions = () => {
     setHideTextInscriptions(!hideTextInscriptions);
@@ -601,21 +652,113 @@ const Wallet = ({ address, onAddressClick }) => {
         )}
 
         {selectedTab === 'Runes' && (
-          <div className="p-4">
-            {runesBalances.length > 0 ? (
-              <ul className="list-disc list-inside">
-                {runesBalances.map((rune, index) => (
-                  <li key={index}>
-                    <a className="text-blue-400 hover:text-blue-300 underline" href={rune.href}>
-                      {rune.runeName}
-                    </a>
-                    : {rune.amount}
-                  </li>
-                ))}
-              </ul>
+          <div className="space-y-6">
+            <h3 className="text-2xl font-semibold text-gray-200">
+              Runes for Address {address}
+            </h3>
+
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+              </div>
+            ) : runesBalances.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
+                <Coins className="w-12 h-12" />
+                <p className="mt-2">No runes found for this address</p>
+              </div>
             ) : (
-              <p className="text-gray-300">No runes balances found for this address.</p>
+              <div className="bg-[#1a1c2e] rounded-lg shadow-lg overflow-hidden">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-blue-600 text-white">
+                      <th className="py-3 px-6 text-lg font-medium text-left">Rune</th>
+                      <th className="py-3 px-6 text-lg font-medium text-center">Balance</th>
+                      <th className="py-3 px-6 text-lg font-medium text-center">Status</th>
+                      <th className="py-3 px-6 text-lg font-medium text-center">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runesBalances.map((rune, index) => {
+                      const details = runeDetails[rune.runeName];
+                      return (
+                        <tr
+                          key={index}
+                          className="text-gray-300 hover:bg-blue-700 transition-colors duration-200"
+                        >
+                          <td className="py-4 px-6 border-b border-gray-600">
+                            <a
+                              href={rune.href}
+                              className="text-blue-400 hover:text-blue-300 font-mono"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {rune.runeName}
+                            </a>
+                          </td>
+                          <td className="py-4 px-6 border-b border-gray-600 text-center font-mono">
+                            {rune.amount}
+                          </td>
+                          <td className="py-4 px-6 border-b border-gray-600 text-center">
+                            {details && (
+                              <span
+                                className={`${
+                                  details.status === 'Minting' ? 'radiating-glow' : ''
+                                } inline-block px-4 py-2 rounded-full ${
+                                  details.status === 'Minting'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-red-600 text-white'
+                                }`}
+                              >
+                                {details.status}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 border-b border-gray-600">
+                            {details?.progress !== null ? (
+                              <div className="space-y-2">
+                                <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className={`absolute h-full rounded-full ${
+                                      details.mintsRemaining === 0
+                                        ? 'bg-red-500'
+                                        : 'bg-green-500'
+                                    }`}
+                                    style={{ width: `${details.progress}%` }}
+                                  ></div>
+                                </div>
+                                <p className="text-sm text-gray-400 text-center">
+                                  {details.mintsRemaining.toLocaleString()} remaining
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400 text-center">-</p>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
+
+            <style jsx>{`
+              .radiating-glow {
+                position: relative;
+                animation: pulse 2s infinite ease-in-out;
+              }
+              @keyframes pulse {
+                0% {
+                  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+                }
+                50% {
+                  box-shadow: 0 0 15px 15px rgba(34, 197, 94, 0.3);
+                }
+                100% {
+                  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+                }
+              }
+            `}</style>
           </div>
         )}
 

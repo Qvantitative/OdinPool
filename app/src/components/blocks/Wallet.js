@@ -57,16 +57,17 @@ const fetchWalletData = async (
       addressCache[address] = htmlString;
     }
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlString, 'text/html');
+    // Use a DOM parser (adjusted for Node.js environment)
+    const cheerio = require('cheerio');
+    const $ = cheerio.load(htmlString);
 
     // Existing code to extract inscriptions
-    const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
+    const inscriptionElements = $('dd.thumbnails a');
     const images = {};
 
     await Promise.all(
-      Array.from(inscriptionElements).map(async (element) => {
-        const href = element.getAttribute('href');
+      inscriptionElements.map(async (index, element) => {
+        const href = $(element).attr('href');
         const inscriptionId = href.split('/').pop();
 
         if (images[inscriptionId]) {
@@ -222,40 +223,36 @@ const fetchWalletData = async (
     );
 
     // Extract runes balances and outputs
-    const dtElements = doc.querySelectorAll('dt');
+    const dtElements = $('dt');
     const runesBalances = [];
     const outputs = [];
 
-    dtElements.forEach((dt) => {
-      const term = dt.textContent.trim().toLowerCase();
-      const dd = dt.nextElementSibling;
+    dtElements.each((index, dt) => {
+      const term = $(dt).text().trim().toLowerCase();
+      const dd = $(dt).next('dd');
       if (!dd) return;
 
       if (term === 'runes balances') {
-        dd.childNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
-            const runeName = node.textContent;
-            const href = node.getAttribute('href');
-            let amountText = '';
-            let nextSibling = node.nextSibling;
-            while (nextSibling && nextSibling.nodeType !== Node.TEXT_NODE) {
-              nextSibling = nextSibling.nextSibling;
-            }
-            if (nextSibling) {
-              amountText = nextSibling.textContent.trim();
-            }
+        const runeItems = dd.find('li');
+        runeItems.each((i, li) => {
+          const runeLink = $(li).find('a');
+          if (runeLink.length > 0) {
+            const runeName = runeLink.text().trim();
+            const href = runeLink.attr('href');
+            const amountText = $(li)
+              .text()
+              .replace(runeName, '')
+              .trim();
             runesBalances.push({ runeName, href, amount: amountText });
           }
         });
       } else if (term === 'outputs') {
-        const outputLinks = dd.querySelectorAll('li a.monospace');
-        outputs.push(
-          ...Array.from(outputLinks).map((link) => {
-            const outputId = link.textContent;
-            const href = link.getAttribute('href');
-            return { outputId, href };
-          })
-        );
+        const outputLinks = dd.find('li a.monospace');
+        outputLinks.each((i, link) => {
+          const outputId = $(link).text();
+          const href = $(link).attr('href');
+          outputs.push({ outputId, href });
+        });
       }
     });
 

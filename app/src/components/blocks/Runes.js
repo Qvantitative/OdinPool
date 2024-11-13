@@ -28,10 +28,16 @@ const Runes = ({ runes, loading = false }) => {
             });
             const runeInfo = response.data;
 
-            // Remove commas and parse cap and mints as numbers
-            const cap = Number(runeInfo.entry?.terms?.cap.replace(/,/g, ''));
-            const mints = Number(runeInfo.entry?.mints.replace(/,/g, ''));
+            // Check if cap and mints are strings; if so, remove commas and parse them as numbers
+            const cap = typeof runeInfo.entry?.terms?.cap === 'string'
+              ? Number(runeInfo.entry.terms.cap.replace(/,/g, ''))
+              : runeInfo.entry?.terms?.cap;
 
+            const mints = typeof runeInfo.entry?.mints === 'string'
+              ? Number(runeInfo.entry.mints.replace(/,/g, ''))
+              : runeInfo.entry?.mints;
+
+            // Ensure both cap and mints are valid numbers
             if (!isNaN(cap) && !isNaN(mints) && cap !== 0) {
               const mintsRemaining = cap - mints;
               const progress = Math.min((mints / cap) * 100, 100).toFixed(2);

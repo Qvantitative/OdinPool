@@ -838,14 +838,14 @@ const Wallet = ({ address, onAddressClick }) => {
             {outputs.length > 0 ? (
               <ul className="list-disc list-inside">
                 {outputs.map((output, index) => (
-                  <ul key={index}>
+                  <li key={index}>
                     <a
                       className="text-blue-400 hover:text-blue-300 underline"
                       href={`/output/${encodeURIComponent(output.outputId)}/`}
                     >
                       {output.outputId}
                     </a>
-                  </ul>
+                  </li>
                 ))}
               </ul>
             ) : (

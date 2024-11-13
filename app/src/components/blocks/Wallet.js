@@ -5,11 +5,12 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff, Coins } from 'lucide-react';
+import { ImageOff, Coins } from 'lucide-react'; // Added Coins import
 
 // Create an axios instance for making network requests
 const axiosInstance = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
+  baseURL:
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
@@ -78,7 +79,9 @@ const fetchWalletData = async (
           if (inscriptionContentTypeCache[inscriptionId]) {
             contentType = inscriptionContentTypeCache[inscriptionId];
           } else {
-            const headResponse = await axiosInstance.head(`/content/${inscriptionId}`);
+            const headResponse = await axiosInstance.head(
+              `/content/${inscriptionId}`
+            );
             contentType = headResponse.headers['content-type'];
             inscriptionContentTypeCache[inscriptionId] = contentType;
           }
@@ -91,9 +94,12 @@ const fetchWalletData = async (
 
           switch (true) {
             case contentType === 'video/mp4': {
-              const videoResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob',
-              });
+              const videoResponse = await axiosInstance.get(
+                `/content/${inscriptionId}`,
+                {
+                  responseType: 'blob',
+                }
+              );
               const videoUrl = URL.createObjectURL(videoResponse.data);
               const result = {
                 url: videoUrl,
@@ -107,9 +113,12 @@ const fetchWalletData = async (
 
             case contentType === 'model/gltf-json' ||
               contentType === 'model/gltf+json': {
-              const gltfResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob',
-              });
+              const gltfResponse = await axiosInstance.get(
+                `/content/${inscriptionId}`,
+                {
+                  responseType: 'blob',
+                }
+              );
               const gltfUrl = URL.createObjectURL(gltfResponse.data);
               const result = {
                 url: gltfUrl,
@@ -122,9 +131,12 @@ const fetchWalletData = async (
             }
 
             case contentType.includes('application/json'): {
-              const jsonResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text',
-              });
+              const jsonResponse = await axiosInstance.get(
+                `/content/${inscriptionId}`,
+                {
+                  responseType: 'text',
+                }
+              );
               let result;
               try {
                 const parsedJson = JSON.parse(jsonResponse.data);
@@ -146,9 +158,12 @@ const fetchWalletData = async (
             }
 
             case contentType.startsWith('image/'): {
-              const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'blob',
-              });
+              const contentResponse = await axiosInstance.get(
+                `/content/${inscriptionId}`,
+                {
+                  responseType: 'blob',
+                }
+              );
               let imageUrl;
               if (contentType === 'image/svg+xml') {
                 const svgText = await contentResponse.data.text();
@@ -167,9 +182,12 @@ const fetchWalletData = async (
             }
 
             case contentType.startsWith('text/'): {
-              const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
-                responseType: 'text',
-              });
+              const contentResponse = await axiosInstance.get(
+                `/content/${inscriptionId}`,
+                {
+                  responseType: 'text',
+                }
+              );
               const result = {
                 content: contentResponse.data,
                 type: 'text',
@@ -189,7 +207,10 @@ const fetchWalletData = async (
             }
           }
         } catch (contentErr) {
-          console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
+          console.error(
+            `Error fetching content for inscription ${inscriptionId}:`,
+            contentErr
+          );
           const errorResult = {
             type: 'error',
             error: 'Content unavailable',
@@ -251,7 +272,11 @@ const fetchWalletData = async (
 };
 
 // Function to handle inscription click with caching
-const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
+const handleInscriptionClick = async (
+  inscriptionId,
+  inscriptionData,
+  setSelectedInscription
+) => {
   try {
     let data;
 
@@ -288,42 +313,99 @@ const Wallet = ({ address, onAddressClick }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTab, setSelectedTab] = useState('Inscriptions');
-  const [runeDetails, setRuneDetails] = useState({});
+
+  // Added state variables for runes data
+  const [runeData, setRuneData] = useState([]);
+  const [runeLoading, setRuneLoading] = useState(false);
+  const [runeError, setRuneError] = useState(null);
 
   // Fetch data when the address changes
   useEffect(() => {
     if (address) {
-      if (selectedTab === 'Inscriptions') {
-        fetchWalletInscriptions(address, setInscriptionImages, setLoading, setError);
-      } else if (selectedTab === 'Runes' || selectedTab === 'Transactions') {
-        fetchWalletData();
-
-        // If Runes tab is selected, fetch details for each rune
-        if (selectedTab === 'Runes' && runesBalances.length > 0) {
-          const fetchAllRuneDetails = async () => {
-            const details = {};
-            await Promise.all(
-              runesBalances.map(async (rune) => {
-                details[rune.runeName] = await fetchRuneDetails(rune.runeName);
-              })
-            );
-            setRuneDetails(details);
-          };
-
-          fetchAllRuneDetails();
-        }
-      }
+      fetchWalletData(
+        address,
+        setInscriptionImages,
+        setRunesBalances,
+        setOutputs,
+        setLoading,
+        setError
+      );
     } else {
       setLoading(false);
     }
-  }, [address, selectedTab, runesBalances]);
+  }, [address]);
+
+  // Fetch rune data when runesBalances change
+  useEffect(() => {
+    const fetchRuneData = async () => {
+      if (runesBalances.length === 0) {
+        return;
+      }
+      setRuneLoading(true);
+      try {
+        const data = await Promise.all(
+          runesBalances.map(async (rune) => {
+            const runeName = rune.runeName;
+            const amount = rune.amount;
+            const response = await axiosInstance.get(`/rune/${runeName}`, {
+              headers: {
+                Accept: 'application/json',
+              },
+            });
+            const runeInfo = response.data;
+
+            // Parse cap and mints as integers
+            const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
+            const mints = parseInt(runeInfo.entry?.mints, 10);
+
+            // Check if cap and mints are valid numbers
+            if (!isNaN(cap) && !isNaN(mints)) {
+              const status = mints < cap ? 'Minting' : 'Ended';
+              const mintsRemaining = cap - mints;
+              // Changed progress calculation to fill as mintsRemaining approaches 0
+              const progress = ((cap - mintsRemaining) / cap) * 100;
+
+              return {
+                runeName,
+                amount,
+                status,
+                mintsRemaining,
+                progress,
+              };
+            } else {
+              return {
+                runeName,
+                amount,
+                status: 'Not Mintable',
+                mintsRemaining: '-',
+                progress: null, // No progress for Not Mintable items
+              };
+            }
+          })
+        );
+        setRuneData(data);
+      } catch (error) {
+        console.error('Error fetching rune data:', error);
+        setRuneError(error.message);
+      } finally {
+        setRuneLoading(false);
+      }
+    };
+
+    if (runesBalances && runesBalances.length > 0) {
+      fetchRuneData();
+    }
+  }, [runesBalances]);
 
   // Add cleanup effect at component level
   useEffect(() => {
     // Cleanup function to revoke blob URLs when component unmounts
     return () => {
       Object.values(inscriptionImages).forEach((data) => {
-        if (data.url && (data.type === 'gltf' || data.type === 'image' || data.type === 'video')) {
+        if (
+          data.url &&
+          (data.type === 'gltf' || data.type === 'image' || data.type === 'video')
+        ) {
           URL.revokeObjectURL(data.url);
         }
       });
@@ -338,44 +420,6 @@ const Wallet = ({ address, onAddressClick }) => {
       </div>
     );
   }
-
-  const fetchRuneDetails = async (runeName) => {
-    try {
-      const response = await axiosInstance.get(`/rune/${runeName}`, {
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-      const runeInfo = response.data;
-
-      // Parse cap and mints as integers
-      const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
-      const mints = parseInt(runeInfo.entry?.mints, 10);
-
-      if (!isNaN(cap) && !isNaN(mints)) {
-        const status = mints < cap ? 'Minting' : 'Ended';
-        const mintsRemaining = cap - mints;
-        const progress = ((cap - mintsRemaining) / cap) * 100;
-
-        return {
-          status,
-          mintsRemaining,
-          progress,
-          cap,
-          mints,
-        };
-      }
-
-      return {
-        status: 'Not Mintable',
-        mintsRemaining: '-',
-        progress: null,
-      };
-    } catch (err) {
-      console.error('Error fetching rune details:', err);
-      return null;
-    }
-  };
 
   const toggleTextInscriptions = () => {
     setHideTextInscriptions(!hideTextInscriptions);
@@ -395,7 +439,9 @@ const Wallet = ({ address, onAddressClick }) => {
       case 'gltf':
         return (
           <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
-            <div className="p-2 bg-gray-800 text-xs text-gray-400">model/gltf+json</div>
+            <div className="p-2 bg-gray-800 text-xs text-gray-400">
+              model/gltf+json
+            </div>
             <div className="flex-1 relative">
               <Canvas
                 camera={{ position: [0, 0, 5], fov: 45 }}
@@ -435,7 +481,9 @@ const Wallet = ({ address, onAddressClick }) => {
       case 'json':
         return (
           <div className="flex flex-col h-full bg-gray-900 text-gray-200 rounded-2xl overflow-hidden">
-            <div className="p-2 bg-gray-800 text-xs text-gray-400">{inscriptionData.contentType}</div>
+            <div className="p-2 bg-gray-800 text-xs text-gray-400">
+              {inscriptionData.contentType}
+            </div>
             <div className="flex-1 p-4 font-mono text-xs overflow-auto">
               <pre className="whitespace-pre-wrap break-all">
                 {typeof inscriptionData.content === 'object'
@@ -465,7 +513,9 @@ const Wallet = ({ address, onAddressClick }) => {
             <div className="flex-1 flex flex-col items-center justify-center p-4">
               <p className="text-sm text-gray-300">Unsupported content type</p>
               {inscriptionData.contentType && (
-                <p className="text-xs mt-2 text-gray-400">{inscriptionData.contentType}</p>
+                <p className="text-xs mt-2 text-gray-400">
+                  {inscriptionData.contentType}
+                </p>
               )}
             </div>
             {inscriptionId && (
@@ -486,11 +536,15 @@ const Wallet = ({ address, onAddressClick }) => {
   );
 
   const hasNonTextInscriptions = () => {
-    return Object.values(inscriptionImages).some((data) => data && data.type === 'image');
+    return Object.values(inscriptionImages).some(
+      (data) => data && data.type === 'image'
+    );
   };
 
   const hasTextInscriptions = () => {
-    return Object.values(inscriptionImages).some((data) => data && data.type === 'text');
+    return Object.values(inscriptionImages).some(
+      (data) => data && data.type === 'text'
+    );
   };
 
   const inscriptionsList = Object.keys(inscriptionImages);
@@ -540,7 +594,9 @@ const Wallet = ({ address, onAddressClick }) => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div className="bg-gray-800 rounded-2xl p-6 max-w-7xl w-full max-h-[95vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-semibold text-gray-200">Inscription Details</h3>
+            <h3 className="text-2xl font-semibold text-gray-200">
+              Inscription Details
+            </h3>
             <button
               onClick={() => setSelectedInscription(null)}
               className="text-gray-400 hover:text-gray-200 text-2xl"
@@ -550,7 +606,10 @@ const Wallet = ({ address, onAddressClick }) => {
           </div>
           <div className="flex">
             <div className="w-2/3 pr-6 border-r border-gray-700">
-              {renderInscriptionContent(selectedInscription.inscriptionId, inscriptionData)}
+              {renderInscriptionContent(
+                selectedInscription.inscriptionId,
+                inscriptionData
+              )}
             </div>
             <div className="w-1/3 pl-6 space-y-4">
               {Object.entries(details).map(([key, value]) => (
@@ -584,7 +643,9 @@ const Wallet = ({ address, onAddressClick }) => {
           <button
             onClick={() => setSelectedTab('Runes')}
             className={`px-4 py-2 text-left ${
-              selectedTab === 'Runes' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
+              selectedTab === 'Runes'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-700 text-gray-300'
             } rounded-lg focus:outline-none`}
           >
             Runes
@@ -636,7 +697,11 @@ const Wallet = ({ address, onAddressClick }) => {
                       key={inscriptionId}
                       className="flex flex-col items-center"
                       onClick={() =>
-                        handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)
+                        handleInscriptionClick(
+                          inscriptionId,
+                          inscriptionData,
+                          setSelectedInscription
+                        )
                       }
                     >
                       <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
@@ -652,114 +717,105 @@ const Wallet = ({ address, onAddressClick }) => {
         )}
 
         {selectedTab === 'Runes' && (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-semibold text-gray-200">
-              Runes for Address {address}
-            </h3>
-
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
-              </div>
-            ) : runesBalances.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
-                <Coins className="w-12 h-12" />
-                <p className="mt-2">No runes found for this address</p>
-              </div>
-            ) : (
-              <div className="bg-[#1a1c2e] rounded-lg shadow-lg overflow-hidden">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-blue-600 text-white">
-                      <th className="py-3 px-6 text-lg font-medium text-left">Rune</th>
-                      <th className="py-3 px-6 text-lg font-medium text-center">Balance</th>
-                      <th className="py-3 px-6 text-lg font-medium text-center">Status</th>
-                      <th className="py-3 px-6 text-lg font-medium text-center">Progress</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {runesBalances.map((rune, index) => {
-                      const details = runeDetails[rune.runeName];
-                      return (
+          <>
+            <div className="p-4">
+              {runeLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
+                </div>
+              ) : runeError ? (
+                <div className="text-red-500 text-center">Error: {runeError}</div>
+              ) : runeData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center text-center text-gray-500 mt-4">
+                  <Coins className="w-12 h-12 text-gray-400" />
+                  <p className="mt-2 text-lg">No runes balances found for this address.</p>
+                </div>
+              ) : (
+                // Display rune data in table
+                <div className="mb-8">
+                  <h3 className="text-2xl font-semibold mb-4 text-center text-blue-400">
+                    Rune Balances
+                  </h3>
+                  <table className="min-w-full bg-[#1a1c2e] rounded-lg shadow-lg overflow-hidden">
+                    <thead>
+                      <tr className="bg-blue-600 text-white">
+                        <th className="py-3 px-6 text-lg font-medium">Rune</th>
+                        <th className="py-3 px-6 text-lg font-medium">Amount</th>
+                        <th className="py-3 px-6 text-lg font-medium">Status</th>
+                        <th className="py-3 px-6 text-lg font-medium">Mints Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runeData.map((data, index) => (
                         <tr
                           key={index}
                           className="text-gray-300 hover:bg-blue-700 transition-colors duration-200"
                         >
-                          <td className="py-4 px-6 border-b border-gray-600">
-                            <a
-                              href={rune.href}
-                              className="text-blue-400 hover:text-blue-300 font-mono"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {rune.runeName}
-                            </a>
-                          </td>
-                          <td className="py-4 px-6 border-b border-gray-600 text-center font-mono">
-                            {rune.amount}
+                          <td className="py-4 px-6 border-b border-gray-600 text-center">
+                            {data.runeName}
                           </td>
                           <td className="py-4 px-6 border-b border-gray-600 text-center">
-                            {details && (
-                              <span
-                                className={`${
-                                  details.status === 'Minting' ? 'radiating-glow' : ''
-                                } inline-block px-4 py-2 rounded-full ${
-                                  details.status === 'Minting'
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-red-600 text-white'
-                                }`}
-                              >
-                                {details.status}
-                              </span>
-                            )}
+                            {data.amount}
                           </td>
-                          <td className="py-4 px-6 border-b border-gray-600">
-                            {details?.progress !== null ? (
-                              <div className="space-y-2">
+                          <td className="py-4 px-6 border-b border-gray-600 text-center font-semibold rounded-full relative">
+                            <span
+                              className={`${
+                                data.status === 'Minting' ? 'radiating-glow' : ''
+                              } inline-block px-4 py-2 rounded-full ${
+                                data.status === 'Minting'
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-red-600 text-white'
+                              }`}
+                            >
+                              {data.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 border-b border-gray-600 text-center">
+                            {data.progress !== null ? (
+                              <>
                                 <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
                                   <div
                                     className={`absolute h-full rounded-full ${
-                                      details.mintsRemaining === 0
+                                      data.mintsRemaining === 0
                                         ? 'bg-red-500'
                                         : 'bg-green-500'
                                     }`}
-                                    style={{ width: `${details.progress}%` }}
+                                    style={{ width: `${data.progress}%` }}
                                   ></div>
                                 </div>
-                                <p className="text-sm text-gray-400 text-center">
-                                  {details.mintsRemaining.toLocaleString()} remaining
+                                <p className="mt-1 text-sm text-gray-400">
+                                  {data.mintsRemaining.toLocaleString()} remaining
                                 </p>
-                              </div>
+                              </>
                             ) : (
-                              <p className="text-sm text-gray-400 text-center">-</p>
+                              <p className="text-sm text-gray-400">-</p>
                             )}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <style jsx>{`
-              .radiating-glow {
-                position: relative;
-                animation: pulse 2s infinite ease-in-out;
-              }
-              @keyframes pulse {
-                0% {
-                  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-                }
-                50% {
-                  box-shadow: 0 0 15px 15px rgba(34, 197, 94, 0.3);
-                }
-                100% {
-                  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-                }
-              }
-            `}</style>
-          </div>
+                      ))}
+                    </tbody>
+                  </table>
+                  <style jsx>{`
+                    .radiating-glow {
+                      position: relative;
+                      animation: pulse 2s infinite ease-in-out;
+                    }
+                    @keyframes pulse {
+                      0% {
+                        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+                      }
+                      50% {
+                        box-shadow: 0 0 15px 15px rgba(34, 197, 94, 0.3);
+                      }
+                      100% {
+                        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+                      }
+                    }
+                  `}</style>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {selectedTab === 'Transactions' && (
@@ -768,7 +824,10 @@ const Wallet = ({ address, onAddressClick }) => {
               <ul className="list-disc list-inside">
                 {outputs.map((output, index) => (
                   <li key={index}>
-                    <a className="text-blue-400 hover:text-blue-300 underline" href={output.href}>
+                    <a
+                      className="text-blue-400 hover:text-blue-300 underline"
+                      href={output.href}
+                    >
                       {output.outputId}
                     </a>
                   </li>
@@ -780,6 +839,8 @@ const Wallet = ({ address, onAddressClick }) => {
           </div>
         )}
       </div>
+
+      {renderSelectedInscriptionDetails()}
     </div>
   );
 };

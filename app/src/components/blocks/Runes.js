@@ -32,24 +32,15 @@ const Runes = ({ runes, loading = false }) => {
             const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
             const mints = parseInt(runeInfo.entry?.mints, 10);
 
-            // Check if cap and mints are valid numbers
             if (!isNaN(cap) && !isNaN(mints)) {
-              const status = mints < cap ? 'Minting' : 'Ended';
               const mintsRemaining = cap - mints;
-              // Changed progress calculation to fill as mintsRemaining approaches 0
-              const progress = ((cap - mintsRemaining) / cap) * 100;
-
-              console.log(`Rune: ${rune}`);
-              console.log(`Cap: ${cap}`);
-              console.log(`Mints: ${mints}`);
-              console.log(`Mints Remaining: ${mintsRemaining}`);
-              console.log(`Progress: ${progress.toFixed(2)}%`);
+              const progress = (mints / cap) * 100; // This is the key change
 
               return {
                 rune,
-                status,
+                status: mints < cap ? 'Minting' : 'Ended',
                 mintsRemaining,
-                progress,
+                progress
               };
             } else {
               console.warn(

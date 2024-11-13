@@ -845,7 +845,8 @@ const Wallet = ({ address, onAddressClick }) => {
                       className="text-blue-400 hover:text-blue-300 underline"
                       href={output.href}
                     >
-                      {output.outputId}
+                      {/*{output.outputId}*/}
+                      "Comin Soon"
                     </a>
                   </li>
                 ))}

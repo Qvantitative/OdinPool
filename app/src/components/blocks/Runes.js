@@ -32,15 +32,19 @@ const Runes = ({ runes, loading = false }) => {
             const cap = parseInt(runeInfo.entry?.terms?.cap, 10);
             const mints = parseInt(runeInfo.entry?.mints, 10);
 
+            // Modify the data processing section in Runes.js:
             if (!isNaN(cap) && !isNaN(mints)) {
               const mintsRemaining = cap - mints;
-              const progress = (mints / cap) * 100; // This is the key change
+              // Calculate progress based on how many have been minted
+              const progress = Math.min((mints / cap) * 100, 100).toFixed(2);
 
               return {
                 rune,
                 status: mints < cap ? 'Minting' : 'Ended',
                 mintsRemaining,
-                progress
+                progress: parseFloat(progress), // Convert back to number after fixing decimals
+                cap,     // Add these for debugging
+                mints    // Add these for debugging
               };
             } else {
               console.warn(
@@ -146,11 +150,12 @@ const Runes = ({ runes, loading = false }) => {
                     <div className="relative w-full h-4 bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className={`absolute h-full rounded-full ${
-                          data.mintsRemaining === 0
-                            ? 'bg-red-500'
-                            : 'bg-green-500'
+                          data.mintsRemaining === 0 ? 'bg-red-500' : 'bg-green-500'
                         }`}
-                        style={{ width: `${data.progress}%` }}
+                        style={{
+                          width: `${data.progress}%`,
+                          transition: 'width 0.5s ease-in-out'
+                        }}
                       ></div>
                     </div>
                     <p className="mt-1 text-sm text-gray-400">

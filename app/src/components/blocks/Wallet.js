@@ -222,32 +222,48 @@ const fetchWalletData = async (
     );
 
     // Extract runes balances and outputs
-    const dtElements = doc.querySelectorAll('dt');
+    const dl = doc.querySelector('dl');
+    const children = Array.from(dl.children);
+
+    const data = {};
+    let currentTerm = '';
+
+    children.forEach((child) => {
+      if (child.tagName === 'DT') {
+        currentTerm = child.textContent.trim().toLowerCase();
+        data[currentTerm] = [];
+      } else if (child.tagName === 'DD') {
+        if (currentTerm) {
+          data[currentTerm].push(child);
+        }
+      }
+    });
+
     const runesBalances = [];
     const outputs = [];
 
-    dtElements.forEach((dt) => {
-      const term = dt.textContent.trim().toLowerCase();
-      const dd = dt.nextElementSibling;
-      if (!dd) return;
+    // Process runes balances
+    if (data['runes balances']) {
+      data['runes balances'].forEach((dd) => {
+        const aNode = dd.querySelector('a');
+        if (aNode) {
+          const runeName = aNode.textContent;
+          const href = aNode.getAttribute('href');
+          let amountText = '';
+          dd.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+              amountText += node.textContent.trim();
+            }
+          });
+          amountText = amountText.replace(':', '').trim();
+          runesBalances.push({ runeName, href, amount: amountText });
+        }
+      });
+    }
 
-      if (term === 'runes balances') {
-        dd.childNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
-            const runeName = node.textContent;
-            const href = node.getAttribute('href');
-            let amountText = '';
-            let nextSibling = node.nextSibling;
-            while (nextSibling && nextSibling.nodeType !== Node.TEXT_NODE) {
-              nextSibling = nextSibling.nextSibling;
-            }
-            if (nextSibling) {
-              amountText = nextSibling.textContent.trim();
-            }
-            runesBalances.push({ runeName, href, amount: amountText });
-          }
-        });
-      } else if (term === 'outputs') {
+    // Process outputs
+    if (data['outputs']) {
+      data['outputs'].forEach((dd) => {
         const outputLinks = dd.querySelectorAll('li a.monospace');
         outputs.push(
           ...Array.from(outputLinks).map((link) => {
@@ -256,8 +272,8 @@ const fetchWalletData = async (
             return { outputId, href };
           })
         );
-      }
-    });
+      });
+    }
 
     setRunesBalances(runesBalances);
     setOutputs(outputs);
@@ -270,6 +286,7 @@ const fetchWalletData = async (
     setLoading(false);
   }
 };
+
 
 // Function to handle inscription click with caching
 const handleInscriptionClick = async (

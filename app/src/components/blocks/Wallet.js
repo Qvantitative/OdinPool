@@ -5,7 +5,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff, Coins } from 'lucide-react'; // Added Coins import
+import { ImageOff, Coins } from 'lucide-react';
 
 // Create an axios instance for making network requests
 const axiosInstance = axios.create({
@@ -268,8 +268,7 @@ const fetchWalletData = async (
         outputs.push(
           ...Array.from(outputLinks).map((link) => {
             const outputId = link.textContent;
-            const href = link.getAttribute('href');
-            return { outputId, href };
+            return { outputId };
           })
         );
       });
@@ -286,7 +285,6 @@ const fetchWalletData = async (
     setLoading(false);
   }
 };
-
 
 // Function to handle inscription click with caching
 const handleInscriptionClick = async (
@@ -843,10 +841,9 @@ const Wallet = ({ address, onAddressClick }) => {
                   <li key={index}>
                     <a
                       className="text-blue-400 hover:text-blue-300 underline"
-                      href={output.href}
+                      href={`/output/${output.outputId}/`}
                     >
-                      {/*{output.outputId}*/}
-                      "Comin Soon"
+                      {output.outputId}
                     </a>
                   </li>
                 ))}

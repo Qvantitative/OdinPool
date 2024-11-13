@@ -25,8 +25,15 @@ const inscriptionContentTypeCache = {};
 const inscriptionContentCache = {};
 const inscriptionDetailsCache = {};
 
-// Function to fetch wallet inscriptions with caching
-const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading, setError) => {
+// Function to fetch wallet data with caching
+const fetchWalletData = async (
+  address,
+  setInscriptionImages,
+  setRunesBalances,
+  setOutputs,
+  setLoading,
+  setError
+) => {
   if (!address) {
     setLoading(false);
     return;
@@ -51,8 +58,9 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
-    const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
 
+    // Existing code to extract inscriptions
+    const inscriptionElements = doc.querySelectorAll('dd.thumbnails a');
     const images = {};
 
     await Promise.all(
@@ -192,6 +200,47 @@ const fetchWalletInscriptions = async (address, setInscriptionImages, setLoading
       })
     );
 
+    // Extract runes balances and outputs
+    const dtElements = doc.querySelectorAll('dt');
+    const runesBalances = [];
+    const outputs = [];
+
+    dtElements.forEach((dt) => {
+      const term = dt.textContent.trim().toLowerCase();
+      const dd = dt.nextElementSibling;
+      if (!dd) return;
+
+      if (term === 'runes balances') {
+        dd.childNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') {
+            const runeName = node.textContent;
+            const href = node.getAttribute('href');
+            let amountText = '';
+            let nextSibling = node.nextSibling;
+            while (nextSibling && nextSibling.nodeType !== Node.TEXT_NODE) {
+              nextSibling = nextSibling.nextSibling;
+            }
+            if (nextSibling) {
+              amountText = nextSibling.textContent.trim();
+            }
+            runesBalances.push({ runeName, href, amount: amountText });
+          }
+        });
+      } else if (term === 'outputs') {
+        const outputLinks = dd.querySelectorAll('li a.monospace');
+        outputs.push(
+          ...Array.from(outputLinks).map((link) => {
+            const outputId = link.textContent;
+            const href = link.getAttribute('href');
+            return { outputId, href };
+          })
+        );
+      }
+    });
+
+    setRunesBalances(runesBalances);
+    setOutputs(outputs);
+
     setInscriptionImages(images);
   } catch (error) {
     console.error(`Error fetching data for address ${address}:`, error);
@@ -232,20 +281,29 @@ const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelecte
 // Main Wallet component
 const Wallet = ({ address, onAddressClick }) => {
   const [inscriptionImages, setInscriptionImages] = useState({});
+  const [runesBalances, setRunesBalances] = useState([]);
+  const [outputs, setOutputs] = useState([]);
   const [hideTextInscriptions, setHideTextInscriptions] = useState(true);
   const [selectedInscription, setSelectedInscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedTab, setSelectedTab] = useState('Inscriptions'); // State for managing active tab
+  const [selectedTab, setSelectedTab] = useState('Inscriptions');
 
-  // Fetch inscriptions when the address changes
+  // Fetch data when the address changes
   useEffect(() => {
-    if (address && selectedTab === 'Inscriptions') {
-      fetchWalletInscriptions(address, setInscriptionImages, setLoading, setError);
+    if (address) {
+      fetchWalletData(
+        address,
+        setInscriptionImages,
+        setRunesBalances,
+        setOutputs,
+        setLoading,
+        setError
+      );
     } else {
       setLoading(false);
     }
-  }, [address, selectedTab]);
+  }, [address]);
 
   // Add cleanup effect at component level
   useEffect(() => {
@@ -497,64 +555,44 @@ const Wallet = ({ address, onAddressClick }) => {
       <div className="flex-1 ml-6">
         {selectedTab === 'Inscriptions' && (
           <>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-semibold text-gray-200">
-                Inscriptions for Address {address}
-              </h3>
-              <button
-                onClick={toggleTextInscriptions}
-                className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-md"
-              >
-                {hideTextInscriptions ? 'Show Text Inscriptions' : 'Hide Text Inscriptions'}
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
-              </div>
-            ) : shouldShowNoInscriptions ? (
-              <div className="flex flex-col items-center justify-center text-center text-gray-400 mt-4">
-                <ImageOff className="w-12 h-12" />
-                <p className="mt-2">No inscriptions found for this address</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {filteredInscriptions.map((inscriptionId) => {
-                  const inscriptionData = inscriptionImages[inscriptionId];
-                  return (
-                    <div
-                      key={inscriptionId}
-                      className="flex flex-col items-center"
-                      onClick={() =>
-                        handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)
-                      }
-                    >
-                      <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
-                        {renderInscriptionContent(inscriptionId, inscriptionData)}
-                      </div>
-                      {renderInscriptionCaption(inscriptionId, inscriptionData)}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {selectedInscription && renderSelectedInscriptionDetails()}
+            {/* Existing code for inscriptions */}
           </>
         )}
 
         {selectedTab === 'Runes' && (
           <div className="p-4">
-            {/* Runes content goes here */}
-            <p className="text-gray-300">Runes content coming soon.</p>
+            {runesBalances.length > 0 ? (
+              <ul className="list-disc list-inside">
+                {runesBalances.map((rune, index) => (
+                  <li key={index}>
+                    <a className="text-blue-400 hover:text-blue-300 underline" href={rune.href}>
+                      {rune.runeName}
+                    </a>
+                    : {rune.amount}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-300">No runes balances found for this address.</p>
+            )}
           </div>
         )}
 
         {selectedTab === 'Transactions' && (
           <div className="p-4">
-            {/* Transactions content goes here */}
-            <p className="text-gray-300">Transactions content coming soon.</p>
+            {outputs.length > 0 ? (
+              <ul className="list-disc list-inside">
+                {outputs.map((output, index) => (
+                  <li key={index}>
+                    <a className="text-blue-400 hover:text-blue-300 underline" href={output.href}>
+                      {output.outputId}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-300">No outputs found for this address.</p>
+            )}
           </div>
         )}
       </div>

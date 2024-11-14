@@ -54,6 +54,12 @@ const Navbar = ({
       active: selectedView === 'blocks'
     },
     {
+      label: 'Trending Collections',
+      icon: <BarChart2 className="w-5 h-5" />,
+      onClick: onShowTrendingCollections,
+      active: selectedView === 'trendingCollections'
+    },
+    {
       label: 'Analytics',
       icon: <LineChart className="w-5 h-5" />,
       onClick: onShowAnalytics,

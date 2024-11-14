@@ -25,6 +25,7 @@ const Navbar = ({
   onShowTransactions,
   onShowAnalytics,
   onShowBubbleMap,
+  onShowTrendingCollections, // Add this line
   selectedView,
   onSearch,
 }) => {

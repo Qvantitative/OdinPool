@@ -20,11 +20,11 @@ import TransactionsDetails from '../../components/blocks/TransactionsDetails';
 import TopAddresses from '../../components/blocks/TopAddresses';
 import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
-import InscriptionsLatest from '../../components/blocks/InscriptionsLatest'
+import InscriptionsLatest from '../../components/blocks/InscriptionsLatest';
 import Wallet from '../../components/blocks/Wallet';
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
-const TrendingCollections = dynamic(() => import('../../components/wallet/TrendingCollections'), { ssr: false });
+const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
 
 const AnalyticsPage = () => {
   // State Variables
@@ -198,78 +198,6 @@ const AnalyticsPage = () => {
     };
   };
 
-  // In Portfolio.js, update the fetchProjectRankings function:
-  const fetchProjectRankings = useCallback(async (projectSlug = null) => {
-    if (!projectSlug) return;
-
-    setRankingsLoading(true);
-    setRankingsError(null);
-
-    try {
-      const url = new URL('/api/project-rankings', window.location.origin);
-      url.searchParams.append('project', projectSlug);
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch project rankings');
-      }
-
-      let data = await response.json();
-
-      // Handle both array and object response formats
-      if (!Array.isArray(data)) {
-        data = data[projectSlug] || [];
-      }
-
-      // Transform data to include formatted values
-      const transformedData = data.map(ranking => ({
-        ...ranking,
-        holding_percentage: parseFloat(ranking.holding_percentage).toFixed(2),
-        formattedAddress: `${ranking.address.slice(0, 6)}...${ranking.address.slice(-4)}`,
-        rank_display: `#${ranking.rank}`
-      }));
-
-      setProjectRankings(transformedData);
-    } catch (error) {
-      console.error('Error fetching project rankings:', error);
-      setRankingsError(error.message);
-    } finally {
-      setRankingsLoading(false);
-    }
-  }, []);
-
-  const fetchTrendingCollections = useCallback(async (collectionName) => {
-    setLoading(true);
-    setError(prev => ({ ...prev, trending: null }));
-    try {
-      const response = await fetch(`/api/trending-collections?name=${collectionName}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch trending collection data');
-      }
-      const data = await response.json();
-      setCollections(prevCollections => {
-        const index = prevCollections.findIndex(c => c.name === collectionName);
-        if (index !== -1) {
-          const newCollections = [...prevCollections];
-          newCollections[index] = { ...newCollections[index], ...data };
-          return newCollections;
-        }
-        return [...prevCollections, data];
-      });
-    } catch (error) {
-      // Add error handling here
-      //setError(prev => ({ ...prev, trending: 'Failed to fetch trending data.' }));
-      console.error('Error fetching trending collections:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const handleCollectionClick = useCallback((collectionName) => {
-    setSelectedCollection(collectionName);
-    fetchTrendingCollections(collectionName);
-  }, [fetchTrendingCollections]);
-
   // Handle search input change
   const handleSearchChange = (e) => setSearchInput(e.target.value);
 
@@ -308,14 +236,16 @@ const AnalyticsPage = () => {
     setSelectedView('bubbleMap'); // Add this line
     setShowTrending(false);
     setShowRunes(false);
-    setSelectedCollection(prev => prev || 'bitcoin-puppets');
+    setSelectedCollection((prev) => prev || 'bitcoin-puppets');
     setExpandedContent(null);
     setSelectedBlock(null);
   }, []);
 
-  // Handle back button click from BubbleMaps
-  const handleBackFromBubbleMap = () => {
+  // Function to handle 'Trending Collections' view
+  const handleShowTrendingCollections = () => {
+    setSelectedView('trendingCollections');
     setShowBubbleChart(false);
+    // Reset any other states if necessary
   };
 
   // Handle back button click
@@ -353,13 +283,6 @@ const AnalyticsPage = () => {
     setShowBubbleChart(false); // Add this line
   };
 
-  const handleShowCharts = () => setSelectedView('charts');
-
-  const handleShowSearch = () => {
-    // Focus on your search input
-    document.querySelector('input[type="text"]')?.focus();
-  };
-
   // Render error state
   if (error) {
     return (
@@ -375,18 +298,6 @@ const AnalyticsPage = () => {
     .sort((a, b) => b.block_height - a.block_height)
     .slice(0, 100); // Get only the last 100 blocks
 
-  // UseEffect to handle collection changes
-  useEffect(() => {
-    if (selectedCollection && showBubbleChart) {
-      fetchProjectRankings(selectedCollection);
-    }
-  }, [selectedCollection, showBubbleChart, fetchProjectRankings]);
-
-  // Function to handle collection changes
-  const handleCollectionChange = useCallback((collection) => {
-    setSelectedCollection(collection);
-  }, []);
-
   // Main render
   return (
     <div className="bg-gray min-h-screen relative">
@@ -395,6 +306,7 @@ const AnalyticsPage = () => {
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
         onShowBubbleMap={handleShowBubbleChart}
+        onShowTrendingCollections={handleShowTrendingCollections}
         selectedView={selectedView}
         onSearch={async ({ type, value }) => {
           if (type === 'Transaction ID') {
@@ -450,7 +362,7 @@ const AnalyticsPage = () => {
           <p className="text-center text-white">Real-time blockchain data and analytics dashboard</p>
         </section>
 
-        {/* Conditional Rendering Based on expandedContent, selectedBlock, or showBubbleChart */}
+        {/* Conditional Rendering Based on expandedContent, selectedBlock, showBubbleChart, or selectedView */}
         {expandedContent ? (
           <section className="container mx-auto p-8 pt-10">
             <button
@@ -556,6 +468,10 @@ const AnalyticsPage = () => {
                 onCollectionChange={handleCollectionChange}
               />
             </div>
+          </section>
+        ) : selectedView === 'trendingCollections' ? (
+          <section>
+            <TrendingCollections />
           </section>
         ) : (
           <section>

@@ -283,6 +283,10 @@ const AnalyticsPage = () => {
     setShowBubbleChart(false); // Add this line
   };
 
+  const handleCollectionChange = useCallback((collection) => {
+    setSelectedCollection(collection);
+  }, []);
+
   // Render error state
   if (error) {
     return (

@@ -11,7 +11,7 @@ const BitcoinLogo = ({ width = 24, height = 24, className = '' }) => (
   </svg>
 );
 
-const Navbar = ({ balance, ordinalAddress, onShowOrdinals, onShowRunes, onShowTrending, onWalletChange, onMint }) => {
+const Navbar = ({ balance, ordinalAddress, onShowOrdinals, onShowRunes }) => {
   const [showSidebar, setShowSidebar] = useState(false);
   const hoverTimeout = useRef(null);
 
@@ -37,31 +37,33 @@ const Navbar = ({ balance, ordinalAddress, onShowOrdinals, onShowRunes, onShowTr
   return (
     <>
       <nav className="bg-gray-900 text-white px-4 py-3 shadow-md flex justify-between items-center" aria-label="Main Navigation">
-        {/* Left Side - Collections, Runes, Discover */}
-        <div className="flex items-center space-x-4">
-          <button className="text-lg font-semibold hover:text-pink-500" onClick={onShowOrdinals}>
+        {/* Left Side - Collections and Runes */}
+        <div className="flex items-center space-x-6">
+          <button
+            className="text-lg font-semibold hover:text-pink-500 transition-colors duration-200"
+            onClick={onShowOrdinals}
+          >
             Collections
           </button>
-          <button className="text-lg font-semibold hover:text-pink-500" onClick={onShowRunes}>
+          <button
+            className="text-lg font-semibold hover:text-pink-500 transition-colors duration-200"
+            onClick={onShowRunes}
+          >
             Runes
-          </button>
-          <button className="text-lg font-semibold hover:text-pink-500" onClick={onShowTrending}>
-            Top
-          </button>
-          <button className="text-lg font-semibold hover:text-pink-500" onClick={onMint}>
-            Bubble Maps
           </button>
         </div>
 
-        {/* Right Side - BTC Balance and Ordinal Address */}
+        {/* Right Side - BTC Balance */}
         <div className="flex items-center space-x-4 relative">
           <div
-            className="flex items-center cursor-pointer"
+            className="flex items-center cursor-pointer hover:opacity-80 transition-opacity duration-200"
             onMouseEnter={handleWalletMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
             <BitcoinLogo width={24} height={24} className="mr-2" />
-            <span>{balance ? `${balance} BTC` : 'Loading...'}</span>
+            <span className="font-medium">
+              {balance ? `${balance} BTC` : 'Loading...'}
+            </span>
           </div>
         </div>
       </nav>
@@ -76,6 +78,5 @@ const Navbar = ({ balance, ordinalAddress, onShowOrdinals, onShowRunes, onShowTr
     </>
   );
 };
-
 
 export default React.memo(Navbar);

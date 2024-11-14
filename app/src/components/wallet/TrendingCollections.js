@@ -25,7 +25,7 @@ const TrendingCollections = ({
   const fetchCollectionStats = useCallback(async () => {
     setLoading(true);
     try {
-      //const response = await fetch(`/api/proxy?url=https://api-mainnet.magiceden.dev/collection_stats/search/bitcoin`);
+      const response = await fetch(`/api/proxy?url=https://api-mainnet.magiceden.dev/collection_stats/search/bitcoin`);
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setCollections(data);

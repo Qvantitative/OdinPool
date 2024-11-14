@@ -198,6 +198,46 @@ const AnalyticsPage = () => {
     };
   };
 
+  // Fetch project rankings for BubbleMaps
+  const fetchProjectRankings = useCallback(async (projectSlug = null) => {
+    if (!projectSlug) return;
+
+    setRankingsLoading(true);
+    setRankingsError(null);
+
+    try {
+      const url = new URL('/api/project-rankings', window.location.origin);
+      url.searchParams.append('project', projectSlug);
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch project rankings');
+      }
+
+      let data = await response.json();
+
+      // Handle both array and object response formats
+      if (!Array.isArray(data)) {
+        data = data[projectSlug] || [];
+      }
+
+      // Transform data to include formatted values
+      const transformedData = data.map(ranking => ({
+        ...ranking,
+        holding_percentage: parseFloat(ranking.holding_percentage).toFixed(2),
+        formattedAddress: `${ranking.address.slice(0, 6)}...${ranking.address.slice(-4)}`,
+        rank_display: `#${ranking.rank}`
+      }));
+
+      setProjectRankings(transformedData);
+    } catch (error) {
+      console.error('Error fetching project rankings:', error);
+      setRankingsError(error.message);
+    } finally {
+      setRankingsLoading(false);
+    }
+  }, []);
+
   // Handle search input change
   const handleSearchChange = (e) => setSearchInput(e.target.value);
 
@@ -286,6 +326,13 @@ const AnalyticsPage = () => {
   const handleCollectionChange = useCallback((collection) => {
     setSelectedCollection(collection);
   }, []);
+
+  // UseEffect to handle collection changes
+  useEffect(() => {
+    if (selectedCollection && showBubbleChart) {
+      fetchProjectRankings(selectedCollection);
+    }
+  }, [selectedCollection, showBubbleChart, fetchProjectRankings]);
 
   // Render error state
   if (error) {
@@ -419,7 +466,7 @@ const AnalyticsPage = () => {
             <div className="space-y-10">
               {/* Chart Selector */}
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-white mb-2">Select Chart</h2>
+                <h2 className="text-xl font-semibold text-white mb=2">Select Chart</h2>
                 <select
                   className="bg-gray-700 text-white p-2 rounded shadow-lg transition duration-300"
                   value={selectedChart}

@@ -284,10 +284,7 @@ export default function Example() {
                     href="/analytics"
                     className="rounded-md bg-gradient-to-r from-purple-500 to-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-md hover:from-purple-600 hover:to-indigo-600 transition-all duration-200"
                   >
-                    Get Started
-                  </a>
-                  <a href="#" className="text-sm font-semibold leading-6 text-gray-300 hover:text-white">
-                    Learn More <span aria-hidden="true">→</span>
+                    Enter
                   </a>
                 </div>
               </div>

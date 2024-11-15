@@ -87,6 +87,24 @@ const formatMarketCap = (value) => {
   return `$${value.toFixed(2)}`;
 };
 
+const transformRankingsData = (rawData) => {
+  if (!Array.isArray(rawData)) return [];
+
+  return rawData
+    .filter(item => (
+      item?.cohort === 'ordinal' &&
+      item?.collectionSymbol &&
+      typeof item?.name === 'string'
+    ))
+    .map((item, index) => ({
+      rank: index + 1,
+      address: item.name || 'unknown',
+      holding_count: parseInt(item.count || 0),
+      total_project_supply: 10000, // You might want to get this from your API
+      collection: item.collectionSymbol.toLowerCase()
+    }));
+};
+
 const TrendingCollections = ({
   inscriptionStats,
   statsLoading,
@@ -134,12 +152,20 @@ const TrendingCollections = ({
       const fetchProjectRankings = async () => {
         setRankingsLoading(true);
         try {
-          // Update this to your actual API endpoint
           const response = await fetch(`/api/project-rankings?project=${selectedCollection}`);
           if (!response.ok) throw new Error(`Failed to fetch project rankings`);
-          const data = await response.json();
-          setProjectRankings(data);
-          setRankingsError(null);
+          const rawData = await response.json();
+
+          // Transform the data into the format BubbleMaps expects
+          const transformedData = transformRankingsData(rawData);
+
+          // Only set project rankings if we have valid transformed data
+          if (transformedData.length > 0) {
+            setProjectRankings(transformedData);
+            setRankingsError(null);
+          } else {
+            throw new Error('No valid rankings data available');
+          }
         } catch (error) {
           setProjectRankings([]);
           setRankingsError(error.message);
@@ -246,7 +272,7 @@ const TrendingCollections = ({
       <div className="flex flex-col gap-4">
         <h3 className="text-lg font-semibold">Holder Distribution</h3>
         <div className="w-full" style={{ height: '600px' }}>
-          {BUBBLE_MAP_SUPPORTED_COLLECTIONS.includes(selectedCollection) ? (
+          {BUBBLE_MAP_SUPPORTED_COLLECTIONS.includes(selectedCollection) && projectRankings.length > 0 ? (
             <MemoizedBubbleMaps
               projectRankings={projectRankings}
               rankingsLoading={rankingsLoading}
@@ -260,9 +286,13 @@ const TrendingCollections = ({
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
               <div className="text-center">
-                <div className="text-xl text-gray-400 mb-2">No Bubble Map Available</div>
+                <div className="text-xl text-gray-400 mb-2">
+                  {rankingsLoading ? 'Loading...' : 'No Bubble Map Available'}
+                </div>
                 <div className="text-sm text-gray-500">
-                  Holder distribution visualization is not available for this collection
+                  {rankingsLoading
+                    ? 'Fetching holder distribution data...'
+                    : 'Holder distribution visualization is not available for this collection'}
                 </div>
               </div>
             </div>

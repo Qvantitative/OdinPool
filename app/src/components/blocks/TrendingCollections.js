@@ -8,6 +8,29 @@ import TreeMapChart from './charts/TreeMapChart';
 const MemoizedTreeMapChart = memo(TreeMapChart);
 const MemoizedTrendingGraph = memo(TrendingGraph);
 
+const formatMarketCap = (value) => {
+  if (value === null || value === undefined) return 'N/A';
+
+  const trillion = 1_000_000_000_000;
+  const billion = 1_000_000_000;
+  const million = 1_000_000;
+  const thousand = 1_000;
+
+  const absValue = Math.abs(value);
+
+  if (absValue >= trillion) {
+    return `$${(value / trillion).toFixed(2)}T`;
+  } else if (absValue >= billion) {
+    return `$${(value / billion).toFixed(2)}B`;
+  } else if (absValue >= million) {
+    return `$${(value / million).toFixed(2)}M`;
+  } else if (absValue >= thousand) {
+    return `$${(value / thousand).toFixed(2)}K`;
+  }
+
+  return `$${value.toFixed(2)}`;
+};
+
 const TrendingCollections = ({
   inscriptionStats,
   statsLoading,
@@ -40,6 +63,7 @@ const TrendingCollections = ({
   const treeMapData = useMemo(() => collections.map((collection) => ({
     name: collection.name,
     MCAP: collection.marketCapUsd ?? 0,
+    formattedMCAP: formatMarketCap(collection.marketCapUsd),
     fpPctChg: collection.fpPctChg ?? 0,
   })), [collections]);
 
@@ -218,9 +242,7 @@ const TrendingCollections = ({
                         : 'N/A'}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      {collection.marketCapUsd !== undefined && collection.marketCapUsd !== null
-                        ? `$${parseFloat(collection.marketCapUsd).toFixed(2)}`
-                        : 'N/A'}
+                      {formatMarketCap(collection.marketCapUsd)}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
                       {collection.ownerCount !== undefined && collection.ownerCount !== null

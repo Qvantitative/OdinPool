@@ -105,6 +105,13 @@ const TrendingCollections = ({
   const [rankingsLoading, setRankingsLoading] = useState(false);
   const [rankingsError, setRankingsError] = useState(null);
 
+  const BUBBLE_MAP_SUPPORTED_COLLECTIONS = [
+    'bitcoin-puppets',
+    'nodemonkes',
+    'basedangels',
+    'quantum-cats'
+  ];
+
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
     setLoading(true);
@@ -215,6 +222,55 @@ const TrendingCollections = ({
   // Get the normalized collection name for bubble maps
   const normalizedSelectedCollection = selectedCollection;
 
+  const renderChartView = () => (
+    <div className="w-full flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">{getDisplayName(selectedCollection)}</h2>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-md"
+            onClick={handleBack}
+          >
+            {viewHistory[viewHistory.length - 2] === 'treemap' ? 'Back to Treemap' : 'Back to List'}
+          </button>
+        </div>
+        <div className="w-full" style={{ height: '600px' }}>
+          <MemoizedTrendingGraph
+            collectionName={selectedCollection}
+            refreshData={prevSelectedCollection === selectedCollection}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <h3 className="text-lg font-semibold">Holder Distribution</h3>
+        <div className="w-full" style={{ height: '600px' }}>
+          {BUBBLE_MAP_SUPPORTED_COLLECTIONS.includes(selectedCollection) ? (
+            <MemoizedBubbleMaps
+              projectRankings={projectRankings}
+              rankingsLoading={rankingsLoading}
+              rankingsError={rankingsError}
+              selectedCollection={selectedCollection}
+              onCollectionChange={(collection) => {
+                console.log('Collection Change Event:', collection);
+                setSelectedCollection(collection);
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
+              <div className="text-center">
+                <div className="text-xl text-gray-400 mb-2">No Bubble Map Available</div>
+                <div className="text-sm text-gray-500">
+                  Holder distribution visualization is not available for this collection
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full max-w-[1600px] mx-auto mt-8">
       {currentView === 'list' && (
@@ -320,68 +376,7 @@ const TrendingCollections = ({
         </div>
       )}
 
-      {currentView === 'treemap' && (
-        <div className="w-full flex flex-col gap-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Market Cap Visualization</h2>
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-md"
-              onClick={handleBack}
-            >
-              Back to List
-            </button>
-          </div>
-          <div className="w-full" style={{ height: '600px' }}>
-            <MemoizedTreeMapChart
-              data={treeMapData}
-              onCollectionClick={handleCollectionClick}
-            />
-          </div>
-        </div>
-      )}
-
-      {currentView === 'chart' && (
-        <div className="w-full flex flex-col gap-8">
-          <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">{getDisplayName(selectedCollection)}</h2>
-              <button
-                className="bg-blue-500 text-white px-4 py-2 rounded-md"
-                onClick={handleBack}
-              >
-                {viewHistory[viewHistory.length - 2] === 'treemap' ? 'Back to Treemap' : 'Back to List'}
-              </button>
-            </div>
-            <div className="w-full" style={{ height: '600px' }}>
-              <MemoizedTrendingGraph
-                collectionName={selectedCollection}
-                refreshData={prevSelectedCollection === selectedCollection}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-semibold">Holder Distribution</h3>
-            {/* Add debug logging */}
-            {console.log('Original Selected Collection:', selectedCollection)}
-            {console.log('Normalized Collection Name:', normalizedSelectedCollection)}
-            {console.log('Project Rankings:', projectRankings)}
-            {console.log('Available Collections:', projectRankings.map(r => r.collection))}
-            <div className="w-full" style={{ height: '600px' }}>
-              <MemoizedBubbleMaps
-                projectRankings={projectRankings}
-                rankingsLoading={rankingsLoading}
-                rankingsError={rankingsError}
-                selectedCollection={normalizedSelectedCollection}
-                onCollectionChange={(collection) => {
-                  console.log('Collection Change Event:', collection);
-                  setSelectedCollection(collection);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {currentView === 'chart' && renderChartView()}
     </div>
   );
 };

@@ -119,6 +119,7 @@ const TrendingCollections = ({
       const response = await fetch('/api/proxy?url=https://api-mainnet.magiceden.dev/collection_stats/search/bitcoin');
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
+      console.log(data)
       setCollections(data);
     } catch (error) {
       setError((prev) => ({ ...prev, collections: 'Error fetching collection statistics.' }));

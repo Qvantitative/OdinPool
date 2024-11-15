@@ -52,6 +52,14 @@ const normalizeCollectionName = (name) => {
   return matchingEntry ? matchingEntry[1] : normalizedName;
 };
 
+// Function to format display names nicely
+const formatDisplayName = (name) => {
+  return name
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 // Update the getDisplayName function to handle more cases
 const getDisplayName = (normalizedName) => {
   // Find the first mapping that matches this normalized name
@@ -63,10 +71,7 @@ const getDisplayName = (normalizedName) => {
   }
 
   // If no mapping found, format it nicely
-  return normalizedName
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return formatDisplayName(normalizedName);
 };
 
 const formatMarketCap = (value) => {
@@ -96,9 +101,6 @@ const TrendingCollections = ({
   inscriptionStats,
   statsLoading,
   statsError,
-  projectRankings = [],
-  rankingsLoading,
-  rankingsError
 }) => {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -109,19 +111,9 @@ const TrendingCollections = ({
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [currentView, setCurrentView] = useState('list');
   const [viewHistory, setViewHistory] = useState(['list']);
-
-  // Get normalized collection name for bubble maps
-  const getNormalizedCollectionName = useCallback((displayName) => {
-    const normalized = normalizeCollectionName(displayName);
-    return Object.entries(collectionNameMappings).find(([key, value]) =>
-      normalizeCollectionName(value) === normalized
-    )?.[0] || normalized;
-  }, []);
-
-  // Get display name for collection
-  const getDisplayName = useCallback((normalizedName) => {
-    return collectionNameMappings[normalizedName] || formatDisplayName(normalizedName);
-  }, []);
+  const [projectRankings, setProjectRankings] = useState([]);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
+  const [rankingsError, setRankingsError] = useState(null);
 
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
@@ -137,6 +129,29 @@ const TrendingCollections = ({
       setLoading(false);
     }
   }, []);
+
+  // Fetch project rankings when selectedCollection changes
+  useEffect(() => {
+    if (selectedCollection) {
+      const fetchProjectRankings = async () => {
+        setRankingsLoading(true);
+        try {
+          // Replace with your actual API endpoint
+          const response = await fetch(`/api/project-rankings/${selectedCollection}`);
+          if (!response.ok) throw new Error('Failed to fetch project rankings');
+          const data = await response.json();
+          setProjectRankings(data);
+          setRankingsError(null);
+        } catch (error) {
+          setProjectRankings([]);
+          setRankingsError(error.message);
+        } finally {
+          setRankingsLoading(false);
+        }
+      };
+      fetchProjectRankings();
+    }
+  }, [selectedCollection]);
 
   // Memoize tree map data calculation
   const treeMapData = useMemo(() => collections.map((collection) => ({
@@ -167,8 +182,9 @@ const TrendingCollections = ({
 
   // Handlers
   const handleCollectionClick = useCallback((collectionName) => {
+    const normalizedCollectionName = normalizeCollectionName(collectionName);
     setPrevSelectedCollection(selectedCollection);
-    setSelectedCollection(collectionName);
+    setSelectedCollection(normalizedCollectionName);
     setViewHistory(prev => [...prev, 'chart']);
     setCurrentView('chart');
   }, [selectedCollection]);
@@ -207,9 +223,7 @@ const TrendingCollections = ({
   }, [fetchCollectionStats]);
 
   // Get the normalized collection name for bubble maps
-  const normalizedSelectedCollection = useMemo(() =>
-    selectedCollection ? getNormalizedCollectionName(selectedCollection) : null,
-  [selectedCollection, getNormalizedCollectionName]);
+  const normalizedSelectedCollection = selectedCollection;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto mt-8">
@@ -340,7 +354,7 @@ const TrendingCollections = ({
         <div className="w-full flex flex-col gap-8">
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">{selectedCollection}</h2>
+              <h2 className="text-xl font-bold">{getDisplayName(selectedCollection)}</h2>
               <button
                 className="bg-blue-500 text-white px-4 py-2 rounded-md"
                 onClick={handleBack}
@@ -371,7 +385,7 @@ const TrendingCollections = ({
                 selectedCollection={normalizedSelectedCollection}
                 onCollectionChange={(collection) => {
                   console.log('Collection Change Event:', collection);
-                  setSelectedCollection(getDisplayName(collection));
+                  setSelectedCollection(collection);
                 }}
               />
             </div>

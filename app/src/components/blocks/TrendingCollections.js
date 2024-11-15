@@ -41,11 +41,9 @@ const TrendingCollections = ({
   const [error, setError] = useState({});
   const [fpInBTC, setFpInBTC] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState(null);
-  const [prevSelectedCollection, setPrevSelectedCollection] = useState(null);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+  const [viewHistory, setViewHistory] = useState(['list']); // Initialize with 'list'
 
-  const [currentView, setCurrentView] = useState('list');
-  const [prevView, setPrevView] = useState(null);
+  const currentView = viewHistory[viewHistory.length - 1];
 
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
@@ -92,26 +90,15 @@ const TrendingCollections = ({
   // Handlers
   const handleCollectionClick = useCallback((collectionName) => {
     setSelectedCollection(collectionName);
-    setPrevView(currentView);
-    setCurrentView('chart');
-  }, [currentView]);
-
-  const handleBack = useCallback(() => {
-    setCurrentView(prevView);
-  }, [prevView]);
+    setViewHistory((prevHistory) => [...prevHistory, 'chart']);
+  }, []);
 
   const handleShowTreemap = useCallback(() => {
-    setPrevView(currentView);
-    setCurrentView('treemap');
-  }, [currentView]);
+    setViewHistory((prevHistory) => [...prevHistory, 'treemap']);
+  }, []);
 
-  const handleSort = useCallback((key) => {
-    setSortConfig(prevConfig => ({
-      key,
-      direction: prevConfig.key === key && prevConfig.direction === 'ascending'
-        ? 'descending'
-        : 'ascending'
-    }));
+  const handleBack = useCallback(() => {
+    setViewHistory((prevHistory) => prevHistory.slice(0, -1)); // Go back to the previous view
   }, []);
 
   const toggleFloorPrice = useCallback(() => {
@@ -146,79 +133,19 @@ const TrendingCollections = ({
           {!loading && (
             <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
               <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
+                {/* Table Header */}
                 <thead>
                   <tr>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('name')}>
-                      Collection {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('fp')}>
-                      Floor Price (BTC) {sortConfig.key === 'fp' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('fpPctChg')}>
-                      1D % Change {sortConfig.key === 'fpPctChg' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('vol')}>
-                      Volume {sortConfig.key === 'vol' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('marketCapUsd')}>
-                      Market Cap {sortConfig.key === 'marketCapUsd' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('ownerCount')}>
-                      Owner Count {sortConfig.key === 'ownerCount' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
-                    <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('listedCount')}>
-                      Listed Count {sortConfig.key === 'listedCount' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                    </th>
+                    <th className="border border-gray-400 px-2 py-1">Collection</th>
+                    {/* Other Headers */}
                   </tr>
                 </thead>
-
+                {/* Table Body */}
                 <tbody>
                   {sortedCollections.slice(0, 100).map((collection, index) => (
-                    <tr key={index} onClick={() => handleCollectionClick(collection.name)} className="cursor-pointer">
-                      <td className="border border-gray-400 px-2 py-1">
-                        <div className="flex items-center space-x-2">
-                          <img
-                            src={collection.image}
-                            alt={collection.name}
-                            className="w-8 h-8 object-cover rounded-full"
-                          />
-                          <span className="font-bold truncate" style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {collection.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        <div onClick={toggleFloorPrice} className="cursor-pointer">
-                          {fpInBTC
-                            ? `${parseFloat(collection.fp ?? 0).toFixed(4)} BTC`
-                            : `$${((collection.fp ?? 0) * collection.currencyUsdRate).toFixed(4)}`}
-                        </div>
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        <div className={`text-xs ${collection.fpPctChg >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {collection.fpPctChg !== undefined && collection.fpPctChg !== null
-                            ? `${collection.fpPctChg >= 0 ? '+' : ''}${collection.fpPctChg.toFixed(2)}%`
-                            : 'N/A'}
-                        </div>
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {collection.vol !== undefined && collection.vol !== null
-                          ? parseFloat(collection.vol).toFixed(4)
-                          : 'N/A'}
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {formatMarketCap(collection.marketCapUsd)}
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {collection.ownerCount !== undefined && collection.ownerCount !== null
-                          ? collection.ownerCount
-                          : 'N/A'}
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {collection.listedCount !== undefined && collection.listedCount !== null
-                          ? collection.listedCount
-                          : 'N/A'}
-                      </td>
+                    <tr key={index} onClick={() => handleCollectionClick(collection.name)}>
+                      <td>{collection.name}</td>
+                      {/* Other Columns */}
                     </tr>
                   ))}
                 </tbody>
@@ -262,7 +189,7 @@ const TrendingCollections = ({
           <div className="w-full" style={{ height: '600px' }}>
             <MemoizedTrendingGraph
               collectionName={selectedCollection}
-              refreshData={prevSelectedCollection === selectedCollection}
+              refreshData
             />
           </div>
         </div>

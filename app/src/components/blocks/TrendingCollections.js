@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import TrendingGraph from './charts/TrendingChart';
 import TreeMapChart from './charts/TreeMapChart';
+import BubbleMaps from './blocks/BubbleMaps';
 
 const MemoizedTreeMapChart = memo(TreeMapChart);
 const MemoizedTrendingGraph = memo(TrendingGraph);
+const MemoizedBubbleMaps = memo(BubbleMaps);
 
 const formatMarketCap = (value) => {
   if (value === null || value === undefined) return 'N/A';
@@ -33,7 +35,10 @@ const formatMarketCap = (value) => {
 const TrendingCollections = ({
   inscriptionStats,
   statsLoading,
-  statsError
+  statsError,
+  projectRankings = [],
+  rankingsLoading,
+  rankingsError
 }) => {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -43,13 +48,13 @@ const TrendingCollections = ({
   const [prevSelectedCollection, setPrevSelectedCollection] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [currentView, setCurrentView] = useState('list');
-  const [viewHistory, setViewHistory] = useState(['list']); // New state for view history
+  const [viewHistory, setViewHistory] = useState(['list']);
 
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/proxy?url=https://api-mainnet.magiceden.dev/collection_stats/search/bitcoin`);
+      const response = await fetch('/api/proxy?url=https://api-mainnet.magiceden.dev/collection_stats/search/bitcoin');
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setCollections(data);
@@ -89,23 +94,24 @@ const TrendingCollections = ({
 
   // Handlers
   const handleCollectionClick = useCallback((collectionName) => {
+    setPrevSelectedCollection(selectedCollection);
     setSelectedCollection(collectionName);
-    setViewHistory(prev => [...prev, 'chart']); // Add new view to history
+    setViewHistory(prev => [...prev, 'chart']);
     setCurrentView('chart');
-  }, []);
+  }, [selectedCollection]);
 
   const handleBack = useCallback(() => {
     setViewHistory(prev => {
       const newHistory = [...prev];
-      newHistory.pop(); // Remove current view
-      const previousView = newHistory[newHistory.length - 1] || 'list'; // Default to 'list' if history is empty
+      newHistory.pop();
+      const previousView = newHistory[newHistory.length - 1] || 'list';
       setCurrentView(previousView);
       return newHistory;
     });
   }, []);
 
   const handleShowTreemap = useCallback(() => {
-    setViewHistory(prev => [...prev, 'treemap']); // Add new view to history
+    setViewHistory(prev => [...prev, 'treemap']);
     setCurrentView('treemap');
   }, []);
 
@@ -253,21 +259,35 @@ const TrendingCollections = ({
       )}
 
       {currentView === 'chart' && (
-        <div className="w-full flex flex-col gap-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">{selectedCollection}</h2>
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-md"
-              onClick={handleBack}
-            >
-              {viewHistory[viewHistory.length - 2] === 'treemap' ? 'Back to Treemap' : 'Back to List'}
-            </button>
+        <div className="w-full flex flex-col gap-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">{selectedCollection}</h2>
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded-md"
+                onClick={handleBack}
+              >
+                {viewHistory[viewHistory.length - 2] === 'treemap' ? 'Back to Treemap' : 'Back to List'}
+              </button>
+            </div>
+            <div className="w-full" style={{ height: '600px' }}>
+              <MemoizedTrendingGraph
+                collectionName={selectedCollection}
+                refreshData={prevSelectedCollection === selectedCollection}
+              />
+            </div>
           </div>
-          <div className="w-full" style={{ height: '600px' }}>
-            <MemoizedTrendingGraph
-              collectionName={selectedCollection}
-              refreshData={prevSelectedCollection === selectedCollection}
-            />
+
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-semibold">Holder Distribution</h3>
+            <div className="w-full" style={{ height: '600px' }}>
+              <MemoizedBubbleMaps
+                projectRankings={projectRankings}
+                rankingsLoading={rankingsLoading}
+                rankingsError={rankingsError}
+                selectedCollection={selectedCollection}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -24,6 +24,7 @@ const collectionNameMappings = {
   // Add any other variations you might encounter
 };
 
+// Update the normalizeCollectionName function
 const normalizeCollectionName = (name) => {
   if (!name) return '';
 
@@ -31,13 +32,24 @@ const normalizeCollectionName = (name) => {
   const normalized = collectionNameMappings[name];
   if (normalized) return normalized;
 
+  // Special case for "Bitcoin Puppets" if it starts with "Bitcoin"
+  if (name.toLowerCase().includes('bitcoin')) {
+    return 'bitcoin-puppets';
+  }
+
   // If no mapping exists, normalize it
-  return name
+  const normalizedName = name
     .toLowerCase()
-    .replace(/[_\s]+/g, '-') // Replace both underscores and spaces with hyphens
-    .replace(/[^a-z0-9-]/g, '') // Remove any characters that aren't letters, numbers, or hyphens
-    .replace(/-+/g, '-') // Replace multiple consecutive hyphens with a single hyphen
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
     .trim();
+
+  // Check if the normalized name exists in our values
+  const matchingEntry = Object.entries(collectionNameMappings)
+    .find(([_, value]) => value === normalizedName);
+
+  return matchingEntry ? matchingEntry[1] : normalizedName;
 };
 
 // Update the getDisplayName function to handle more cases

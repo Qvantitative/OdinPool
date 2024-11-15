@@ -4,7 +4,7 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 
-const collections = ['Bitcoin Puppets', 'nodemonkes', 'basedangels', 'quantum_cats'];
+const collections = ['bitcoin-puppets', 'nodemonkes', 'basedangels', 'quantum_cats'];
 
 const Tooltip = ({ holder, x, y }) => {
   if (!holder) return null;

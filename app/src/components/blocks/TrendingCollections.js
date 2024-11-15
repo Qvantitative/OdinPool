@@ -3,11 +3,40 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import TrendingGraph from './charts/TrendingChart';
 import TreeMapChart from './charts/TreeMapChart';
-import BubbleMaps from './BubbleMaps';
+import BubbleMaps from './blocks/BubbleMaps';
 
 const MemoizedTreeMapChart = memo(TreeMapChart);
 const MemoizedTrendingGraph = memo(TrendingGraph);
 const MemoizedBubbleMaps = memo(BubbleMaps);
+
+// Collection name normalization functions
+const normalizeCollectionName = (name) => {
+  if (!name) return '';
+  // Convert to lowercase, replace spaces with hyphens, and remove any extra spaces/hyphens
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+};
+
+const formatDisplayName = (name) => {
+  if (!name) return '';
+  // Convert hyphenated names to space-separated, capitalize words
+  return name
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+// Collection name mappings
+const collectionNameMappings = {
+  'bitcoin-puppets': 'Bitcoin Puppets',
+  'nodemonkes': 'NodeMonkes',
+  'basedangels': 'BasedAngels',
+  'quantum-cats': 'Quantum Cats',
+  // Add more mappings as needed
+};
 
 const formatMarketCap = (value) => {
   if (value === null || value === undefined) return 'N/A';
@@ -49,6 +78,19 @@ const TrendingCollections = ({
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [currentView, setCurrentView] = useState('list');
   const [viewHistory, setViewHistory] = useState(['list']);
+
+  // Get normalized collection name for bubble maps
+  const getNormalizedCollectionName = useCallback((displayName) => {
+    const normalized = normalizeCollectionName(displayName);
+    return Object.entries(collectionNameMappings).find(([key, value]) =>
+      normalizeCollectionName(value) === normalized
+    )?.[0] || normalized;
+  }, []);
+
+  // Get display name for collection
+  const getDisplayName = useCallback((normalizedName) => {
+    return collectionNameMappings[normalizedName] || formatDisplayName(normalizedName);
+  }, []);
 
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
@@ -132,6 +174,11 @@ const TrendingCollections = ({
   useEffect(() => {
     fetchCollectionStats();
   }, [fetchCollectionStats]);
+
+  // Get the normalized collection name for bubble maps
+  const normalizedSelectedCollection = useMemo(() =>
+    selectedCollection ? getNormalizedCollectionName(selectedCollection) : null,
+  [selectedCollection, getNormalizedCollectionName]);
 
   return (
     <div className="w-full max-w-[1600px] mx-auto mt-8">
@@ -285,7 +332,10 @@ const TrendingCollections = ({
                 projectRankings={projectRankings}
                 rankingsLoading={rankingsLoading}
                 rankingsError={rankingsError}
-                selectedCollection={selectedCollection}
+                selectedCollection={normalizedSelectedCollection}
+                  onCollectionChange={(collection) => {
+                    setSelectedCollection(getDisplayName(collection));
+                }}
               />
             </div>
           </div>

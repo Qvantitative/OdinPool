@@ -115,7 +115,7 @@ const TrendingCollections = ({
   }, [fetchCollectionStats]);
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto mt-8">
+    <div className="w-full max-w-[1600px] mx-auto">
       {currentView === 'list' && (
         <div className="w-full">
           <div className="w-full flex flex-col gap-4">
@@ -129,7 +129,7 @@ const TrendingCollections = ({
               />
             </div>
           </div>
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4 mt-2">
             <h2 className="text-xl font-bold">Top Ordinal Collections</h2>
           </div>
 

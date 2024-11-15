@@ -231,7 +231,7 @@ const TrendingChart = React.memo(({ collectionName }) => {
   }, [drawChart, isLoading, error]);
 
   return (
-    <div style={{ width: "100%", height: "345px", position: "relative" }}>
+    <div style={{ width: "100%", position: "relative" }}>
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
           <div className="spinner"></div>

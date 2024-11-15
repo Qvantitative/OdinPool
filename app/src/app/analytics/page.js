@@ -387,7 +387,7 @@ const AnalyticsPage = () => {
       />
 
       {/* Fixed Header with BlockDisplay */}
-      <header className="fixed top-16 left-0 right-0 bg-gray-800 p-4 z-40">
+      <header className="fixed top-16 left-0 right-0 bg-gray-800 px-4 pt-4 pb-2 z-40">
         <div className="flex justify-between items-stretch">
           <div className="flex custom-scrollbar" style={{ maxHeight: '300px', whiteSpace: 'nowrap' }}>
             {upcomingBlock && <UpcomingBlockDisplay block={upcomingBlock} />}
@@ -406,10 +406,10 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-8 pt-80">
+      <main className="container mx-auto p-8 pt-64">
         {/* Page Header */}
-        <section className="mb-10">
-          <h1 className="text-4xl font-extrabold text-center pt-20 text-white mb-2">Onchain Data Analytics</h1>
+        <section className="mb-6">
+          <h1 className="text-4xl font-extrabold text-center pt-4 text-white mb-2">Onchain Data Analytics</h1>
           <p className="text-center text-white">Real-time blockchain data and analytics dashboard</p>
         </section>
 

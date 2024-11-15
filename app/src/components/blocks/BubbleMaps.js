@@ -4,13 +4,7 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 
-// Updated collections array with value and label
-const collections = [
-  { value: 'bitcoin-puppets', label: 'Bitcoin Puppets' },
-  { value: 'nodemonkes', label: 'NodeMonkes' },
-  { value: 'basedangels', label: 'BasedAngels' },
-  { value: 'quantum-cats', label: 'Quantum Cats' },
-];
+const collections = ['bitcoin-puppets',  'nodemonkes', 'basedangels', 'quantum_cats'];
 
 const Tooltip = ({ holder, x, y }) => {
   if (!holder) return null;
@@ -223,9 +217,9 @@ const BubbleMaps = ({
             onChange={(e) => onCollectionChange?.(e.target.value)}
           >
             <option value="">Select Collection</option>
-            {collections.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
+            {collections.map(collection => (
+              <option key={collection} value={collection}>
+                {collection}
               </option>
             ))}
           </select>
@@ -246,9 +240,9 @@ const BubbleMaps = ({
             onChange={(e) => onCollectionChange?.(e.target.value)}
           >
             <option value="">Select Collection</option>
-            {collections.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
+            {collections.map(collection => (
+              <option key={collection} value={collection}>
+                {collection}
               </option>
             ))}
           </select>
@@ -269,9 +263,9 @@ const BubbleMaps = ({
             onChange={(e) => onCollectionChange?.(e.target.value)}
           >
             <option value="">Select Collection</option>
-            {collections.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
+            {collections.map(collection => (
+              <option key={collection} value={collection}>
+                {collection}
               </option>
             ))}
           </select>
@@ -299,9 +293,9 @@ const BubbleMaps = ({
           onChange={(e) => onCollectionChange?.(e.target.value)}
         >
           <option value="">Select Collection</option>
-          {collections.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
+          {collections.map(collection => (
+            <option key={collection} value={collection}>
+              {collection}
             </option>
           ))}
         </select>

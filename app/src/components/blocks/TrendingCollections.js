@@ -129,7 +129,7 @@ const TrendingCollections = ({
               />
             </div>
           </div>
-          <div className="flex justify-between items-center mb-4 mt-8">
+          <div className="flex justify-between items-center mb-4 mt-4">
             <h2 className="text-xl font-bold">Top Ordinal Collections</h2>
           </div>
 

@@ -32,24 +32,14 @@ const normalizeCollectionName = (name) => {
   const normalized = collectionNameMappings[name];
   if (normalized) return normalized;
 
-  // Special case for "Bitcoin Puppets" if it starts with "Bitcoin"
-  if (name.toLowerCase().includes('bitcoin')) {
-    return 'bitcoin-puppets';
-  }
-
-  // If no mapping exists, normalize it
+  // Normalize name: replace spaces and hyphens with underscores
   const normalizedName = name
     .toLowerCase()
-    .replace(/[_\s]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
+    .replace(/[\s-]+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
     .trim();
 
-  // Check if the normalized name exists in our values
-  const matchingEntry = Object.entries(collectionNameMappings)
-    .find(([_, value]) => value === normalizedName);
-
-  return matchingEntry ? matchingEntry[1] : normalizedName;
+  return normalizedName;
 };
 
 // Function to format display names nicely
@@ -136,9 +126,9 @@ const TrendingCollections = ({
       const fetchProjectRankings = async () => {
         setRankingsLoading(true);
         try {
-          // Replace with your actual API endpoint
-          const response = await fetch(`/api/project-rankings/${selectedCollection}`);
-          if (!response.ok) throw new Error('Failed to fetch project rankings');
+          // Update this to your actual API endpoint
+          const response = await fetch(`/api/project-rankings?project=${selectedCollection}`);
+          if (!response.ok) throw new Error(`Failed to fetch project rankings`);
           const data = await response.json();
           setProjectRankings(data);
           setRankingsError(null);

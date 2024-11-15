@@ -124,9 +124,9 @@ const TrendingCollections = ({
   }, [fetchCollectionStats]);
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto mt-8" style={{ height: '400px', overflow: 'hidden' }}>
+    <div className="w-full max-w-[1600px] mx-auto mt-8">
       {currentView === 'list' && (
-        <div className="w-full h-full">
+        <div className="w-full">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Top Ordinal Collections</h2>
             <button
@@ -144,7 +144,7 @@ const TrendingCollections = ({
           {loading && <div>Loading...</div>}
 
           {!loading && (
-            <div className="scroll-container w-full" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
               <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
                 <thead>
                   <tr>
@@ -229,7 +229,7 @@ const TrendingCollections = ({
       )}
 
       {currentView === 'treemap' && (
-        <div className="w-full h-full flex flex-col gap-4">
+        <div className="w-full flex flex-col gap-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Market Cap Visualization</h2>
             <button
@@ -239,7 +239,7 @@ const TrendingCollections = ({
               Back
             </button>
           </div>
-          <div className="w-full h-full">
+          <div className="w-full" style={{ height: '600px' }}>
             <MemoizedTreeMapChart
               data={treeMapData}
               onCollectionClick={handleCollectionClick}
@@ -249,7 +249,7 @@ const TrendingCollections = ({
       )}
 
       {currentView === 'chart' && (
-        <div className="w-full h-full flex flex-col gap-4">
+        <div className="w-full flex flex-col gap-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">{selectedCollection}</h2>
             <button
@@ -259,7 +259,7 @@ const TrendingCollections = ({
               Back
             </button>
           </div>
-          <div className="w-full h-full">
+          <div className="w-full" style={{ height: '600px' }}>
             <MemoizedTrendingGraph
               collectionName={selectedCollection}
               refreshData={prevSelectedCollection === selectedCollection}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import TrendingGraph from './charts/TrendingChart';
 import TreeMapChart from './charts/TreeMapChart';
-import BubbleMaps from './blocks/BubbleMaps';
+import BubbleMaps from './BubbleMaps';
 
 const MemoizedTreeMapChart = memo(TreeMapChart);
 const MemoizedTrendingGraph = memo(TrendingGraph);

@@ -43,6 +43,7 @@ const TrendingCollections = ({
   const [prevSelectedCollection, setPrevSelectedCollection] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [currentView, setCurrentView] = useState('list');
+  const [viewHistory, setViewHistory] = useState(['list']); // New state for view history
 
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
@@ -89,11 +90,23 @@ const TrendingCollections = ({
   // Handlers
   const handleCollectionClick = useCallback((collectionName) => {
     setSelectedCollection(collectionName);
+    setViewHistory(prev => [...prev, 'chart']); // Add new view to history
     setCurrentView('chart');
   }, []);
 
   const handleBack = useCallback(() => {
-    setCurrentView('list');
+    setViewHistory(prev => {
+      const newHistory = [...prev];
+      newHistory.pop(); // Remove current view
+      const previousView = newHistory[newHistory.length - 1] || 'list'; // Default to 'list' if history is empty
+      setCurrentView(previousView);
+      return newHistory;
+    });
+  }, []);
+
+  const handleShowTreemap = useCallback(() => {
+    setViewHistory(prev => [...prev, 'treemap']); // Add new view to history
+    setCurrentView('treemap');
   }, []);
 
   const handleSort = useCallback((key) => {
@@ -118,19 +131,14 @@ const TrendingCollections = ({
     <div className="w-full max-w-[1600px] mx-auto mt-8">
       {currentView === 'list' && (
         <div className="w-full">
-          <div className="w-full flex flex-col gap-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Market Cap Visualization</h2>
-            </div>
-            <div className="w-full" style={{ height: '600px' }}>
-              <MemoizedTreeMapChart
-                data={treeMapData}
-                onCollectionClick={handleCollectionClick}
-              />
-            </div>
-          </div>
-          <div className="flex justify-between items-center mb-4 mt-8">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Top Ordinal Collections</h2>
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded-md"
+              onClick={handleShowTreemap}
+            >
+              Show Treemap
+            </button>
           </div>
 
           {Object.values(error).map((msg, idx) => (
@@ -224,6 +232,26 @@ const TrendingCollections = ({
         </div>
       )}
 
+      {currentView === 'treemap' && (
+        <div className="w-full flex flex-col gap-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Market Cap Visualization</h2>
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded-md"
+              onClick={handleBack}
+            >
+              Back to List
+            </button>
+          </div>
+          <div className="w-full" style={{ height: '600px' }}>
+            <MemoizedTreeMapChart
+              data={treeMapData}
+              onCollectionClick={handleCollectionClick}
+            />
+          </div>
+        </div>
+      )}
+
       {currentView === 'chart' && (
         <div className="w-full flex flex-col gap-4">
           <div className="flex justify-between items-center mb-4">
@@ -232,7 +260,7 @@ const TrendingCollections = ({
               className="bg-blue-500 text-white px-4 py-2 rounded-md"
               onClick={handleBack}
             >
-              Back to List
+              {viewHistory[viewHistory.length - 2] === 'treemap' ? 'Back to Treemap' : 'Back to List'}
             </button>
           </div>
           <div className="w-full" style={{ height: '600px' }}>

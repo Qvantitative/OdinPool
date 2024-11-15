@@ -9,33 +9,52 @@ const MemoizedTreeMapChart = memo(TreeMapChart);
 const MemoizedTrendingGraph = memo(TrendingGraph);
 const MemoizedBubbleMaps = memo(BubbleMaps);
 
-// Collection name normalization functions
+// Collection name mappings - make sure these match EXACTLY with your backend/API
+const collectionNameMappings = {
+  'Bitcoin Puppets': 'bitcoin-puppets',
+  'BitcoinPuppets': 'bitcoin-puppets',
+  'bitcoin puppets': 'bitcoin-puppets',
+  'bitcoin-puppets': 'bitcoin-puppets',
+  'nodemonkes': 'nodemonkes',
+  'NodeMonkes': 'nodemonkes',
+  'basedangels': 'basedangels',
+  'BasedAngels': 'basedangels',
+  'quantum_cats': 'quantum-cats',
+  'Quantum Cats': 'quantum-cats',
+  // Add any other variations you might encounter
+};
+
 const normalizeCollectionName = (name) => {
   if (!name) return '';
-  // Convert to lowercase, replace spaces with hyphens, and remove any extra spaces/hyphens
+
+  // First check if we have an exact mapping
+  const normalized = collectionNameMappings[name];
+  if (normalized) return normalized;
+
+  // If no mapping exists, normalize it
   return name
     .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
+    .replace(/[_\s]+/g, '-') // Replace both underscores and spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '') // Remove any characters that aren't letters, numbers, or hyphens
+    .replace(/-+/g, '-') // Replace multiple consecutive hyphens with a single hyphen
     .trim();
 };
 
-const formatDisplayName = (name) => {
-  if (!name) return '';
-  // Convert hyphenated names to space-separated, capitalize words
-  return name
+// Update the getDisplayName function to handle more cases
+const getDisplayName = (normalizedName) => {
+  // Find the first mapping that matches this normalized name
+  const displayEntry = Object.entries(collectionNameMappings)
+    .find(([display, normalized]) => normalized === normalizedName);
+
+  if (displayEntry) {
+    return displayEntry[0];
+  }
+
+  // If no mapping found, format it nicely
+  return normalizedName
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-};
-
-// Collection name mappings
-const collectionNameMappings = {
-  'bitcoin-puppets': 'Bitcoin Puppets',
-  'nodemonkes': 'NodeMonkes',
-  'basedangels': 'BasedAngels',
-  'quantum-cats': 'Quantum Cats',
-  // Add more mappings as needed
 };
 
 const formatMarketCap = (value) => {
@@ -327,14 +346,20 @@ const TrendingCollections = ({
 
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-semibold">Holder Distribution</h3>
+            {/* Add debug logging */}
+            {console.log('Original Selected Collection:', selectedCollection)}
+            {console.log('Normalized Collection Name:', normalizedSelectedCollection)}
+            {console.log('Project Rankings:', projectRankings)}
+            {console.log('Available Collections:', projectRankings.map(r => r.collection))}
             <div className="w-full" style={{ height: '600px' }}>
               <MemoizedBubbleMaps
                 projectRankings={projectRankings}
                 rankingsLoading={rankingsLoading}
                 rankingsError={rankingsError}
                 selectedCollection={normalizedSelectedCollection}
-                  onCollectionChange={(collection) => {
-                    setSelectedCollection(getDisplayName(collection));
+                onCollectionChange={(collection) => {
+                  console.log('Collection Change Event:', collection);
+                  setSelectedCollection(getDisplayName(collection));
                 }}
               />
             </div>

@@ -42,8 +42,8 @@ const TrendingCollections = ({
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [prevSelectedCollection, setPrevSelectedCollection] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [currentView, setCurrentView] = useState('list');
-  const [viewHistory, setViewHistory] = useState(['list']); // New state for view history
+  const [currentView, setCurrentView] = useState('treemap'); // Initial view set to 'treemap'
+  const [viewHistory, setViewHistory] = useState(['treemap']); // Updated initial history
 
   // Fetch collections stats
   const fetchCollectionStats = useCallback(async () => {
@@ -90,27 +90,27 @@ const TrendingCollections = ({
   // Handlers
   const handleCollectionClick = useCallback((collectionName) => {
     setSelectedCollection(collectionName);
-    setViewHistory(prev => [...prev, 'chart']); // Add new view to history
+    setViewHistory((prev) => [...prev, 'chart']);
     setCurrentView('chart');
   }, []);
 
   const handleBack = useCallback(() => {
-    setViewHistory(prev => {
+    setViewHistory((prev) => {
       const newHistory = [...prev];
-      newHistory.pop(); // Remove current view
-      const previousView = newHistory[newHistory.length - 1] || 'list'; // Default to 'list' if history is empty
+      newHistory.pop();
+      const previousView = newHistory[newHistory.length - 1] || 'treemap';
       setCurrentView(previousView);
       return newHistory;
     });
   }, []);
 
-  const handleShowTreemap = useCallback(() => {
-    setViewHistory(prev => [...prev, 'treemap']); // Add new view to history
-    setCurrentView('treemap');
+  const handleShowList = useCallback(() => {
+    setViewHistory((prev) => [...prev, 'list']);
+    setCurrentView('list');
   }, []);
 
   const handleSort = useCallback((key) => {
-    setSortConfig(prevConfig => ({
+    setSortConfig((prevConfig) => ({
       key,
       direction: prevConfig.key === key && prevConfig.direction === 'ascending'
         ? 'descending'
@@ -119,7 +119,7 @@ const TrendingCollections = ({
   }, []);
 
   const toggleFloorPrice = useCallback(() => {
-    setFpInBTC(prev => !prev);
+    setFpInBTC((prev) => !prev);
   }, []);
 
   // Fetch data on mount
@@ -129,15 +129,35 @@ const TrendingCollections = ({
 
   return (
     <div className="w-full max-w-[1600px] mx-auto mt-8">
+      {currentView === 'treemap' && (
+        <div className="w-full flex flex-col gap-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Market Cap Visualization</h2>
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded-md"
+              onClick={handleShowList}
+            >
+              Show List
+            </button>
+          </div>
+          <div className="w-full" style={{ height: '600px' }}>
+            <MemoizedTreeMapChart
+              data={treeMapData}
+              onCollectionClick={handleCollectionClick}
+            />
+          </div>
+        </div>
+      )}
+
       {currentView === 'list' && (
         <div className="w-full">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Top Ordinal Collections</h2>
             <button
               className="bg-blue-500 text-white px-4 py-2 rounded-md"
-              onClick={handleShowTreemap}
+              onClick={handleBack}
             >
-              Show Treemap
+              Back to Treemap
             </button>
           </div>
 
@@ -229,26 +249,6 @@ const TrendingCollections = ({
               </table>
             </div>
           )}
-        </div>
-      )}
-
-      {currentView === 'treemap' && (
-        <div className="w-full flex flex-col gap-4">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Market Cap Visualization</h2>
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-md"
-              onClick={handleBack}
-            >
-              Back to List
-            </button>
-          </div>
-          <div className="w-full" style={{ height: '600px' }}>
-            <MemoizedTreeMapChart
-              data={treeMapData}
-              onCollectionClick={handleCollectionClick}
-            />
-          </div>
         </div>
       )}
 

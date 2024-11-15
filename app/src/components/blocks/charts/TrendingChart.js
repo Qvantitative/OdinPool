@@ -77,17 +77,18 @@ const TrendingChart = React.memo(({ collectionName }) => {
       return;
     }
 
-    const { width, height } = chartRef.current.getBoundingClientRect();
+    const containerWidth = chartRef.current.clientWidth;
+    const containerHeight = chartRef.current.clientHeight;
     const margin = { top: 20, right: 20, bottom: 30, left: 50 };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+    const chartWidth = containerWidth - margin.left - margin.right;
+    const chartHeight = containerHeight - margin.top - margin.bottom;
 
     d3.select(chartRef.current).selectAll("*").remove();
 
     const svg = d3.select(chartRef.current)
       .append("svg")
-      .attr("width", width)
-      .attr("height", height)
+      .attr("width", containerWidth)
+      .attr("height", containerHeight)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -207,16 +208,17 @@ const TrendingChart = React.memo(({ collectionName }) => {
   }, [data, timeFilter, filterDataByTime]);
 
   const displayNoDataMessage = () => {
-    const { width, height } = chartRef.current.getBoundingClientRect();
+    const containerWidth = chartRef.current.clientWidth;
+    const containerHeight = chartRef.current.clientHeight;
     d3.select(chartRef.current).selectAll("*").remove();
     const svg = d3.select(chartRef.current)
       .append("svg")
-      .attr("width", width)
-      .attr("height", height);
+      .attr("width", containerWidth)
+      .attr("height", containerHeight);
 
     svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height / 2)
+      .attr("x", containerWidth / 2)
+      .attr("y", containerHeight / 2)
       .attr("text-anchor", "middle")
       .style("fill", "#cccccc")
       .text("No data available for the selected time range");
@@ -231,7 +233,7 @@ const TrendingChart = React.memo(({ collectionName }) => {
   }, [drawChart, isLoading, error]);
 
   return (
-    <div style={{ width: "100%", position: "relative" }}>
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
       {isLoading ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
           <div className="spinner"></div>

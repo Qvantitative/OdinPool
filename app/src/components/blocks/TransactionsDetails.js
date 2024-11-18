@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 
 const TransactionDetails = ({ transactionId }) => {
   const [transactionData, setTransactionData] = useState(null);
-  const [inscriptionData, setInscriptionData] = useState(null);
+  const [inscriptionData, setInscriptionData] = useState({});
   const [error, setError] = useState(null);
-  const [runeData, setRuneData] = useState(null);
+  const [runeData, setRuneData] = useState({});
   const [expandedOpReturn, setExpandedOpReturn] = useState(null);
 
   useEffect(() => {
@@ -26,33 +26,11 @@ const TransactionDetails = ({ transactionId }) => {
 
         // Reset states when loading new transaction
         setExpandedOpReturn(null);
-        setRuneData(null);
-        setInscriptionData(null);
+        setRuneData({});
+        setInscriptionData({});
+        setError(null);
 
-        // Check if transaction has OP_RETURN output and fetch rune data immediately
-        const hasOpReturn = data.outputs.some(output =>
-          output.scriptPubKey && output.scriptPubKey.type === 'nulldata'
-        );
-
-        if (hasOpReturn) {
-          try {
-            const runeResponse = await fetch(`/api/rune/${transactionId}`);
-            if (runeResponse.ok) {
-              const runeData = await runeResponse.json();
-              setRuneData(runeData);
-            }
-          } catch (runeError) {
-            console.error('Error fetching initial rune data:', runeError);
-          }
-        }
-
-        // Fetch inscription data
-        const inscriptionId = transactionId + 'i0';
-        const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
-        if (inscriptionResponse.ok) {
-          const inscription = await inscriptionResponse.json();
-          setInscriptionData(inscription);
-        }
+        // No need to fetch rune and inscription data here
       } catch (error) {
         console.error('Error fetching transaction details:', error);
         setError(`Failed to fetch transaction details: ${error.message}`);
@@ -65,7 +43,46 @@ const TransactionDetails = ({ transactionId }) => {
   const formatBTC = (value) => parseFloat(value).toFixed(8);
 
   const handleOpReturnClick = async (index) => {
-    setExpandedOpReturn(expandedOpReturn === index ? null : index);
+    if (expandedOpReturn === index) {
+      setExpandedOpReturn(null);
+    } else {
+      setExpandedOpReturn(index);
+
+      // Fetch Rune data if not already fetched
+      if (!runeData[index]) {
+        try {
+          const runeResponse = await fetch(`/api/rune/${transactionId}/${index}`);
+          if (runeResponse.ok) {
+            const data = await runeResponse.json();
+            setRuneData((prev) => ({ ...prev, [index]: data }));
+          } else {
+            const errorText = await runeResponse.text();
+            setRuneData((prev) => ({ ...prev, [index]: { error: errorText } }));
+          }
+        } catch (error) {
+          console.error('Error fetching rune data:', error);
+          setRuneData((prev) => ({ ...prev, [index]: { error: error.message } }));
+        }
+      }
+
+      // Fetch Inscription data if not already fetched
+      if (!inscriptionData[index]) {
+        try {
+          const inscriptionId = `${transactionId}i${index}`;
+          const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
+          if (inscriptionResponse.ok) {
+            const data = await inscriptionResponse.json();
+            setInscriptionData((prev) => ({ ...prev, [index]: data }));
+          } else {
+            const errorText = await inscriptionResponse.text();
+            setInscriptionData((prev) => ({ ...prev, [index]: { error: errorText } }));
+          }
+        } catch (error) {
+          console.error('Error fetching inscription data:', error);
+          setInscriptionData((prev) => ({ ...prev, [index]: { error: error.message } }));
+        }
+      }
+    }
   };
 
   if (error) return <div className="text-red-500">{error}</div>;
@@ -79,7 +96,8 @@ const TransactionDetails = ({ transactionId }) => {
       <div className="flex justify-between items-center mb-4">
         <div>{formatBTC(transaction.total_input_value)} BTC</div>
         <div className="text-sm">
-          {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+          Fee: {transaction.fee} sat/vB ={' '}
+          {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
         </div>
         <div>{formatBTC(transaction.total_output_value)} BTC</div>
       </div>
@@ -88,9 +106,17 @@ const TransactionDetails = ({ transactionId }) => {
         <div className="w-1/2 pr-2">
           <h3 className="text-sm font-semibold mb-2">Inputs</h3>
           <ul className="space-y-2">
-            {inputs.map((input, index) => (
-              <li key={index} className="flex justify-between items-center">
-                <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>{input.address}</span>
+            {inputs.map((input) => (
+              <li
+                key={`${input.txid}-${input.vout}`}
+                className="flex justify-between items-center"
+              >
+                <span
+                  className="text-red-400 truncate mr-2"
+                  style={{ maxWidth: '70%' }}
+                >
+                  {input.address}
+                </span>
                 <span>{formatBTC(input.value)} BTC</span>
               </li>
             ))}
@@ -101,9 +127,10 @@ const TransactionDetails = ({ transactionId }) => {
           <h3 className="text-sm font-semibold mb-2">Outputs</h3>
           <ul className="space-y-2">
             {outputs.map((output, index) => {
-              const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
+              const isOpReturn =
+                output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
               return (
-                <li key={index}>
+                <li key={output.address || `opreturn-${index}`}>
                   <div className="flex justify-between items-center">
                     <span
                       className={`truncate mr-2 ${
@@ -121,34 +148,66 @@ const TransactionDetails = ({ transactionId }) => {
                     </span>
                     <span>{formatBTC(output.value)} BTC</span>
                   </div>
-                  {expandedOpReturn === index && runeData && (
+                  {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                      <div className="mb-2">
-                        <p><strong>Rune Name:</strong> {runeData.formattedRuneName || 'Not available'}</p>
-                        <p><strong>Symbol:</strong> {runeData.symbol || 'Not available'}</p>
-                        {runeData.error && (
-                          <p className="text-red-400 text-sm mt-1">{runeData.error}</p>
-                        )}
-                      </div>
-                      {inscriptionData && (
-                        <div>
-                          <p className="mb-1"><strong>Inscription ID:</strong></p>
-                          <p className="text-xs break-all mb-2">{inscriptionData.id}</p>
-                          <p><strong>Content Type:</strong> {inscriptionData.content_type}</p>
-                          <p><strong>Content Length:</strong> {inscriptionData.content_length}</p>
-                          {inscriptionData.content_type?.startsWith('image/') && (
-                            <div className="mt-2 flex justify-center">
-                              <img
-                                src={`/content/${inscriptionData.id}`}
-                                alt={`Inscription ${inscriptionData.id}`}
-                                className="w-24 h-24 object-cover rounded border border-gray-600"
-                              />
-                            </div>
+                      {runeData[index] && (
+                        <div className="mb-2">
+                          <p>
+                            <strong>Rune Name:</strong>{' '}
+                            {runeData[index].formattedRuneName || 'Not available'}
+                          </p>
+                          <p>
+                            <strong>Symbol:</strong>{' '}
+                            {runeData[index].symbol || 'Not available'}
+                          </p>
+                          {runeData[index].error && (
+                            <p className="text-red-400 text-sm mt-1">
+                              {runeData[index].error}
+                            </p>
                           )}
-                          {inscriptionData.content_type?.startsWith('text/') && (
-                            <pre className="mt-2 bg-gray-700 p-2 rounded text-xs overflow-auto max-h-40">
-                              {inscriptionData.content}
-                            </pre>
+                        </div>
+                      )}
+                      {inscriptionData[index] && (
+                        <div>
+                          {inscriptionData[index].error ? (
+                            <p className="text-red-400 text-sm mt-1">
+                              {inscriptionData[index].error}
+                            </p>
+                          ) : (
+                            <>
+                              <p className="mb-1">
+                                <strong>Inscription ID:</strong>
+                              </p>
+                              <p className="text-xs break-all mb-2">
+                                {inscriptionData[index].id}
+                              </p>
+                              <p>
+                                <strong>Content Type:</strong>{' '}
+                                {inscriptionData[index].content_type}
+                              </p>
+                              <p>
+                                <strong>Content Length:</strong>{' '}
+                                {inscriptionData[index].content_length}
+                              </p>
+                              {inscriptionData[index].content_type?.startsWith(
+                                'image/'
+                              ) && (
+                                <div className="mt-2 flex justify-center">
+                                  <img
+                                    src={`/content/${inscriptionData[index].id}`}
+                                    alt={`Inscription ${inscriptionData[index].id}`}
+                                    className="w-24 h-24 object-cover rounded border border-gray-600"
+                                  />
+                                </div>
+                              )}
+                              {inscriptionData[index].content_type?.startsWith(
+                                'text/'
+                              ) && (
+                                <pre className="mt-2 bg-gray-700 p-2 rounded text-xs overflow-auto max-h-40">
+                                  {inscriptionData[index].content}
+                                </pre>
+                              )}
+                            </>
                           )}
                         </div>
                       )}

@@ -24,10 +24,27 @@ const TransactionDetails = ({ transactionId }) => {
         const data = await response.json();
         setTransactionData(data);
 
-        // Reset OP_RETURN and rune data when a new transaction is loaded
+        // Reset states when loading new transaction
         setExpandedOpReturn(null);
         setRuneData(null);
         setInscriptionData(null);
+
+        // Check if transaction has OP_RETURN output and fetch rune data immediately
+        const hasOpReturn = data.outputs.some(output =>
+          output.scriptPubKey && output.scriptPubKey.type === 'nulldata'
+        );
+
+        if (hasOpReturn) {
+          try {
+            const runeResponse = await fetch(`/api/rune/${transactionId}`);
+            if (runeResponse.ok) {
+              const runeData = await runeResponse.json();
+              setRuneData(runeData);
+            }
+          } catch (runeError) {
+            console.error('Error fetching initial rune data:', runeError);
+          }
+        }
 
         // Fetch inscription data
         const inscriptionId = transactionId + 'i0';
@@ -48,25 +65,7 @@ const TransactionDetails = ({ transactionId }) => {
   const formatBTC = (value) => parseFloat(value).toFixed(8);
 
   const handleOpReturnClick = async (index) => {
-    if (expandedOpReturn === index) {
-      setExpandedOpReturn(null);
-      setRuneData(null);
-    } else {
-      setExpandedOpReturn(index);
-      try {
-        const response = await fetch(`/api/rune/${transactionId}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch rune data');
-        }
-        const data = await response.json();
-        console.log("Runes Tx Data:", data)
-        setRuneData(data);
-      } catch (error) {
-        console.error('Error fetching rune data:', error);
-        setError(`Failed to fetch rune data: ${error.message}`);
-      }
-    }
+    setExpandedOpReturn(expandedOpReturn === index ? null : index);
   };
 
   if (error) return <div className="text-red-500">{error}</div>;
@@ -122,21 +121,22 @@ const TransactionDetails = ({ transactionId }) => {
                     </span>
                     <span>{formatBTC(output.value)} BTC</span>
                   </div>
-                  {expandedOpReturn === index && (
+                  {expandedOpReturn === index && runeData && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                      {runeData && (
-                        <div className="mb-2">
-                          <p><strong>Rune Name:</strong> {runeData.formattedRuneName}</p>
-                          <p><strong>Symbol:</strong> {runeData.symbol}</p>
-                        </div>
-                      )}
+                      <div className="mb-2">
+                        <p><strong>Rune Name:</strong> {runeData.formattedRuneName || 'Not available'}</p>
+                        <p><strong>Symbol:</strong> {runeData.symbol || 'Not available'}</p>
+                        {runeData.error && (
+                          <p className="text-red-400 text-sm mt-1">{runeData.error}</p>
+                        )}
+                      </div>
                       {inscriptionData && (
                         <div>
                           <p className="mb-1"><strong>Inscription ID:</strong></p>
                           <p className="text-xs break-all mb-2">{inscriptionData.id}</p>
                           <p><strong>Content Type:</strong> {inscriptionData.content_type}</p>
                           <p><strong>Content Length:</strong> {inscriptionData.content_length}</p>
-                          {inscriptionData.content_type.startsWith('image/') && (
+                          {inscriptionData.content_type?.startsWith('image/') && (
                             <div className="mt-2 flex justify-center">
                               <img
                                 src={`/content/${inscriptionData.id}`}
@@ -145,7 +145,7 @@ const TransactionDetails = ({ transactionId }) => {
                               />
                             </div>
                           )}
-                          {inscriptionData.content_type.startsWith('text/') && (
+                          {inscriptionData.content_type?.startsWith('text/') && (
                             <pre className="mt-2 bg-gray-700 p-2 rounded text-xs overflow-auto max-h-40">
                               {inscriptionData.content}
                             </pre>

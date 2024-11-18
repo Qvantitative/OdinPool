@@ -60,6 +60,7 @@ const TransactionDetails = ({ transactionId }) => {
           throw new Error(errorData.error || 'Failed to fetch rune data');
         }
         const data = await response.json();
+        console.log("Runes Tx Data:", data)
         setRuneData(data);
       } catch (error) {
         console.error('Error fetching rune data:', error);

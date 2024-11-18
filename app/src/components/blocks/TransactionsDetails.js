@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 const TransactionDetails = ({ transactionId }) => {
   const [transactionData, setTransactionData] = useState(null);
-  const [inscriptionData, setInscriptionData] = useState({});
+  const [inscriptionData, setInscriptionData] = useState(null);
   const [error, setError] = useState(null);
   const [runeData, setRuneData] = useState(null);
   const [expandedOpReturn, setExpandedOpReturn] = useState(null);
@@ -24,11 +24,18 @@ const TransactionDetails = ({ transactionId }) => {
         const data = await response.json();
         setTransactionData(data);
 
-        // Reset state when a new transaction is loaded
+        // Reset OP_RETURN and rune data when a new transaction is loaded
         setExpandedOpReturn(null);
         setRuneData(null);
-        setInscriptionData({});
-        setError(null);
+        setInscriptionData(null);
+
+        // Fetch inscription data
+        const inscriptionId = transactionId + 'i0';
+        const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
+        if (inscriptionResponse.ok) {
+          const inscription = await inscriptionResponse.json();
+          setInscriptionData(inscription);
+        }
       } catch (error) {
         console.error('Error fetching transaction details:', error);
         setError(`Failed to fetch transaction details: ${error.message}`);
@@ -44,33 +51,19 @@ const TransactionDetails = ({ transactionId }) => {
     if (expandedOpReturn === index) {
       setExpandedOpReturn(null);
       setRuneData(null);
-      setInscriptionData((prevState) => ({ ...prevState, [index]: null }));
     } else {
       setExpandedOpReturn(index);
       try {
-        // Construct the inscription ID using the transaction ID and output index
-        const inscriptionId = `${transactionId}i${index}`;
-
-        // Fetch inscription data
-        const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
-        if (!inscriptionResponse.ok) {
-          const errorData = await inscriptionResponse.json();
-          throw new Error(errorData.error || 'Failed to fetch inscription data');
-        }
-        const inscription = await inscriptionResponse.json();
-        setInscriptionData((prevState) => ({ ...prevState, [index]: inscription }));
-
-        // Fetch rune data
-        const runeResponse = await fetch(`/api/rune/${transactionId}`);
-        if (!runeResponse.ok) {
-          const errorData = await runeResponse.json();
+        const response = await fetch(`/api/rune/${transactionId}`);
+        if (!response.ok) {
+          const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch rune data');
         }
-        const rune = await runeResponse.json();
-        setRuneData(rune);
+        const data = await response.json();
+        setRuneData(data);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setError(`Failed to fetch data: ${error.message}`);
+        console.error('Error fetching rune data:', error);
+        setError(`Failed to fetch rune data: ${error.message}`);
       }
     }
   };
@@ -97,9 +90,7 @@ const TransactionDetails = ({ transactionId }) => {
           <ul className="space-y-2">
             {inputs.map((input, index) => (
               <li key={index} className="flex justify-between items-center">
-                <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
-                  {input.address}
-                </span>
+                <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>{input.address}</span>
                 <span>{formatBTC(input.value)} BTC</span>
               </li>
             ))}
@@ -134,47 +125,30 @@ const TransactionDetails = ({ transactionId }) => {
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
                       {runeData && (
                         <div className="mb-2">
-                          <p>
-                            <strong>Rune Name:</strong> {runeData.formattedRuneName}
-                          </p>
-                          <p>
-                            <strong>Symbol:</strong> {runeData.symbol}
-                          </p>
+                          <p><strong>Rune Name:</strong> {runeData.formattedRuneName}</p>
+                          <p><strong>Symbol:</strong> {runeData.symbol}</p>
                         </div>
                       )}
-                      {inscriptionData[index] && (
+                      {inscriptionData && (
                         <div>
-                          <p className="mb-1">
-                            <strong>Inscription ID:</strong>
-                          </p>
-                          <p className="text-xs break-all mb-2">
-                            {inscriptionData[index].id}
-                          </p>
-                          <p>
-                            <strong>Content Type:</strong> {inscriptionData[index].content_type}
-                          </p>
-                          <p>
-                            <strong>Content Length:</strong> {inscriptionData[index].content_length}
-                          </p>
-                          {inscriptionData[index].content_type.startsWith('image/') && (
+                          <p className="mb-1"><strong>Inscription ID:</strong></p>
+                          <p className="text-xs break-all mb-2">{inscriptionData.id}</p>
+                          <p><strong>Content Type:</strong> {inscriptionData.content_type}</p>
+                          <p><strong>Content Length:</strong> {inscriptionData.content_length}</p>
+                          {inscriptionData.content_type.startsWith('image/') && (
                             <div className="mt-2 flex justify-center">
                               <img
-                                src={`/content/${inscriptionData[index].id}`}
-                                alt={`Inscription ${inscriptionData[index].id}`}
+                                src={`/content/${inscriptionData.id}`}
+                                alt={`Inscription ${inscriptionData.id}`}
                                 className="w-24 h-24 object-cover rounded border border-gray-600"
                               />
                             </div>
                           )}
-                          {inscriptionData[index].content_type.startsWith('text/') && (
+                          {inscriptionData.content_type.startsWith('text/') && (
                             <pre className="mt-2 bg-gray-700 p-2 rounded text-xs overflow-auto max-h-40">
-                              {inscriptionData[index].content}
+                              {inscriptionData.content}
                             </pre>
                           )}
-                        </div>
-                      )}
-                      {!inscriptionData[index] && (
-                        <div className="text-red-500">
-                          No inscription data found for this output.
                         </div>
                       )}
                     </div>

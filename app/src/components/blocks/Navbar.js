@@ -75,7 +75,7 @@ const Navbar = ({
   ];
 
   return (
-    <nav className="bg-gray-900 text-white px-4 py-3 shadow-md flex justify-between items-center sticky top-0 z-50">
+    <nav className="bg-gray-900 text-white px-4 py-3 shadow-md flex justify-between items-center fixed top-0 left-0 w-full z-50">
       {/* Left Side - Navigation Items */}
       <div className="flex items-center space-x-6">
         <div className="flex items-center space-x-2">

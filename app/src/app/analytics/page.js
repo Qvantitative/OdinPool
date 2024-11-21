@@ -406,7 +406,7 @@ const AnalyticsPage = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-8 pt-20">
+      <main className="container mx-auto p-8 pt-96">
         {/* Page Header */}
         <section className="mb-6">
           <h1 className="text-4xl font-extrabold text-center pt-4 text-white mb-2">Onchain Data Analytics</h1>

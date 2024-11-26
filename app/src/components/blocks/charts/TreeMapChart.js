@@ -1,4 +1,4 @@
-// app/components/wallet/charts/TreeMapChart.js
+// app/components/blocks/charts/TreeMapChart.js
 
 "use client";
 

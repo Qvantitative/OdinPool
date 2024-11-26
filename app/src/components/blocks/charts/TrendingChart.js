@@ -1,4 +1,4 @@
-// app/components/wallet/charts/TrendingChart.js
+// app/components/blocks/charts/TrendingChart.js
 
 "use client";
 

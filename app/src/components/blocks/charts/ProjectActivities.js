@@ -17,7 +17,7 @@ const ProjectActivities = ({ transferIntervals }) => {
   const projects = [...new Set(transferIntervals.map((d) => d.project_slug))];
 
   // Prepare traces for each project
-  const dataTraces = projects.map((project) => {
+  const dataTraces = projects.map((project, index) => {
     const yValues = timeIntervals.map((interval) => {
       const item = transferIntervals.find(
         (d) => d.time_interval === interval && d.project_slug === project
@@ -30,11 +30,12 @@ const ProjectActivities = ({ transferIntervals }) => {
       y: yValues,
       name: project,
       type: 'bar',
+      offsetgroup: index, // Ensure bars within the same interval stack tightly
     };
   });
 
   const layout = {
-    barmode: 'group',
+    barmode: 'group', // Grouped bars without space
     title: 'Project Activities Over Intervals',
     xaxis: { title: 'Time Intervals', tickfont: { color: '#ccc' } },
     yaxis: { title: 'Transfer Count', tickfont: { color: '#ccc' } },
@@ -48,6 +49,8 @@ const ProjectActivities = ({ transferIntervals }) => {
       y: -0.2,
       font: { color: '#ccc' },
     },
+    bargap: 0, // Remove gaps between bars
+    bargroupgap: 0, // Remove gaps within groups
   };
 
   return (

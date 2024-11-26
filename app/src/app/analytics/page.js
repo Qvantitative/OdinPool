@@ -24,7 +24,6 @@ import InscriptionsLatest from '../../components/blocks/InscriptionsLatest';
 import Wallet from '../../components/blocks/Wallet';
 import ProjectActivities from '../../components/blocks/charts/ProjectActivities';
 
-
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
 const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
 

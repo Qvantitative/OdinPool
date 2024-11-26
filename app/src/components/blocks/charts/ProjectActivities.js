@@ -1,7 +1,9 @@
 // app/components/blocks/charts/ProjectActivities.js
 
-import React from 'react';
-import Plot from 'react-plotly.js';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Plotly without SSR
+const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
 
 const ProjectActivities = ({ transferIntervals }) => {
   // Prepare data for Plotly

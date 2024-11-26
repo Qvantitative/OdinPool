@@ -36,7 +36,7 @@ const ProjectActivities = ({ transferIntervals }) => {
 
   const layout = {
     barmode: 'group', // Grouped bars without space
-    title: 'Project Activities Over Intervals',
+    title: 'Project Activities',
     xaxis: { title: 'Time Intervals', tickfont: { color: '#ccc' } },
     yaxis: { title: 'Transfer Count', tickfont: { color: '#ccc' } },
     plot_bgcolor: '#2d3748',

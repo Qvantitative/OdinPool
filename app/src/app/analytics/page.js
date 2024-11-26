@@ -182,6 +182,7 @@ const AnalyticsPage = () => {
       if (!response.ok) throw new Error('Failed to fetch transfer intervals');
 
       const data = await response.json();
+      console.log( 'Project Activities:', data)
       setTransferIntervals(data);
     } catch (err) {
       console.error('Error fetching transfer intervals:', err);

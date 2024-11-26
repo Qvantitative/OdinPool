@@ -1023,6 +1023,42 @@ app.get('/api/project-rankings', async (req, res) => {
   }
 });
 
+// Endpoint to fetch transfer counts for the past 4 hours by intervals
+app.get('/api/transfer-intervals', async (req, res) => {
+  try {
+    const query = `
+      WITH intervals AS (
+        SELECT '10m' AS time_interval, NOW() - INTERVAL '10 minutes' AS start_time
+        UNION ALL
+        SELECT '30m', NOW() - INTERVAL '30 minutes'
+        UNION ALL
+        SELECT '1hr', NOW() - INTERVAL '1 hour'
+        UNION ALL
+        SELECT '4hr', NOW() - INTERVAL '4 hours'
+      )
+      SELECT i.time_interval,
+             COUNT(w.transferred_at) AS transfer_count
+      FROM intervals i
+      LEFT JOIN wallets_ord w
+      ON w.transferred_at > i.start_time
+      GROUP BY i.time_interval
+      ORDER BY
+          CASE
+              WHEN i.time_interval = '10m' THEN 1
+              WHEN i.time_interval = '30m' THEN 2
+              WHEN i.time_interval = '1hr' THEN 3
+              WHEN i.time_interval = '4hr' THEN 4
+          END;
+    `;
+
+    const result = await pool.query(query);
+    res.json(result.rows); // Send the query result as a JSON response
+  } catch (error) {
+    console.error('Error fetching transfer intervals:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 console.log('Available routes:');
 app._router.stack.forEach(r => {
   if (r.route && r.route.path) {

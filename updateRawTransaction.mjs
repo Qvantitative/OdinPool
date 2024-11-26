@@ -95,8 +95,6 @@ async function processTransaction(txid, blockHeight, blockTime) {
       return; // Skip further processing for this replaced transaction
     }
 
-
-
     // Initialize variables
     const txCache = new Map(); // For caching previous transactions
     const prevTxIdCache = new Map(); // For caching previous transaction IDs from the database

@@ -95,10 +95,10 @@ async function getLatestBlockInDB() {
 
 async function fetchInscriptionCount(height) {
   try {
-    const ordResponse = await ordInstance.get(`/block/${height}`), {
-      headers: {
-        'Accept': 'application/json',
-      }
+    const ordResponse = await ordInstance.get(`/block/${height}`, {
+       headers: {
+          'Accept': 'application/json',
+       },
     });
 
     if (ordResponse.data && Array.isArray(ordResponse.data.inscriptions)) {

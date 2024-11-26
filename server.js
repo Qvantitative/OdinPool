@@ -1035,20 +1035,32 @@ app.get('/api/transfer-intervals', async (req, res) => {
           SELECT '1hr', NOW() - INTERVAL '1 hour'
           UNION ALL
           SELECT '4hr', NOW() - INTERVAL '4 hours'
+      ),
+      projects AS (
+          SELECT DISTINCT project_slug
+          FROM wallets_ord
+          WHERE project_slug IS NOT NULL
+          AND project_slug != ''
       )
       SELECT i.time_interval,
-             COALESCE(COUNT(DISTINCT CASE WHEN project_slug = 'bitcoin-puppets' THEN transferred_at END), 0) AS transfer_count
+             p.project_slug,
+             COALESCE(COUNT(DISTINCT CASE
+                 WHEN w.project_slug = p.project_slug THEN w.transferred_at
+             END), 0) AS transfer_count
       FROM intervals i
+      CROSS JOIN projects p
       LEFT JOIN wallets_ord w
-      ON w.transferred_at > i.start_time
-      GROUP BY i.time_interval
+          ON w.transferred_at > i.start_time
+          AND w.project_slug = p.project_slug
+      GROUP BY i.time_interval, p.project_slug
       ORDER BY
           CASE
               WHEN i.time_interval = '10m' THEN 1
               WHEN i.time_interval = '30m' THEN 2
               WHEN i.time_interval = '1hr' THEN 3
               WHEN i.time_interval = '4hr' THEN 4
-          END;
+          END,
+          p.project_slug;
     `;
 
     const result = await pool.query(query);

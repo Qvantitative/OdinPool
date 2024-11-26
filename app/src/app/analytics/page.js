@@ -22,6 +22,8 @@ import ParetoChart from '../../components/blocks/charts/ParetoChart';
 import BlockDataTable from '../../components/blocks/BlockDataTable';
 import InscriptionsLatest from '../../components/blocks/InscriptionsLatest';
 import Wallet from '../../components/blocks/Wallet';
+import ProjectActivities from '../../components/blocks/charts/ProjectActivities';
+
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
 const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
@@ -59,6 +61,7 @@ const AnalyticsPage = () => {
     { name: 'Mining Pool Bar Chart', value: 'MiningPoolBarChart', component: <MiningPoolBarChart blockData={blockData} /> },
     { name: 'Mining Pool Pie Chart', value: 'MiningPoolPieChart', component: <MiningPoolPieChart blockData={blockData} /> },
     { name: 'Pareto Chart of Top Addresses', value: 'ParetoChart', component: <ParetoChart /> },
+    { name: 'Project Activities', value: 'ProjectActivities', component: <ProjectActivities transferIntervals={transferIntervals} /> },
     // Add other charts if any
   ];
 

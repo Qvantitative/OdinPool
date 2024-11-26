@@ -46,6 +46,87 @@ const Tooltip = ({ holder, x, y }) => {
   );
 };
 
+const BarChart = ({ projectRankings }) => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const containerRef = useRef(null);
+  const [selectedHolder, setSelectedHolder] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  // Initialize container and set dimensions
+  useEffect(() => {
+    if (containerRef.current) {
+      const { offsetWidth, offsetHeight } = containerRef.current;
+      setDimensions({ width: offsetWidth, height: offsetHeight });
+    }
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const { offsetWidth, offsetHeight } = containerRef.current;
+        setDimensions({ width: offsetWidth, height: offsetHeight });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Calculate bar positions and dimensions
+  const barData = useMemo(() => {
+    if (dimensions.height === 0) return [];
+
+    const maxHoldingCount = Math.max(...projectRankings.map((h) => h.holding_count));
+    const barsToDisplay = projectRankings.slice(0, 20); // Display top 20 holders
+    const barWidth = dimensions.width / barsToDisplay.length;
+
+    return barsToDisplay.map((holder, index) => {
+      const barHeight = (holder.holding_count / maxHoldingCount) * dimensions.height * 0.9;
+      return {
+        holder,
+        x: index * barWidth + barWidth * 0.1,
+        y: dimensions.height - barHeight,
+        width: barWidth * 0.8,
+        height: barHeight,
+      };
+    });
+  }, [projectRankings, dimensions]);
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative bg-gray-800">
+      {selectedHolder && (
+        <Tooltip holder={selectedHolder} x={tooltipPosition.x} y={tooltipPosition.y} />
+      )}
+      {dimensions.width > 0 && (
+        <svg width={dimensions.width} height={dimensions.height}>
+          {barData.map(({ holder, x, y, width, height }, index) => (
+            <rect
+              key={holder.address}
+              x={x}
+              y={y}
+              width={width}
+              height={height}
+              fill="rgba(147, 51, 234, 0.7)"
+              className="cursor-pointer"
+              onMouseEnter={(e) => {
+                setSelectedHolder(holder);
+                const rect = e.target.getBoundingClientRect();
+                setTooltipPosition({
+                  x: rect.x + rect.width / 2 - containerRef.current.getBoundingClientRect().x,
+                  y: rect.y - containerRef.current.getBoundingClientRect().y,
+                });
+              }}
+              onMouseLeave={() => {
+                setSelectedHolder(null);
+              }}
+            />
+          ))}
+        </svg>
+      )}
+    </div>
+  );
+};
+
 const BubbleMaps = ({
   projectRankings = [],
   rankingsLoading,
@@ -282,86 +363,93 @@ const BubbleMaps = ({
 
   // Main render
   return (
-    <div
-      ref={initializeContainer}
-      className="w-full h-full bg-gray-800 relative overflow-hidden rounded-lg shadow-lg"
-    >
-      <div className="absolute top-4 right-4 z-10">
-        <select
-          className="bg-black/80 text-white p-2 rounded-lg border border-white/20"
-          value={selectedCollection || ''}
-          onChange={(e) => onCollectionChange?.(e.target.value)}
-        >
-          <option value="">Select Collection</option>
-          {collections.map(collection => (
-            <option key={collection} value={collection}>
-              {collection}
-            </option>
-          ))}
-        </select>
+    <div className="w-full h-full flex bg-[#13111C]">
+      {/* Left side: Bar Chart */}
+      <div className="w-1/2 h-full">
+        <BarChart projectRankings={projectRankings} />
       </div>
+      {/* Right side: Bubble Maps */}
+      <div
+        ref={initializeContainer}
+        className="w-1/2 h-full bg-gray-800 relative overflow-hidden rounded-lg shadow-lg"
+      >
+        <div className="absolute top-4 right-4 z-10">
+          <select
+            className="bg-black/80 text-white p-2 rounded-lg border border-white/20"
+            value={selectedCollection || ''}
+            onChange={(e) => onCollectionChange?.(e.target.value)}
+          >
+            <option value="">Select Collection</option>
+            {collections.map(collection => (
+              <option key={collection} value={collection}>
+                {collection}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <Tooltip
-        holder={selectedHolder}
-        x={tooltipPosition.x}
-        y={tooltipPosition.y}
-      />
+        <Tooltip
+          holder={selectedHolder}
+          x={tooltipPosition.x}
+          y={tooltipPosition.y}
+        />
 
-      {dimensions.width > 0 && (
-        <svg width={dimensions.width} height={dimensions.height}>
-          <defs>
-            <radialGradient id="bg-gradient" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(147, 51, 234, 0.1)" />
-              <stop offset="100%" stopColor="rgba(147, 51, 234, 0)" />
-            </radialGradient>
-          </defs>
+        {dimensions.width > 0 && (
+          <svg width={dimensions.width} height={dimensions.height}>
+            <defs>
+              <radialGradient id="bg-gradient" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="rgba(147, 51, 234, 0.1)" />
+                <stop offset="100%" stopColor="rgba(147, 51, 234, 0)" />
+              </radialGradient>
+            </defs>
 
-          <circle
-            cx={dimensions.width / 2}
-            cy={dimensions.height / 2}
-            r={dimensions.width * 0.3}
-            fill="url(#bg-gradient)"
-            className="animate-pulse"
-          />
+            <circle
+              cx={dimensions.width / 2}
+              cy={dimensions.height / 2}
+              r={dimensions.width * 0.3}
+              fill="url(#bg-gradient)"
+              className="animate-pulse"
+            />
 
-          <g className="connections">{connectionLines}</g>
+            <g className="connections">{connectionLines}</g>
 
-          <g className="bubbles">
-            {bubblePropsList.map(({ holder, bubbleProps }) => {
-              const { radius, x, y, color } = bubbleProps;
+            <g className="bubbles">
+              {bubblePropsList.map(({ holder, bubbleProps }) => {
+                const { radius, x, y, color } = bubbleProps;
 
-              return (
-                <g
-                  key={holder.address}
-                  className="holder-bubble group"
-                  onMouseEnter={() => handleBubbleHover(holder, x, y)}
-                  onMouseLeave={() => setSelectedHolder(null)}
-                >
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={radius + 2}
-                    fill="none"
-                    stroke="rgba(255, 255, 255, 0.3)"
-                    strokeWidth={2}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  />
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={radius}
-                    fill={color}
-                    className="cursor-pointer"
-                  />
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      )}
+                return (
+                  <g
+                    key={holder.address}
+                    className="holder-bubble group"
+                    onMouseEnter={() => handleBubbleHover(holder, x, y)}
+                    onMouseLeave={() => setSelectedHolder(null)}
+                  >
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={radius + 2}
+                      fill="none"
+                      stroke="rgba(255, 255, 255, 0.3)"
+                      strokeWidth={2}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    />
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={radius}
+                      fill={color}
+                      className="cursor-pointer"
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        )}
 
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent" />
+        </div>
       </div>
     </div>
   );

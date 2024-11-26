@@ -97,7 +97,7 @@ async function fetchInscriptionCount(height) {
   try {
     const ordResponse = await ordInstance.get(`/block/${height}`), {
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
       }
     });
 

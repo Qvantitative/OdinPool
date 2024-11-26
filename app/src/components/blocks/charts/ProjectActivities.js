@@ -16,26 +16,26 @@ const ProjectActivities = ({ transferIntervals }) => {
   // Get unique projects
   const projects = [...new Set(transferIntervals.map((d) => d.project_slug))];
 
-  // Prepare traces for Plotly
-  const dataTraces = timeIntervals.map((interval) => {
-    // Filter transferIntervals for this specific time interval
-    const filteredData = transferIntervals.filter((d) => d.time_interval === interval);
+  // Prepare traces for each project
+  const dataTraces = projects.map((project, index) => {
+    const yValues = timeIntervals.map((interval) => {
+      const item = transferIntervals.find(
+        (d) => d.time_interval === interval && d.project_slug === project
+      );
+      return item ? parseInt(item.transfer_count, 10) : 0;
+    });
 
-    // Create bars dynamically for projects with non-zero transfer counts
-    return filteredData.map((projectData, index) => ({
-      x: [interval],
-      y: [parseInt(projectData.transfer_count, 10)],
-      name: projectData.project_slug,
+    return {
+      x: timeIntervals,
+      y: yValues,
+      name: project,
       type: 'bar',
-      offsetgroup: interval, // Ensures all bars for the same interval align together
-    }));
+      offsetgroup: index, // Ensure bars within the same interval stack tightly
+    };
   });
 
-  // Flatten the dataTraces array as Plotly expects a flat array of traces
-  const flatTraces = dataTraces.flat();
-
   const layout = {
-    barmode: 'stack', // Stack bars to fill empty spaces dynamically
+    barmode: 'group', // Grouped bars without space
     title: 'Project Activities Over Intervals',
     xaxis: { title: 'Time Intervals', tickfont: { color: '#ccc' } },
     yaxis: { title: 'Transfer Count', tickfont: { color: '#ccc' } },
@@ -49,12 +49,14 @@ const ProjectActivities = ({ transferIntervals }) => {
       y: -0.2,
       font: { color: '#ccc' },
     },
+    bargap: 0, // Remove gaps between bars
+    bargroupgap: 0, // Remove gaps within groups
   };
 
   return (
     <div className="p-4 bg-gray-700 rounded-lg">
       <Plot
-        data={flatTraces}
+        data={dataTraces}
         layout={layout}
         style={{ width: '100%', height: '100%' }}
         config={{ responsive: true }}

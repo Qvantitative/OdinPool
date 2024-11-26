@@ -1028,16 +1028,16 @@ app.get('/api/transfer-intervals', async (req, res) => {
   try {
     const query = `
       WITH intervals AS (
-        SELECT '10m' AS time_interval, NOW() - INTERVAL '10 minutes' AS start_time
-        UNION ALL
-        SELECT '30m', NOW() - INTERVAL '30 minutes'
-        UNION ALL
-        SELECT '1hr', NOW() - INTERVAL '1 hour'
-        UNION ALL
-        SELECT '4hr', NOW() - INTERVAL '4 hours'
+          SELECT '10m' AS time_interval, NOW() - INTERVAL '10 minutes' AS start_time
+          UNION ALL
+          SELECT '30m', NOW() - INTERVAL '30 minutes'
+          UNION ALL
+          SELECT '1hr', NOW() - INTERVAL '1 hour'
+          UNION ALL
+          SELECT '4hr', NOW() - INTERVAL '4 hours'
       )
       SELECT i.time_interval,
-             COUNT(w.transferred_at) AS transfer_count
+             COALESCE(COUNT(DISTINCT CASE WHEN project_slug = 'bitcoin-puppets' THEN transferred_at END), 0) AS transfer_count
       FROM intervals i
       LEFT JOIN wallets_ord w
       ON w.transferred_at > i.start_time

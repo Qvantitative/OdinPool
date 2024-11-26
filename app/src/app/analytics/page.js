@@ -46,6 +46,9 @@ const AnalyticsPage = () => {
   const [showTrending, setShowTrending] = useState(false);
   const [showRunes, setShowRunes] = useState(false);
 
+  // New state variable for transfer intervals
+  const [transferIntervals, setTransferIntervals] = useState([]);
+
   // Refs
   const scrollContainerRef = useRef(null);
 
@@ -94,9 +97,9 @@ const AnalyticsPage = () => {
     };
   }, []);
 
-  // Fetch initial block data and upcoming block
+  // Fetch initial block data, upcoming block, and transfer intervals
   const fetchInitialData = async () => {
-    await Promise.all([fetchBlockData(), fetchUpcomingBlock()]);
+    await Promise.all([fetchBlockData(), fetchUpcomingBlock(), fetchTransferIntervals()]);
   };
 
   // Fetch block data
@@ -169,6 +172,20 @@ const AnalyticsPage = () => {
     } catch (err) {
       console.error('Error fetching upcoming block data:', err);
       setUpcomingBlock(null);
+    }
+  };
+
+  // New function to fetch transfer intervals
+  const fetchTransferIntervals = async () => {
+    try {
+      const response = await fetch('/api/transfer-intervals');
+      if (!response.ok) throw new Error('Failed to fetch transfer intervals');
+
+      const data = await response.json();
+      setTransferIntervals(data);
+    } catch (err) {
+      console.error('Error fetching transfer intervals:', err);
+      // Handle error as needed
     }
   };
 

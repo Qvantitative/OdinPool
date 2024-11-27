@@ -145,14 +145,27 @@ async function fetchAndPostRunes() {
     // List of runes to track - you can modify this array as needed
     const runesToTrack = ['PUPSWORLDPEACE'];
 
+    if (runesToTrack.length === 0) {
+      console.warn(`[${new Date().toISOString()}] No runes to track. Exiting runes fetch.`);
+      return;
+    }
+
     for (const runeName of runesToTrack) {
       console.log(`[${new Date().toISOString()}] Processing rune: ${runeName}`);
 
-      await withTimeout(
-        updateRuneHolders(runeName),
-        TIMEOUTS.RUNES_UPDATE,
-        `Rune update for ${runeName}`
-      );
+      try {
+        await withTimeout(
+          updateRuneHolders(runeName),
+          TIMEOUTS.RUNES_UPDATE,
+          `Rune update for ${runeName}`
+        );
+        console.log(`[${new Date().toISOString()}] Successfully updated rune: ${runeName}`);
+      } catch (innerError) {
+        console.error(
+          `[${new Date().toISOString()}] Error processing rune ${runeName}:`,
+          innerError
+        );
+      }
     }
 
     console.log(`[${new Date().toISOString()}] Completed runes update process`);

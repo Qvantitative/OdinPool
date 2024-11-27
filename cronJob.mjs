@@ -4,25 +4,27 @@ import cron from 'node-cron';
 import { updateAllData } from './updateBlockchainData.mjs';
 import { updateRawTransactionData } from './updateRawTransaction.mjs';
 import { fetchAndStoreTrendingData } from './trending.js';
+import { updateRuneHolders } from './runes.js';
 import {
   fetchInscriptionsFromAPI,
   insertInscriptionsToDB,
   updateWalletTracking,
-  updateProjectWalletTracking,
   fixUnknownProjectSlugs
 } from './inscriptions.js';
 
 // Process state flags
 let isWalletTrackingRunning = false;
 let isInscriptionFetchRunning = false;
+let isRunesFetchRunning = false;
 
 // Timeout configurations
 const TIMEOUTS = {
-  FETCH_INSCRIPTIONS: 1800000,    // 30 minutes (increased from 5 minutes)
-  INSERT_INSCRIPTIONS: 600000,   // 10 minutes
-  WALLET_TRACKING: 3600000,      // 1 hour
-  BLOCKCHAIN_UPDATE: 45000,      // 45 seconds
-  BACKFILL: 3600000             // 1 hour
+  FETCH_INSCRIPTIONS: 1800000,   // 30 minutes
+  INSERT_INSCRIPTIONS: 600000,    // 10 minutes
+  WALLET_TRACKING: 3600000,       // 1 hour
+  BLOCKCHAIN_UPDATE: 45000,       // 45 seconds
+  RUNES_UPDATE: 1800000,          // 30 minutes for rune operations
+  BACKFILL: 3600000               // 1 hour
 };
 
 // Helper function for timeout wrapping
@@ -53,7 +55,7 @@ async function cleanupConnections() {
   }
 }
 
-// Modify fetchAndPostInscriptions to handle the response
+// Function to fetch and post inscriptions
 async function fetchAndPostInscriptions() {
   if (isInscriptionFetchRunning) {
     console.log(`[${new Date().toISOString()}] Inscription fetch already running. Skipping.`);
@@ -87,7 +89,6 @@ async function fetchAndPostInscriptions() {
     console.log(`- Inserted: ${result.insertedCount}`);
     console.log(`- Skipped: ${result.skippedCount}`);
     console.log(`- Total in DB: ${result.totalCount}`);
-
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error in inscription fetch/post process:`, error);
     await handleTimeout(error);
@@ -96,6 +97,7 @@ async function fetchAndPostInscriptions() {
   }
 }
 
+// Function to update inscription wallets
 async function updateInscriptionWallets() {
   if (isWalletTrackingRunning) {
     console.log(`[${new Date().toISOString()}] Wallet tracking update is already running. Skipping.`);
@@ -129,63 +131,99 @@ async function updateInscriptionWallets() {
   }
 }
 
+// Function to fetch and post runes
+async function fetchAndPostRunes() {
+  if (isRunesFetchRunning) {
+    console.log(`[${new Date().toISOString()}] Runes fetch already running. Skipping.`);
+    return;
+  }
+
+  isRunesFetchRunning = true;
+  console.log(`[${new Date().toISOString()}] Starting runes fetch process`);
+
+  try {
+    // List of runes to track - you can modify this array as needed
+    const runesToTrack = ['UNCOMMONGOODS'];
+
+    for (const runeName of runesToTrack) {
+      console.log(`[${new Date().toISOString()}] Processing rune: ${runeName}`);
+
+      await withTimeout(
+        updateRuneHolders(runeName),
+        TIMEOUTS.RUNES_UPDATE,
+        `Rune update for ${runeName}`
+      );
+    }
+
+    console.log(`[${new Date().toISOString()}] Completed runes update process`);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in runes fetch/post process:`, error);
+    await handleTimeout(error);
+  } finally {
+    isRunesFetchRunning = false;
+  }
+}
+
+// Start cron jobs
 function startCronJobs() {
-  // Run fetchAndPostInscriptions immediately
-  console.log(`[${new Date().toISOString()}] Running immediate inscription fetch`);
-  //fetchAndPostInscriptions().catch(error => {
-  //  console.error(`[${new Date().toISOString()}] Error in immediate inscription fetch:`, error);
-  //});
+  console.log(`[${new Date().toISOString()}] Starting cron jobs`);
 
-  // Initial delay before starting scheduled jobs
-  setTimeout(() => {
-    // Run wallet tracking every hour (at minute 0)
-    cron.schedule('0 * * * *', async () => {
-      console.log(`[${new Date().toISOString()}] Running scheduled wallet tracking update`);
+  // Run wallet tracking every hour at minute 0
+  cron.schedule('0 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running scheduled wallet tracking update`);
+    await updateInscriptionWallets();
+  });
+
+  // Blockchain data updates (every minute)
+  cron.schedule('* * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running blockchain data update`);
+    try {
+      await updateAllData(false); // Regular updates without backfill
+      await updateRawTransactionData();
+    } catch (error) {
+      console.error('Error updating blockchain data:', error);
+    }
+  });
+
+  // Optional: Backfill inscriptions once a day at 2 AM
+  cron.schedule('0 2 * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running backfill for inscriptions`);
+    try {
+      await updateAllData(true); // Backfill inscriptions
+    } catch (error) {
+      console.error('Error during backfill:', error);
+    }
+  });
+
+  // Fetch trending data every 10 minutes
+  cron.schedule('*/10 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running fetchAndStoreTrendingData job`);
+    try {
+      await fetchAndStoreTrendingData();
+    } catch (error) {
+      console.error('Error fetching and storing trending data:', error);
+    }
+  });
+
+  // Run runes update every hour at minute 30
+  cron.schedule('30 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running scheduled runes update`);
+    await fetchAndPostRunes();
+  });
+
+  // Run initial functions after startup
+  (async () => {
+    try {
+      // Initial inscription wallet tracking
       await updateInscriptionWallets();
-    });
+      // Initial runes fetch
+      await fetchAndPostRunes();
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
+    }
+  })();
 
-    // Blockchain data updates (every minute)
-    cron.schedule('* * * * *', async () => {
-      console.log(`[${new Date().toISOString()}] Running blockchain data update`);
-      try {
-        await updateAllData(false); // Regular updates without backfill
-        await updateRawTransactionData();
-      } catch (error) {
-        console.error('Error updating blockchain data:', error);
-      }
-    });
-
-    // Optional: Backfill inscriptions once a day at 2 AM
-    cron.schedule('0 2 * * *', async () => {
-      console.log(`[${new Date().toISOString()}] Running backfill for inscriptions`);
-      try {
-        await updateAllData(true); // Backfill inscriptions
-      } catch (error) {
-        console.error('Error during backfill:', error);
-      }
-    });
-
-    // Fetch trending data every 10 minutes
-    cron.schedule('*/10 * * * *', async () => {
-      console.log(`[${new Date().toISOString()}] Running fetchAndStoreTrendingData job`);
-      try {
-        await fetchAndStoreTrendingData();
-      } catch (error) {
-        console.error('Error fetching and storing trending data:', error);
-      }
-    });
-
-    // Run initial tracking after startup with a delay
-    setTimeout(async () => {
-      try {
-        await updateInscriptionWallets();
-      } catch (error) {
-        console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
-      }
-    }, 5000);
-
-    console.log(`[${new Date().toISOString()}] All cron jobs started`);
-  }, 1000);
+  console.log(`[${new Date().toISOString()}] All cron jobs started`);
 }
 
 // Graceful shutdown handlers
@@ -199,7 +237,7 @@ process.on('SIGINT', () => {
   cleanupConnections().finally(() => process.exit(0));
 });
 
-// Start the cron jobs and immediate fetch
+// Start the cron jobs
 startCronJobs();
 
 // Keep the script running

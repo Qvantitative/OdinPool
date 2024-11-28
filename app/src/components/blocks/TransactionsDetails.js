@@ -124,18 +124,36 @@ const TransactionDetails = ({ transactionId }) => {
             {outputs.map((output, index) => {
               const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
               return (
-                <li key={index} className="flex flex-col">
-                  <div className="flex justify-between items-center">
-                    <span
-                      className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
-                      style={{ maxWidth: '70%' }}
-                      onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
-                    >
-                      {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
-                    </span>
-                    <span>{formatBTC(output.value)} BTC</span>
-                  </div>
-                  {renderRuneTransfer(output, index + 1)}
+                <li key={index}>
+                  {isOpReturn ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span
+                          className="truncate mr-2 text-yellow-300 cursor-pointer"
+                          style={{ maxWidth: '70%' }}
+                          onClick={() => handleOpReturnClick(index)}
+                        >
+                          OP_RETURN (🌋 Runestone message)
+                        </span>
+                        <span>{formatBTC(output.value)} BTC</span>
+                      </div>
+                      {runeData?.edicts && (
+                        <div className="text-sm text-gray-400">
+                          <span className="text-red-400">{runeData.edicts.find(e => e.output === index + 1)?.amount.toString()}</span> ZEUS•RUNES•WORLD
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="truncate mr-2 text-blue-400" style={{ maxWidth: '70%' }}>
+                          {output.address}
+                        </span>
+                        <span>{formatBTC(output.value)} BTC</span>
+                      </div>
+                      {renderRuneTransfer(output, index + 1)}
+                    </>
+                  )}
                   {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
                       <div className="text-sm">

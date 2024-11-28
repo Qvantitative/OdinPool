@@ -101,17 +101,59 @@ function bigIntReplacer(key, value) {
   return typeof value === 'bigint' ? value.toString() : value;
 }
 
-function extractPayloadBuffer(asm) {
-  const parts = asm.split(' ');
-  console.log('ASM parts:', parts);
-  if (parts.length > 2 && parts[0] === 'OP_RETURN') {
-    // Skip the '13' and combine the rest
-    const dataPushes = parts.slice(2);
-    const payloadHex = dataPushes.join('');
-    console.log('Extracted payload hex:', payloadHex);
-    return Buffer.from(payloadHex, 'hex');
+function extractPayloadBufferFromHex(hex) {
+  const buffer = Buffer.from(hex, 'hex');
+  let offset = 0;
+
+  // Check for OP_RETURN (0x6a)
+  if (buffer[offset] !== 0x6a) {
+    throw new Error('Invalid runestone: OP_RETURN not found');
   }
-  throw new Error('Invalid runestone: OP_RETURN not found or unexpected structure');
+  offset += 1; // Skip OP_RETURN
+
+  // Now parse the data push opcode
+  if (offset >= buffer.length) {
+    throw new Error('No data after OP_RETURN');
+  }
+
+  let dataLength;
+  let opcode = buffer[offset];
+  offset += 1;
+
+  if (opcode >= 0x01 && opcode <= 0x4b) {
+    // Single-byte push (1 to 75 bytes)
+    dataLength = opcode;
+  } else if (opcode === 0x4c) {
+    // OP_PUSHDATA1
+    if (offset >= buffer.length) {
+      throw new Error('Invalid OP_PUSHDATA1');
+    }
+    dataLength = buffer[offset];
+    offset += 1;
+  } else if (opcode === 0x4d) {
+    // OP_PUSHDATA2
+    if (offset + 1 >= buffer.length) {
+      throw new Error('Invalid OP_PUSHDATA2');
+    }
+    dataLength = buffer.readUInt16LE(offset);
+    offset += 2;
+  } else if (opcode === 0x4e) {
+    // OP_PUSHDATA4
+    if (offset + 3 >= buffer.length) {
+      throw new Error('Invalid OP_PUSHDATA4');
+    }
+    dataLength = buffer.readUInt32LE(offset);
+    offset += 4;
+  } else {
+    throw new Error('Unsupported data push opcode');
+  }
+
+  if (offset + dataLength > buffer.length) {
+    throw new Error('Data push length exceeds buffer length');
+  }
+
+  const payload = buffer.slice(offset, offset + dataLength);
+  return payload;
 }
 
 function decodeLEB128(buffer) {
@@ -134,7 +176,7 @@ function decodeLEB128(buffer) {
       shift += BigInt(7);
     } while (byte & 0x80);
 
-    if (bytesRead > 18) {
+    if (bytesRead > 10) {
       throw new Error('LEB128 varint is too long');
     }
 
@@ -212,16 +254,27 @@ function extractFields(fields) {
     else if (tag === tags.flags) result.flags = Number(values[0]);
     else if (tag === tags.rune) result.rune = values[0];
     else if (tag === tags.spacers) result.spacers = Number(values[0]);
-    else if (tag === tags.symbol) result.symbol = String.fromCodePoint(Number(values[0]));
-    else if (tag === tags.premine) result.premine = values[0].toString();
+    else if (tag === tags.symbol) {
+      const codePoint = Number(values[0]);
+      if (Number.isSafeInteger(codePoint)) {
+        result.symbol = String.fromCodePoint(codePoint);
+      } else {
+        console.warn('Symbol code point is not a safe integer:', values[0]);
+        result.symbol = undefined;
+      }
+    } else if (tag === tags.premine) result.premine = values[0].toString();
     else if (tag === tags.cap) result.cap = values[0].toString();
     else if (tag === tags.amount) result.amount = values[0].toString();
     else if (tag === tags.heightStart) result.heightStart = Number(values[0]);
     else if (tag === tags.heightEnd) result.heightEnd = Number(values[0]);
     else if (tag === tags.offsetStart) result.offsetStart = Number(values[0]);
     else if (tag === tags.offsetEnd) result.offsetEnd = Number(values[0]);
-    else if (tag === tags.mint) result.mint = { block: Number(values[0]), tx: values.length > 1 ? Number(values[1]) : 0 };
-    else if (tag === tags.pointer) result.pointer = Number(values[0]);
+    else if (tag === tags.mint) {
+      result.mint = {
+        block: Number(values[0]),
+        tx: values.length > 1 ? Number(values[1]) : 0
+      };
+    } else if (tag === tags.pointer) result.pointer = Number(values[0]);
     else {
       console.log(`Unknown tag: ${tag}`);
       result[tag.toString()] = values.map(v => v.toString());
@@ -238,31 +291,16 @@ function decodeRuneName(runeValue) {
   }
 
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let n = runeValue;
+  let n = runeValue - 1n;
   const chars = [];
 
-  while (n > 0n) {
-    n -= 1n;
-    let index = Number(n % 26n);
-    chars.push(letters[index]);
-    n = n / 26n;
+  while (n >= 0n) {
+    chars.push(letters[Number(n % 26n)]);
+    n = (n / 26n) - 1n;
   }
 
-  let result = chars.reverse().join('');
-
-  // Adjust the last character logic as needed
-  if (result.length > 0) {
-    let lastChar = result[result.length - 1];
-    let lastCharIndex = letters.indexOf(lastChar);
-    if (lastCharIndex < letters.length - 1) {
-      lastChar = letters[lastCharIndex + 1];
-    } else {
-      lastChar = 'A'; // If it's 'Z', roll over to 'A'
-    }
-    result = result.slice(0, -1) + lastChar;
-  }
-
-  console.log("Decoded and adjusted rune name:", result);
+  const result = chars.reverse().join('');
+  console.log("Decoded rune name:", result);
   return result;
 }
 
@@ -275,20 +313,19 @@ function interpretFlags(flags) {
 }
 
 function formatRuneNameWithSpacers(name, spacers) {
-    // Convert the spacer bits to a binary string, padding to the length of the name minus 1
-    const spacerBits = spacers.toString(2).padStart(name.length - 1, '0');
-    let formattedName = name[0]; // Start with the first character
+  if (!name || name.length <= 1) return name;
 
-    // Iterate over the rest of the name
-    for (let i = 1; i < name.length; i++) {
-        // If the corresponding bit (from right to left) is 1, add a spacer
-        if (spacerBits[spacerBits.length - i] === '1') {
-            formattedName += '•';
-        }
-        formattedName += name[i];
+  const spacerBits = spacers.toString(2).padStart(name.length - 1, '0');
+  let formattedName = name[0];
+
+  for (let i = 1; i < name.length; i++) {
+    if (spacerBits[spacerBits.length - i] === '1') {
+      formattedName += '•';
     }
+    formattedName += name[i];
+  }
 
-    return formattedName;
+  return formattedName;
 }
 
 function isCenotaph(fields, edicts) {
@@ -297,9 +334,9 @@ function isCenotaph(fields, edicts) {
   return unrecognizedEvenTags || invalidEdicts;
 }
 
-function decodeRuneData(asm) {
+function decodeRuneData(scriptPubKey) {
   try {
-    const payloadBuffer = extractPayloadBuffer(asm);
+    const payloadBuffer = extractPayloadBufferFromHex(scriptPubKey.hex);
     const integers = decodeLEB128(payloadBuffer);
     console.log('Decoded integers:', integers);
 
@@ -338,6 +375,10 @@ function decodeRuneData(asm) {
     return { error: error.message, cenotaph: true };
   }
 }
+
+module.exports = {
+  decodeRuneData
+};
 
 // Socket.io connection
 io.on('connection', (socket) => {

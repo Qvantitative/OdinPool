@@ -843,23 +843,65 @@ app.get('/api/rune/:txid', async (req, res) => {
     const opReturnOutput = rawTx.vout.find(
       (vout) => vout.scriptPubKey.type === 'nulldata'
     );
-    console.log('OP_RETURN Output:', opReturnOutput);
 
     if (opReturnOutput) {
-      console.log('OP_RETURN ScriptPubKey:', opReturnOutput.scriptPubKey);
-
       const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
-      console.log('Decoded Rune Data:', runeData);
 
-      if (runeData.error) {
-        res.status(400).json({
-          error: runeData.error,
-          cenotaph: runeData.cenotaph,
-          scriptPubKey: opReturnOutput.scriptPubKey,
-        });
-      } else {
-        res.json(JSON.parse(JSON.stringify(runeData, bigIntReplacer)));
+      // If this is a transfer (has edicts), fetch the original etching transaction
+      if (runeData.edicts && runeData.edicts.length > 0) {
+        // Get the first edict's rune ID
+        const { block, tx } = runeData.edicts[0].id;
+
+        try {
+          // First, get the block hash for the etching block
+          const blockHash = await bitcoinClient.getBlockHash(block);
+
+          // Then get the block data
+          const blockData = await bitcoinClient.getBlock(blockHash, 2); // verbosity 2 to get full tx data
+
+          // Find the etching transaction
+          const etchingTx = blockData.tx[tx];
+
+          if (etchingTx) {
+            // Find the OP_RETURN output in the etching transaction
+            const etchingOpReturn = etchingTx.vout.find(
+              (vout) => vout.scriptPubKey.type === 'nulldata'
+            );
+
+            if (etchingOpReturn) {
+              // Decode the etching data to get the rune name
+              const etchingData = decodeRuneData(etchingOpReturn.scriptPubKey);
+
+              // Combine the etching data with the transfer data
+              const combinedData = {
+                ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
+                etching: {
+                  txid: etchingTx.txid,
+                  runeName: etchingData.runeName,
+                  formattedRuneName: etchingData.formattedRuneName,
+                  ...JSON.parse(JSON.stringify(etchingData, bigIntReplacer))
+                }
+              };
+
+              return res.json(combinedData);
+            }
+          }
+        } catch (etchError) {
+          console.error('Error fetching etching transaction:', etchError);
+          // Still return the transfer data even if we couldn't get the etching
+          return res.json({
+            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
+            etching: {
+              error: 'Could not fetch etching transaction',
+              block,
+              tx
+            }
+          });
+        }
       }
+
+      // If no edicts or couldn't get etching data, return the original decode
+      res.json(JSON.parse(JSON.stringify(runeData, bigIntReplacer)));
     } else {
       console.warn(`No OP_RETURN output found in transaction: ${txid}`);
       res.status(404).json({ error: 'No OP_RETURN output found in this transaction' });

@@ -68,7 +68,8 @@ const TransactionDetails = ({ transactionId }) => {
     if (!edict) return null;
 
     return (
-      <div className="text-sm text-gray-400">
+      <div className="text-sm text-gray-400 ml-4">
+        ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
         <span className="text-red-400">{edict.amount.toString()}</span> ZEUS•RUNES•WORLD
       </div>
     );
@@ -96,23 +97,27 @@ const TransactionDetails = ({ transactionId }) => {
           <h3 className="text-sm font-semibold mb-2">Inputs</h3>
           <ul className="space-y-2">
             {inputs.map((input, index) => (
-              <li key={index} className="flex flex-col">
-                <div className="flex justify-between items-center">
-                  <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
+              <li key={index}>
+                <div>
+                  <div className="text-red-400 truncate">
                     {input.address}
-                  </span>
-                  <span>{formatBTC(input.value)} BTC</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>{formatBTC(input.value)} BTC</span>
+                  </div>
+                  {index === 0 && runeData?.edicts && (
+                    <div className="text-sm text-gray-400 ml-4">
+                      ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
+                      <span className="text-red-400">2,239</span> ZEUS•RUNES•WORLD
+                    </div>
+                  )}
+                  {index === 1 && runeData?.edicts && (
+                    <div className="text-sm text-gray-400 ml-4">
+                      ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
+                      <span className="text-red-400">2,200</span> ZEUS•RUNES•WORLD
+                    </div>
+                  )}
                 </div>
-                {index === 0 && runeData?.edicts && (
-                  <div className="text-sm text-gray-400">
-                    <span className="text-red-400">2,239</span> ZEUS•RUNES•WORLD
-                  </div>
-                )}
-                {index === 1 && runeData?.edicts && (
-                  <div className="text-sm text-gray-400">
-                    <span className="text-red-400">2,200</span> ZEUS•RUNES•WORLD
-                  </div>
-                )}
               </li>
             ))}
           </ul>
@@ -125,42 +130,23 @@ const TransactionDetails = ({ transactionId }) => {
               const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
               return (
                 <li key={index}>
-                  {isOpReturn ? (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span
-                          className="truncate mr-2 text-yellow-300 cursor-pointer"
-                          style={{ maxWidth: '70%' }}
-                          onClick={() => handleOpReturnClick(index)}
-                        >
-                          OP_RETURN (🌋 Runestone message)
-                        </span>
-                        <span>{formatBTC(output.value)} BTC</span>
-                      </div>
-                      {runeData?.edicts && (
-                        <div className="text-sm text-gray-400">
-                          <span className="text-red-400">{runeData.edicts.find(e => e.output === index + 1)?.amount.toString()}</span> ZEUS•RUNES•WORLD
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span className="truncate mr-2 text-blue-400" style={{ maxWidth: '70%' }}>
-                          {output.address}
-                        </span>
-                        <span>{formatBTC(output.value)} BTC</span>
-                      </div>
-                      {renderRuneTransfer(output, index + 1)}
-                    </>
-                  )}
+                  <div>
+                    <div
+                      className={isOpReturn ? 'text-yellow-300 cursor-pointer truncate' : 'text-blue-400 truncate'}
+                      onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
+                    >
+                      {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>{formatBTC(output.value)} BTC</span>
+                    </div>
+                    {renderRuneTransfer(output, index + 1)}
+                  </div>
                   {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                      <div className="text-sm">
-                        <pre className="overflow-x-auto">
-                          {JSON.stringify(runeData, null, 2)}
-                        </pre>
-                      </div>
+                      <pre className="text-sm overflow-x-auto">
+                        {JSON.stringify(runeData, null, 2)}
+                      </pre>
                     </div>
                   )}
                 </li>

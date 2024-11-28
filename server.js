@@ -168,7 +168,6 @@ function decodeLEB128(buffer) {
     while (offset < buffer.length) {
         let result = BigInt(0);
         let shift = BigInt(0);
-        let byte;
         let bytesRead = 0;
 
         try {
@@ -178,24 +177,34 @@ function decodeLEB128(buffer) {
                     console.log('Remaining buffer:', buffer.slice(offset));
                     throw new Error('LEB128 varint is truncated');
                 }
-                byte = buffer[offset++];
+                const byte = buffer[offset++];
                 bytesRead++;
+
+                // Add maximum bytes check
+                if (bytesRead > 18) {
+                    console.error('LEB128 varint too large');
+                    throw new Error('LEB128 varint too large');
+                }
+
                 result |= BigInt(byte & 0x7F) << shift;
                 shift += BigInt(7);
                 console.log(`Intermediate result: ${result}, Byte: ${byte.toString(16)}, Offset: ${offset}`);
-            } while (byte & 0x80);
 
-            if (bytesRead > 10) {
-                console.error('LEB128 varint is too long');
-                throw new Error('LEB128 varint is too long');
-            }
+                // Check for overflow
+                if ((byte & 0x80) === 0) {
+                    if (result > BigInt(2) ** BigInt(128) - BigInt(1)) {
+                        throw new Error('Value would overflow u128');
+                    }
+                    break;
+                }
+            } while (true);
 
             console.log(`Decoded integer: ${result} at offset: ${offset}`);
             integers.push(result);
         } catch (error) {
             console.error('Error during LEB128 decoding:', error.message);
             console.log('Buffer at error:', buffer.slice(offset));
-            break; // Stop processing if there's an error
+            break;
         }
     }
 
@@ -203,47 +212,60 @@ function decodeLEB128(buffer) {
 }
 
 function parseMessage(integers) {
-  const fields = new Map();
-  const edicts = [];
-  let index = 0;
-  let parsingEdicts = false;
+    const fields = new Map();
+    const edicts = [];
+    let index = 0;
+    let currentBlock = 0n;
+    let currentTx = 0n;
+    let parsingEdicts = false;
 
-  while (index < integers.length) {
-    const tag = integers[index++];
+    while (index < integers.length) {
+        const tag = integers[index++];
 
-    if (tag === BigInt(0)) {
-      parsingEdicts = true;
-      break;
+        if (tag === BigInt(0)) {
+            parsingEdicts = true;
+            break;
+        }
+
+        if (index >= integers.length) {
+            throw new Error('Tag without a following value');
+        }
+
+        const value = integers[index++];
+
+        if (fields.has(tag)) {
+            fields.get(tag).push(value);
+        } else {
+            fields.set(tag, [value]);
+        }
     }
 
-    if (index >= integers.length) {
-      throw new Error('Tag without a following value');
+    if (parsingEdicts) {
+        while (index + 3 < integers.length) {
+            const blockDelta = integers[index];
+            const txDelta = integers[index + 1];
+
+            if (blockDelta > 0n) {
+                currentBlock += blockDelta;
+                currentTx = txDelta;
+            } else {
+                currentTx += txDelta;
+            }
+
+            edicts.push({
+                id: {
+                    block: Number(currentBlock),
+                    tx: Number(currentTx)
+                },
+                amount: integers[index + 2],
+                output: Number(integers[index + 3])
+            });
+
+            index += 4;
+        }
     }
 
-    const value = integers[index++];
-
-    if (fields.has(tag)) {
-      fields.get(tag).push(value);
-    } else {
-      fields.set(tag, [value]);
-    }
-  }
-
-  if (parsingEdicts) {
-    while (index + 3 < integers.length) {
-      edicts.push({
-        id: {
-          block: Number(integers[index]),
-          tx: Number(integers[index + 1])
-        },
-        amount: integers[index + 2],
-        output: Number(integers[index + 3])
-      });
-      index += 4;
-    }
-  }
-
-  return { fields, edicts };
+    return { fields, edicts };
 }
 
 function extractFields(fields) {
@@ -357,51 +379,60 @@ function formatRuneNameWithSpacers(name, spacers) {
 }
 
 function isCenotaph(fields, edicts) {
-  const unrecognizedEvenTags = Array.from(fields.keys()).some(tag => tag % BigInt(2) === BigInt(0) && tag > BigInt(22));
-  const invalidEdicts = edicts.some(edict => edict.id.block === 0 && edict.id.tx !== 0);
-  return unrecognizedEvenTags || invalidEdicts;
+    const unrecognizedEvenTags = Array.from(fields.keys()).some(
+        tag => tag % BigInt(2) === BigInt(0) && tag > BigInt(22)
+    );
+    const invalidEdicts = edicts.some(
+        edict => edict.id.block === 0 && edict.id.tx !== 0
+    );
+    const hasUnrecognizedFlags = fields.has(BigInt(2)) &&
+        (Number(fields.get(BigInt(2))[0]) & ~(1 | 2 | 4)) !== 0;
+
+    return unrecognizedEvenTags || invalidEdicts || hasUnrecognizedFlags;
 }
 
+// Update the main decodeRuneData function to use the enhanced decoders
 function decodeRuneData(scriptPubKey) {
-  try {
-    const payloadBuffer = extractPayloadBufferFromHex(scriptPubKey.hex);
-    const integers = decodeLEB128(payloadBuffer);
-    console.log('Decoded integers:', integers);
+    try {
+        console.log('Decoding rune data from scriptPubKey:', scriptPubKey);
+        const payloadBuffer = extractPayloadBufferFromHex(scriptPubKey.hex);
+        const integers = decodeLEB128(payloadBuffer);
+        console.log('Decoded integers:', integers);
 
-    const { fields, edicts } = parseMessage(integers);
-    console.log('Parsed fields:', fields);
-    console.log('Parsed edicts:', edicts);
+        const { fields, edicts } = parseMessage(integers);
+        console.log('Parsed fields:', fields);
+        console.log('Parsed edicts:', edicts);
 
-    const extractedFields = extractFields(fields);
-    console.log('Extracted fields:', extractedFields);
+        const extractedFields = extractFields(fields);
+        console.log('Extracted fields:', extractedFields);
 
-    let runeName = '';
-    if (extractedFields.rune !== undefined) {
-      runeName = decodeRuneName(extractedFields.rune);
+        let runeName = '';
+        if (extractedFields.rune !== undefined) {
+            runeName = decodeRuneName(extractedFields.rune);
+        }
+
+        console.log('Decoded rune name:', runeName);
+
+        const flagInterpretation = interpretFlags(extractedFields.flags || 0);
+        console.log('Flag interpretation:', flagInterpretation);
+
+        const formattedRuneName = formatRuneNameWithSpacers(runeName, extractedFields.spacers || 0);
+        console.log('Formatted rune name:', formattedRuneName);
+
+        const cenotaph = isCenotaph(fields, edicts);
+
+        return {
+            runeName,
+            formattedRuneName,
+            ...extractedFields,
+            flagInterpretation,
+            edicts,
+            cenotaph
+        };
+    } catch (error) {
+        console.error('Error decoding rune data:', error);
+        return { error: error.message, cenotaph: true };
     }
-
-    console.log('Decoded rune name:', runeName);
-
-    const flagInterpretation = interpretFlags(extractedFields.flags || 0);
-    console.log('Flag interpretation:', flagInterpretation);
-
-    const formattedRuneName = formatRuneNameWithSpacers(runeName, extractedFields.spacers || 0);
-    console.log('Formatted rune name:', formattedRuneName);
-
-    const cenotaph = isCenotaph(fields, edicts);
-
-    return {
-      runeName,
-      formattedRuneName,
-      ...extractedFields,
-      flagInterpretation,
-      edicts,
-      cenotaph
-    };
-  } catch (error) {
-    console.error('Error decoding rune data:', error);
-    return { error: error.message, cenotaph: true };
-  }
 }
 
 // Socket.io connection

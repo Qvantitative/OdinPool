@@ -64,21 +64,22 @@ const TransactionDetails = ({ transactionId }) => {
   const renderRuneTransfer = (item, index, isInput = false) => {
     if (!runeData) return null;
 
-    if (isInput) {
-      if (runeData.inputAmounts && runeData.inputAmounts[index]) {
+    // For inputs
+    if (isInput && runeData.edicts && index < 2) { // Only check first two inputs since that's what we have in edicts
+      const edict = runeData.edicts[index];
+      if (edict) {
         return (
           <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
             <span>↳</span>
             <span className="text-red-400" title="Amount">
-              {Number(runeData.inputAmounts[index]).toLocaleString()}
+              {Number(edict.amount).toLocaleString()}
             </span>
-            <span className="text-yellow-300">
-              Block {runeData.etching?.id?.block || '?'}.{runeData.etching?.id?.tx || '?'}
+            <span className="text-yellow-300" title="Block and TX">
+              Block {edict.id.block}.{edict.id.tx}
             </span>
           </div>
         );
       }
-      return null;
     }
 
     const edict = runeData.edicts?.find(e => e.output === index);

@@ -785,7 +785,8 @@ app.get('/api/rune/:txid', async (req, res) => {
       (vout) => vout.scriptPubKey.type === 'nulldata'
     );
     if (opReturnOutput) {
-      const runeData = decodeRuneData(opReturnOutput.scriptPubKey.asm);
+      // Pass the entire scriptPubKey object instead of asm
+      const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
       if (runeData.error) {
         res.status(400).json({
           error: runeData.error,
@@ -793,6 +794,7 @@ app.get('/api/rune/:txid', async (req, res) => {
           scriptPubKey: opReturnOutput.scriptPubKey,
         });
       } else {
+        // Use bigIntReplacer to handle BigInt serialization if necessary
         res.json(JSON.parse(JSON.stringify(runeData, bigIntReplacer)));
       }
     } else {

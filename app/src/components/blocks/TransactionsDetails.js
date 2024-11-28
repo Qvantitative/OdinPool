@@ -1,4 +1,4 @@
-// app/components/blocks/TransactionDetails
+// TransactionDetails.jsx
 
 import React, { useState, useEffect } from 'react';
 
@@ -55,11 +55,10 @@ const TransactionDetails = ({ transactionId }) => {
       setExpandedOpReturn(index);
       try {
         const response = await fetch(`/api/rune/${transactionId}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch rune data');
-        }
         const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch rune data');
+        }
         setRuneData(data);
       } catch (error) {
         console.error('Error fetching rune data:', error);
@@ -127,6 +126,7 @@ const TransactionDetails = ({ transactionId }) => {
                         <div className="mb-2">
                           <p><strong>Rune Name:</strong> {runeData.formattedRuneName}</p>
                           <p><strong>Symbol:</strong> {runeData.symbol}</p>
+                          {/* Add more rune data fields as needed */}
                         </div>
                       )}
                       {inscriptionData && (

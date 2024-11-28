@@ -1,3 +1,5 @@
+// app/components/blocks/TransactionDetails
+
 import React, { useState, useEffect } from 'react';
 
 const TransactionDetails = ({ transactionId }) => {
@@ -22,12 +24,10 @@ const TransactionDetails = ({ transactionId }) => {
         const data = await response.json();
         setTransactionData(data);
 
-        // Reset states
         setExpandedOpReturn(null);
         setRuneData(null);
         setInscriptionData(null);
 
-        // Fetch rune data if there's an OP_RETURN output
         const hasOpReturn = data.outputs.some(output =>
           output.scriptPubKey && output.scriptPubKey.type === 'nulldata'
         );
@@ -40,7 +40,6 @@ const TransactionDetails = ({ transactionId }) => {
           }
         }
 
-        // Fetch inscription data if exists
         const inscriptionId = transactionId + 'i0';
         const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
         if (inscriptionResponse.ok) {
@@ -83,6 +82,7 @@ const TransactionDetails = ({ transactionId }) => {
   return (
     <div className="bg-gray-900 p-4 rounded-lg shadow text-white">
       <h2 className="text-lg font-bold mb-4 text-center">{transaction.txid}</h2>
+
       <div className="flex justify-between items-center mb-4">
         <div>{formatBTC(transaction.total_input_value)} BTC</div>
         <div className="text-sm">
@@ -96,25 +96,23 @@ const TransactionDetails = ({ transactionId }) => {
           <h3 className="text-sm font-semibold mb-2">Inputs</h3>
           <ul className="space-y-2">
             {inputs.map((input, index) => (
-              <li key={index}>
-                <div className="flex flex-col">
-                  <div className="flex justify-between items-center">
-                    <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
-                      {input.address}
-                    </span>
-                    <span>{formatBTC(input.value)} BTC</span>
-                  </div>
-                  {index === 0 && runeData?.edicts && (
-                    <div className="text-sm text-gray-400">
-                      <span className="text-red-400">2,239</span> ZEUS•RUNES•WORLD
-                    </div>
-                  )}
-                  {index === 1 && runeData?.edicts && (
-                    <div className="text-sm text-gray-400">
-                      <span className="text-red-400">2,200</span> ZEUS•RUNES•WORLD
-                    </div>
-                  )}
+              <li key={index} className="flex flex-col">
+                <div className="flex justify-between items-center">
+                  <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
+                    {input.address}
+                  </span>
+                  <span>{formatBTC(input.value)} BTC</span>
                 </div>
+                {index === 0 && runeData?.edicts && (
+                  <div className="text-sm text-gray-400">
+                    <span className="text-red-400">2,239</span> ZEUS•RUNES•WORLD
+                  </div>
+                )}
+                {index === 1 && runeData?.edicts && (
+                  <div className="text-sm text-gray-400">
+                    <span className="text-red-400">2,200</span> ZEUS•RUNES•WORLD
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -126,37 +124,34 @@ const TransactionDetails = ({ transactionId }) => {
             {outputs.map((output, index) => {
               const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
               return (
-                <li key={index}>
-                  <div className="flex flex-col">
-                    <div className="flex justify-between items-center">
-                      <span
-                        className={`truncate mr-2 ${
-                          isOpReturn
-                            ? 'text-yellow-300 cursor-pointer'
-                            : 'text-blue-400'
-                        }`}
-                        style={{ maxWidth: '70%' }}
-                        onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
-                      >
-                        {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
-                      </span>
-                      <span>{formatBTC(output.value)} BTC</span>
-                    </div>
-                    {renderRuneTransfer(output, index + 1)}
+                <li key={index} className="flex flex-col">
+                  <div className="flex justify-between items-center">
+                    <span
+                      className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
+                      style={{ maxWidth: '70%' }}
+                      onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
+                    >
+                      {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
+                    </span>
+                    <span>{formatBTC(output.value)} BTC</span>
                   </div>
-                  {expandedOpReturn === index && (
+                  {renderRuneTransfer(output, index + 1)}
+                  {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
                       <div className="text-sm">
-                        <pre className="overflow-x-auto">{JSON.stringify(runeData, null, 2)}</pre>
+                        <pre className="overflow-x-auto">
+                          {JSON.stringify(runeData, null, 2)}
+                        </pre>
                       </div>
                     </div>
                   )}
                 </li>
-              ))}
-            </ul>
-          </div>
+              );
+            })}
+          </ul>
         </div>
       </div>
+    </div>
   );
 };
 

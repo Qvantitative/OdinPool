@@ -114,7 +114,7 @@ const TransactionDetails = ({ transactionId }) => {
                   )}
                   {index === 1 && runeData?.edicts && (
                     <div className="text-sm text-gray-400 ml-4">
-                      ↳ alt="Z" className="inline-block w-4 h-4" />
+                      ↳ <img src="" alt="Z" className="inline-block w-4 h-4" />
                       <span className="text-red-400">2,200</span> ZEUS•RUNES•WORLD
                     </div>
                   )}

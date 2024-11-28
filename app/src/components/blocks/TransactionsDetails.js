@@ -62,19 +62,18 @@ const TransactionDetails = ({ transactionId }) => {
   };
 
   const renderRuneTransfer = (output, index) => {
-    if (!runeData?.edicts) return null;
+      if (!runeData?.edicts) return null;
 
-    // Remove the +1 offset to align transfers with correct addresses
-    const edict = runeData.edicts.find(e => e.output === index);
-    if (!edict) return null;
+      const edict = runeData.edicts.find(e => e.output === index);
+      if (!edict) return null;
 
-    return (
-      <div className="text-sm text-gray-400 ml-4">
-        ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
-        <span className="text-red-400">{edict.amount.toString()}</span> ZEUS•RUNES•WORLD
-      </div>
-    );
-  };
+      return (
+        <div className="text-sm text-gray-400 ml-4">
+          ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
+          <span className="text-red-400">{edict.amount.toString()}</span> {runeData.formattedRuneName || runeData.runeName}
+        </div>
+      );
+    };
 
   if (error) return <div className="text-red-500">{error}</div>;
   if (!transactionData) return <div className="text-white">Loading...</div>;
@@ -109,13 +108,13 @@ const TransactionDetails = ({ transactionId }) => {
                   {index === 0 && runeData?.edicts && (
                     <div className="text-sm text-gray-400 ml-4">
                       ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
-                      <span className="text-red-400">2,239</span> ZEUS•RUNES•WORLD
+                      <span className="text-red-400">2,239</span> {runeData.formattedRuneName || runeData.runeName}
                     </div>
                   )}
                   {index === 1 && runeData?.edicts && (
                     <div className="text-sm text-gray-400 ml-4">
                       ↳ <img src="" alt="Z" className="inline-block w-4 h-4" />
-                      <span className="text-red-400">2,200</span> ZEUS•RUNES•WORLD
+                      <span className="text-red-400">2,200</span> {runeData.formattedRuneName || runeData.runeName}
                     </div>
                   )}
                 </div>

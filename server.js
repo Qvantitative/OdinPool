@@ -231,6 +231,7 @@ function parseMessage(integers) {
 }
 
 function extractFields(fields) {
+  console.log('Extracting fields from:', fields);
   const result = {};
   const tags = {
     version: BigInt(19),
@@ -250,11 +251,13 @@ function extractFields(fields) {
   };
 
   for (const [tag, values] of fields.entries()) {
+    console.log(`Processing tag: ${tag}, values: ${values}`);
     if (tag === tags.version) result.version = Number(values[0]);
     else if (tag === tags.flags) result.flags = Number(values[0]);
     else if (tag === tags.rune) result.rune = values[0];
     else if (tag === tags.spacers) result.spacers = Number(values[0]);
     else if (tag === tags.symbol) {
+      console.log(`Symbol tag found: ${values}`);
       const codePoint = Number(values[0]);
       if (Number.isSafeInteger(codePoint)) {
         result.symbol = String.fromCodePoint(codePoint);
@@ -285,8 +288,10 @@ function extractFields(fields) {
 }
 
 function decodeRuneName(runeValue) {
+  console.log('Decoding rune value:', runeValue);
+
   if (!runeValue || runeValue <= 0n) {
-    console.warn("Invalid rune value:", runeValue);
+    console.warn('Invalid rune value:', runeValue);
     return undefined;
   }
 
@@ -300,7 +305,7 @@ function decodeRuneName(runeValue) {
   }
 
   const result = chars.reverse().join('');
-  console.log("Decoded rune name:", result);
+  console.log('Decoded rune name:', result);
   return result;
 }
 

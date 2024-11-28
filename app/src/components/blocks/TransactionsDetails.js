@@ -105,16 +105,11 @@ const TransactionDetails = ({ transactionId }) => {
                     </span>
                     <span>{formatBTC(input.value)} BTC</span>
                   </div>
-                  {index === 0 && runeData?.edicts && (
+                  {/* Get the input transfer amounts from runeData */}
+                  {runeData?.edicts && runeData.inputAmounts && runeData.inputAmounts[index] && (
                     <div className="text-sm text-gray-400 ml-4">
                       ↳ <img src="/zeus-logo.png" alt="Z" className="inline-block w-4 h-4" />
-                      <span className="text-red-400">2,239</span> {runeData.formattedRuneName || runeData.runeName}
-                    </div>
-                  )}
-                  {index === 1 && runeData?.edicts && (
-                    <div className="text-sm text-gray-400 ml-4">
-                      ↳ <img src="" alt="Z" className="inline-block w-4 h-4" />
-                      <span className="text-red-400">2,200</span> {runeData.formattedRuneName || runeData.runeName}
+                      <span className="text-red-400">{runeData.inputAmounts[index].toString()}</span> {runeData.formattedRuneName || runeData.runeName}
                     </div>
                   )}
                 </div>

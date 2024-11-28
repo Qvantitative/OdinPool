@@ -102,61 +102,58 @@ function bigIntReplacer(key, value) {
 }
 
 function extractPayloadBufferFromHex(hex) {
+  console.log('Extracting payload buffer from hex:', hex);
   const buffer = Buffer.from(hex, 'hex');
+  console.log('Buffer:', buffer);
   let offset = 0;
 
-  // Check for OP_RETURN (0x6a)
   if (buffer[offset] !== 0x6a) {
+    console.error('Invalid runestone: OP_RETURN not found in payload');
     throw new Error('Invalid runestone: OP_RETURN not found');
   }
-  offset += 1; // Skip OP_RETURN
 
-  // Now parse the data push opcode
+  offset += 1; // Skip OP_RETURN
   if (offset >= buffer.length) {
+    console.error('No data after OP_RETURN');
     throw new Error('No data after OP_RETURN');
   }
 
   let dataLength;
   let opcode = buffer[offset];
+  console.log('Opcode:', opcode);
   offset += 1;
 
+  // Determine data length
   if (opcode >= 0x01 && opcode <= 0x4b) {
-    // Single-byte push (1 to 75 bytes)
     dataLength = opcode;
   } else if (opcode === 0x4c) {
-    // OP_PUSHDATA1
-    if (offset >= buffer.length) {
-      throw new Error('Invalid OP_PUSHDATA1');
-    }
     dataLength = buffer[offset];
     offset += 1;
   } else if (opcode === 0x4d) {
-    // OP_PUSHDATA2
-    if (offset + 1 >= buffer.length) {
-      throw new Error('Invalid OP_PUSHDATA2');
-    }
     dataLength = buffer.readUInt16LE(offset);
     offset += 2;
   } else if (opcode === 0x4e) {
-    // OP_PUSHDATA4
-    if (offset + 3 >= buffer.length) {
-      throw new Error('Invalid OP_PUSHDATA4');
-    }
     dataLength = buffer.readUInt32LE(offset);
     offset += 4;
   } else {
+    console.error('Unsupported data push opcode:', opcode);
     throw new Error('Unsupported data push opcode');
   }
 
+  console.log('Data length:', dataLength);
+
   if (offset + dataLength > buffer.length) {
+    console.error('Data push length exceeds buffer length');
     throw new Error('Data push length exceeds buffer length');
   }
 
   const payload = buffer.slice(offset, offset + dataLength);
+  console.log('Extracted Payload:', payload);
   return payload;
 }
 
 function decodeLEB128(buffer) {
+  console.log('Decoding LEB128 buffer:', buffer);
   const integers = [];
   let offset = 0;
 
@@ -168,6 +165,7 @@ function decodeLEB128(buffer) {
 
     do {
       if (offset >= buffer.length) {
+        console.error('LEB128 varint is truncated');
         throw new Error('LEB128 varint is truncated');
       }
       byte = buffer[offset++];
@@ -177,12 +175,15 @@ function decodeLEB128(buffer) {
     } while (byte & 0x80);
 
     if (bytesRead > 10) {
+      console.error('LEB128 varint is too long');
       throw new Error('LEB128 varint is too long');
     }
 
+    console.log(`Decoded integer: ${result} at offset: ${offset}`);
     integers.push(result);
   }
 
+  console.log('Decoded Integers:', integers);
   return integers;
 }
 
@@ -252,12 +253,18 @@ function extractFields(fields) {
 
   for (const [tag, values] of fields.entries()) {
     console.log(`Processing tag: ${tag}, values: ${values}`);
+    if (tag === tags.symbol) {
+      console.log(`Symbol tag found: ${values}`);
+    }
+    if (tag === tags.rune) {
+      console.log(`Rune tag found: ${values}`);
+    }
+
     if (tag === tags.version) result.version = Number(values[0]);
     else if (tag === tags.flags) result.flags = Number(values[0]);
     else if (tag === tags.rune) result.rune = values[0];
     else if (tag === tags.spacers) result.spacers = Number(values[0]);
     else if (tag === tags.symbol) {
-      console.log(`Symbol tag found: ${values}`);
       const codePoint = Number(values[0]);
       if (Number.isSafeInteger(codePoint)) {
         result.symbol = String.fromCodePoint(codePoint);
@@ -284,6 +291,7 @@ function extractFields(fields) {
     }
   }
 
+  console.log('Extracted fields result:', result);
   return result;
 }
 
@@ -780,14 +788,23 @@ app.get('/api/ord/address/:address', async (req, res) => {
 
 app.get('/api/rune/:txid', async (req, res) => {
   const { txid } = req.params;
+  console.log(`Fetching raw transaction for txid: ${txid}`);
+
   try {
     const rawTx = await bitcoinClient.getRawTransaction(txid, true);
+    console.log('Raw Transaction:', JSON.stringify(rawTx, null, 2));
+
     const opReturnOutput = rawTx.vout.find(
       (vout) => vout.scriptPubKey.type === 'nulldata'
     );
+    console.log('OP_RETURN Output:', opReturnOutput);
+
     if (opReturnOutput) {
-      // Pass the entire scriptPubKey object instead of asm
+      console.log('OP_RETURN ScriptPubKey:', opReturnOutput.scriptPubKey);
+
       const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
+      console.log('Decoded Rune Data:', runeData);
+
       if (runeData.error) {
         res.status(400).json({
           error: runeData.error,
@@ -795,10 +812,10 @@ app.get('/api/rune/:txid', async (req, res) => {
           scriptPubKey: opReturnOutput.scriptPubKey,
         });
       } else {
-        // Use bigIntReplacer to handle BigInt serialization if necessary
         res.json(JSON.parse(JSON.stringify(runeData, bigIntReplacer)));
       }
     } else {
+      console.warn(`No OP_RETURN output found in transaction: ${txid}`);
       res.status(404).json({ error: 'No OP_RETURN output found in this transaction' });
     }
   } catch (error) {

@@ -99,10 +99,10 @@ const TransactionDetails = ({ transactionId }) => {
             {inputs.map((input, index) => (
               <li key={index}>
                 <div>
-                  <div className="text-red-400 truncate">
-                    {input.address}
-                  </div>
                   <div className="flex justify-between items-center">
+                    <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
+                      {input.address}
+                    </span>
                     <span>{formatBTC(input.value)} BTC</span>
                   </div>
                   {index === 0 && runeData?.edicts && (
@@ -130,18 +130,17 @@ const TransactionDetails = ({ transactionId }) => {
               const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
               return (
                 <li key={index}>
-                  <div>
-                    <div
-                      className={isOpReturn ? 'text-yellow-300 cursor-pointer truncate' : 'text-blue-400 truncate'}
+                  <div className="flex justify-between items-center">
+                    <span
+                      className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
+                      style={{ maxWidth: '70%' }}
                       onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
                     >
                       {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>{formatBTC(output.value)} BTC</span>
-                    </div>
-                    {renderRuneTransfer(output, index + 1)}
+                    </span>
+                    <span>{formatBTC(output.value)} BTC</span>
                   </div>
+                  {renderRuneTransfer(output, index + 1)}
                   {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
                       <pre className="text-sm overflow-x-auto">

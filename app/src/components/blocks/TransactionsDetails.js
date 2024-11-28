@@ -64,6 +64,7 @@ const TransactionDetails = ({ transactionId }) => {
   const renderRuneTransfer = (output, index) => {
     if (!runeData?.edicts) return null;
 
+    // Remove the +1 offset to align transfers with correct addresses
     const edict = runeData.edicts.find(e => e.output === index);
     if (!edict) return null;
 
@@ -140,7 +141,7 @@ const TransactionDetails = ({ transactionId }) => {
                     </span>
                     <span>{formatBTC(output.value)} BTC</span>
                   </div>
-                  {!isOpReturn && renderRuneTransfer(output, index + 1)}
+                  {renderRuneTransfer(output, index)}
                   {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
                       <pre className="text-sm overflow-x-auto">

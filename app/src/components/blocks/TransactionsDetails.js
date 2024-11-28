@@ -1,5 +1,3 @@
-// TransactionDetails.jsx
-
 import React, { useState, useEffect } from 'react';
 
 const TransactionDetails = ({ transactionId }) => {
@@ -8,6 +6,7 @@ const TransactionDetails = ({ transactionId }) => {
   const [error, setError] = useState(null);
   const [runeData, setRuneData] = useState(null);
   const [expandedOpReturn, setExpandedOpReturn] = useState(null);
+  const [inputRuneData, setInputRuneData] = useState(null);
 
   useEffect(() => {
     const fetchTransactionDetails = async () => {
@@ -17,6 +16,7 @@ const TransactionDetails = ({ transactionId }) => {
       }
 
       try {
+        // Fetch basic transaction data
         const response = await fetch(`/api/transactions/${transactionId}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -24,12 +24,35 @@ const TransactionDetails = ({ transactionId }) => {
         const data = await response.json();
         setTransactionData(data);
 
-        // Reset OP_RETURN and rune data when a new transaction is loaded
+        // Reset states
         setExpandedOpReturn(null);
         setRuneData(null);
         setInscriptionData(null);
+        setInputRuneData(null);
 
-        // Fetch inscription data
+        // Fetch rune data if there's an OP_RETURN output
+        const hasOpReturn = data.outputs.some(output => 
+          output.scriptPubKey && output.scriptPubKey.type === 'nulldata'
+        );
+        
+        if (hasOpReturn) {
+          const runeResponse = await fetch(`/api/rune/${transactionId}`);
+          if (runeResponse.ok) {
+            const runeData = await runeResponse.json();
+            setRuneData(runeData);
+
+            // Fetch input addresses rune balances
+            const inputAddresses = data.inputs.map(input => input.address);
+            // You'll need to implement this API endpoint to get historical rune balances
+            const inputRunesResponse = await fetch(`/api/rune/balances/${transactionId}`);
+            if (inputRunesResponse.ok) {
+              const inputRuneData = await inputRunesResponse.json();
+              setInputRuneData(inputRuneData);
+            }
+          }
+        }
+
+        // Fetch inscription data if exists
         const inscriptionId = transactionId + 'i0';
         const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
         if (inscriptionResponse.ok) {
@@ -47,24 +70,38 @@ const TransactionDetails = ({ transactionId }) => {
 
   const formatBTC = (value) => parseFloat(value).toFixed(8);
 
-  const handleOpReturnClick = async (index) => {
-    if (expandedOpReturn === index) {
-      setExpandedOpReturn(null);
-      setRuneData(null);
-    } else {
-      setExpandedOpReturn(index);
-      try {
-        const response = await fetch(`/api/rune/${transactionId}`);
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch rune data');
-        }
-        setRuneData(data);
-      } catch (error) {
-        console.error('Error fetching rune data:', error);
-        setError(`Failed to fetch rune data: ${error.message}`);
-      }
-    }
+  const handleOpReturnClick = (index) => {
+    setExpandedOpReturn(expandedOpReturn === index ? null : index);
+  };
+
+  const renderInputRunes = (input, index) => {
+    if (!inputRuneData) return null;
+
+    const runeAmount = inputRuneData[input.address];
+    if (!runeAmount) return null;
+
+    return (
+      <div className="flex items-center space-x-1 text-sm text-gray-400 ml-4">
+        ↳ <img src="/zeus-logo.png" alt="ZEUS" className="w-4 h-4" />
+        <span className="text-red-400">{runeAmount.toLocaleString()}</span>
+        <span>ZEUS•RUNES•WORLD</span>
+      </div>
+    );
+  };
+
+  const renderRuneTransfer = (output, index) => {
+    if (!runeData?.edicts) return null;
+    
+    const edict = runeData.edicts.find(e => e.output === index);
+    if (!edict) return null;
+
+    return (
+      <div className="flex items-center space-x-1 text-sm text-gray-400 ml-4">
+        ↳ <img src="/zeus-logo.png" alt="ZEUS" className="w-4 h-4" />
+        <span className="text-red-400">{edict.amount.toString()}</span>
+        <span>ZEUS•RUNES•WORLD</span>
+      </div>
+    );
   };
 
   if (error) return <div className="text-red-500">{error}</div>;
@@ -74,7 +111,15 @@ const TransactionDetails = ({ transactionId }) => {
 
   return (
     <div className="bg-gray-900 p-4 rounded-lg shadow text-white">
-      <h2 className="text-lg font-bold mb-4 text-center">{transaction.txid}</h2>
+      <h2 className="text-lg font-bold mb-4 text-center">
+        <a 
+          href={`/tx/${transaction.txid}`}
+          className="hover:text-blue-400 transition-colors"
+        >
+          {transaction.txid}
+        </a>
+      </h2>
+
       <div className="flex justify-between items-center mb-4">
         <div>{formatBTC(transaction.total_input_value)} BTC</div>
         <div className="text-sm">
@@ -84,73 +129,83 @@ const TransactionDetails = ({ transactionId }) => {
       </div>
 
       <div className="flex justify-between">
+        {/* Inputs Section */}
         <div className="w-1/2 pr-2">
           <h3 className="text-sm font-semibold mb-2">Inputs</h3>
           <ul className="space-y-2">
             {inputs.map((input, index) => (
-              <li key={index} className="flex justify-between items-center">
-                <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>{input.address}</span>
-                <span>{formatBTC(input.value)} BTC</span>
+              <li key={index} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <a 
+                    href={`/address/${input.address}`}
+                    className="text-red-400 hover:text-red-300 truncate mr-2 transition-colors"
+                    style={{ maxWidth: '70%' }}
+                  >
+                    {input.address}
+                  </a>
+                  <span>{formatBTC(input.value)} BTC</span>
+                </div>
+                {renderInputRunes(input, index)}
               </li>
             ))}
           </ul>
         </div>
 
+        {/* Outputs Section */}
         <div className="w-1/2 pl-2">
           <h3 className="text-sm font-semibold mb-2">Outputs</h3>
           <ul className="space-y-2">
             {outputs.map((output, index) => {
               const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
               return (
-                <li key={index}>
+                <li key={index} className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <span
-                      className={`truncate mr-2 ${
-                        isOpReturn
-                          ? 'text-yellow-300 animate-pulse cursor-pointer'
-                          : 'text-blue-400'
-                      }`}
-                      style={{
-                        maxWidth: '70%',
-                        boxShadow: isOpReturn ? '0 0 10px #FCD34D' : 'none',
-                      }}
-                      onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
-                    >
-                      {isOpReturn ? 'OP_RETURN' : output.address}
-                    </span>
+                    {isOpReturn ? (
+                      <span
+                        className="text-yellow-300 cursor-pointer hover:text-yellow-200 truncate mr-2"
+                        style={{ maxWidth: '70%' }}
+                        onClick={() => handleOpReturnClick(index)}
+                      >
+                        OP_RETURN (🌋 Runestone message)
+                      </span>
+                    ) : (
+                      <a 
+                        href={`/address/${output.address}`}
+                        className="text-blue-400 hover:text-blue-300 truncate mr-2 transition-colors"
+                        style={{ maxWidth: '70%' }}
+                      >
+                        {output.address}
+                      </a>
+                    )}
                     <span>{formatBTC(output.value)} BTC</span>
                   </div>
-                  {expandedOpReturn === index && (
+                  {renderRuneTransfer(output, index + 1)}
+                  {expandedOpReturn === index && isOpReturn && (
                     <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                      {runeData && (
-                        <div className="mb-2">
-                          <p><strong>Rune Name:</strong> {runeData.formattedRuneName}</p>
-                          <p><strong>Symbol:</strong> {runeData.symbol}</p>
-                          {/* Add more rune data fields as needed */}
-                        </div>
-                      )}
-                      {inscriptionData && (
-                        <div>
-                          <p className="mb-1"><strong>Inscription ID:</strong></p>
-                          <p className="text-xs break-all mb-2">{inscriptionData.id}</p>
-                          <p><strong>Content Type:</strong> {inscriptionData.content_type}</p>
-                          <p><strong>Content Length:</strong> {inscriptionData.content_length}</p>
-                          {inscriptionData.content_type.startsWith('image/') && (
-                            <div className="mt-2 flex justify-center">
-                              <img
-                                src={`/content/${inscriptionData.id}`}
-                                alt={`Inscription ${inscriptionData.id}`}
-                                className="w-24 h-24 object-cover rounded border border-gray-600"
-                              />
-                            </div>
-                          )}
-                          {inscriptionData.content_type.startsWith('text/') && (
-                            <pre className="mt-2 bg-gray-700 p-2 rounded text-xs overflow-auto max-h-40">
-                              {inscriptionData.content}
+                      <div className="text-sm space-y-2">
+                        {runeData && (
+                          <div>
+                            <h4 className="font-semibold">Rune Transfer Details:</h4>
+                            <pre className="overflow-x-auto text-xs mt-1">
+                              {JSON.stringify(runeData, null, 2)}
                             </pre>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                        {inscriptionData && (
+                          <div>
+                            <h4 className="font-semibold">Inscription Details:</h4>
+                            <p>ID: {inscriptionData.id}</p>
+                            <p>Content Type: {inscriptionData.content_type}</p>
+                            {inscriptionData.content_type.startsWith('image/') && (
+                              <img 
+                                src={`/content/${inscriptionData.id}`}
+                                alt="Inscription"
+                                className="mt-2 max-w-full h-auto rounded"
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </li>

@@ -102,54 +102,65 @@ function bigIntReplacer(key, value) {
 }
 
 function extractPayloadBufferFromHex(hex) {
-  console.log('Extracting payload buffer from hex:', hex);
-  const buffer = Buffer.from(hex, 'hex');
-  console.log('Buffer:', buffer);
-  let offset = 0;
+    console.log('Extracting payload buffer from hex:', hex);
+    const buffer = Buffer.from(hex, 'hex');
+    let offset = 0;
 
-  if (buffer[offset] !== 0x6a) {
-    console.error('Invalid runestone: OP_RETURN not found in payload');
-    throw new Error('Invalid runestone: OP_RETURN not found');
-  }
+    // Check for OP_RETURN (0x6a)
+    if (buffer[offset] !== 0x6a) {
+        throw new Error('Invalid runestone: OP_RETURN not found');
+    }
+    offset += 1; // Skip OP_RETURN
 
-  offset += 1; // Skip OP_RETURN
-  if (offset >= buffer.length) {
-    console.error('No data after OP_RETURN');
-    throw new Error('No data after OP_RETURN');
-  }
+    if (offset >= buffer.length) {
+        throw new Error('No data after OP_RETURN');
+    }
 
-  let dataLength;
-  let opcode = buffer[offset];
-  console.log('Opcode:', opcode);
-  offset += 1;
-
-  // Determine data length
-  if (opcode >= 0x01 && opcode <= 0x4b) {
-    dataLength = opcode;
-  } else if (opcode === 0x4c) {
-    dataLength = buffer[offset];
+    let dataLength;
+    const opcode = buffer[offset];
     offset += 1;
-  } else if (opcode === 0x4d) {
-    dataLength = buffer.readUInt16LE(offset);
-    offset += 2;
-  } else if (opcode === 0x4e) {
-    dataLength = buffer.readUInt32LE(offset);
-    offset += 4;
-  } else {
-    console.error('Unsupported data push opcode:', opcode);
-    throw new Error('Unsupported data push opcode');
-  }
 
-  console.log('Data length:', dataLength);
+    if (opcode >= 0x01 && opcode <= 0x4b) {
+        // Single-byte push (1 to 75 bytes)
+        dataLength = opcode;
+    } else if (opcode === 0x4c) {
+        // OP_PUSHDATA1
+        if (offset >= buffer.length) {
+            throw new Error('Invalid OP_PUSHDATA1');
+        }
+        dataLength = buffer[offset];
+        offset += 1;
+    } else if (opcode === 0x4d) {
+        // OP_PUSHDATA2
+        if (offset + 1 >= buffer.length) {
+            throw new Error('Invalid OP_PUSHDATA2');
+        }
+        dataLength = buffer.readUInt16LE(offset);
+        offset += 2;
+    } else if (opcode === 0x4e) {
+        // OP_PUSHDATA4
+        if (offset + 3 >= buffer.length) {
+            throw new Error('Invalid OP_PUSHDATA4');
+        }
+        dataLength = buffer.readUInt32LE(offset);
+        offset += 4;
+    } else if (opcode === 0x93) {
+        // Custom handling for opcode 93
+        console.log('Custom opcode 93 detected');
+        // Implement your own logic to extract the payload
+        dataLength = buffer[offset]; // Example: read next byte for length
+        offset += 1;
+    } else {
+        throw new Error(`Unsupported data push opcode: ${opcode}`);
+    }
 
-  if (offset + dataLength > buffer.length) {
-    console.error('Data push length exceeds buffer length');
-    throw new Error('Data push length exceeds buffer length');
-  }
+    if (offset + dataLength > buffer.length) {
+        throw new Error('Data push length exceeds buffer length');
+    }
 
-  const payload = buffer.slice(offset, offset + dataLength);
-  console.log('Extracted Payload:', payload);
-  return payload;
+    const payload = buffer.slice(offset, offset + dataLength);
+    console.log('Extracted payload buffer:', payload);
+    return payload;
 }
 
 function decodeLEB128(buffer) {

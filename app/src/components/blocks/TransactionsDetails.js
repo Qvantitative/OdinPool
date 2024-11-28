@@ -61,15 +61,6 @@ const TransactionDetails = ({ transactionId }) => {
     setExpandedOpReturn(expandedOpReturn === index ? null : index);
   };
 
-  const getTransactionType = () => {
-    if (!runeData || !transactionData) return 'BTC Transaction';
-
-    if (runeData.etching) return '🌋 Rune Etching';
-    if (runeData.edicts?.length > 0) return '🌋 Rune Transfer';
-
-    return 'BTC Transaction';
-  };
-
   const renderRuneTransfer = (item, index, isInput = false) => {
     if (!runeData) return null;
 
@@ -80,10 +71,10 @@ const TransactionDetails = ({ transactionId }) => {
           <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
             <span>↳</span>
             <span className="text-red-400" title="Amount">
-              Transfer {Number(runeData.edicts[0].amount).toLocaleString()}
+              {Number(runeData.edicts[0].amount).toLocaleString()}
             </span>
             <span className="text-yellow-300" title="Block and TX">
-              {runeData.edicts[0].id.block}.{runeData.edicts[0].id.tx}
+              Block {runeData.edicts[0].id.block}.{runeData.edicts[0].id.tx}
             </span>
           </div>
         );
@@ -93,10 +84,10 @@ const TransactionDetails = ({ transactionId }) => {
           <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
             <span>↳</span>
             <span className="text-red-400" title="Amount">
-              Transfer {Number(runeData.edicts[1].amount).toLocaleString()}
+              {Number(runeData.edicts[1].amount).toLocaleString()}
             </span>
             <span className="text-yellow-300" title="Block and TX">
-              {runeData.edicts[1].id.block}.{runeData.edicts[1].id.tx}
+              Block {runeData.edicts[1].id.block}.{runeData.edicts[1].id.tx}
             </span>
           </div>
         );
@@ -110,10 +101,10 @@ const TransactionDetails = ({ transactionId }) => {
       <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
         <span>↳</span>
         <span className="text-red-400" title="Amount">
-          Receive {Number(edict.amount).toLocaleString()}
+          {Number(edict.amount).toLocaleString()}
         </span>
         <span className="text-yellow-300" title="Block and TX">
-          {edict.id.block}.{edict.id.tx}
+          Block {edict.id.block}.{edict.id.tx}
         </span>
       </div>
     );
@@ -134,10 +125,6 @@ const TransactionDetails = ({ transactionId }) => {
           <span className="text-gray-400">Symbol: </span>
           <span className="text-2xl">{runeData.etching.symbol}</span>
         </div>
-        <div>
-          <span className="text-gray-400">Type: </span>
-          <span className="text-green-400">Etching (New Rune)</span>
-        </div>
       </div>
     );
   };
@@ -149,11 +136,6 @@ const TransactionDetails = ({ transactionId }) => {
 
   return (
     <div className="bg-gray-900 p-4 rounded-lg shadow text-white">
-      <div className="mb-2 text-center">
-        <span className="text-sm font-medium text-gray-400">
-          {getTransactionType()}
-        </span>
-      </div>
       <h2 className="text-lg font-bold mb-4 text-center">{transaction.txid}</h2>
 
       <div className="flex justify-between items-center mb-4">

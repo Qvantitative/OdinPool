@@ -73,8 +73,8 @@ const TransactionDetails = ({ transactionId }) => {
             <span className="text-red-400" title="Amount">
               {Number(runeData.edicts[0].amount).toLocaleString()}
             </span>
-            <span className="text-yellow-300" title="Block and TX">
-              Block {runeData.edicts[0].id.block}.{runeData.edicts[0].id.tx}
+            <span className="text-yellow-300" title="Rune Name">
+              {runeData.etching?.formattedRuneName || runeData.etching?.runeName}
             </span>
           </div>
         );
@@ -86,8 +86,8 @@ const TransactionDetails = ({ transactionId }) => {
             <span className="text-red-400" title="Amount">
               {Number(runeData.edicts[1].amount).toLocaleString()}
             </span>
-            <span className="text-yellow-300" title="Block and TX">
-              Block {runeData.edicts[1].id.block}.{runeData.edicts[1].id.tx}
+            <span className="text-yellow-300" title="Rune Name">
+              {runeData.etching?.formattedRuneName || runeData.etching?.runeName}
             </span>
           </div>
         );
@@ -103,8 +103,8 @@ const TransactionDetails = ({ transactionId }) => {
         <span className="text-red-400" title="Amount">
           {Number(edict.amount).toLocaleString()}
         </span>
-        <span className="text-yellow-300" title="Block and TX">
-          Block {edict.id.block}.{edict.id.tx}
+        <span className="text-yellow-300" title="Rune Name">
+          {runeData.etching?.formattedRuneName || runeData.etching?.runeName}
         </span>
       </div>
     );

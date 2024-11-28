@@ -112,90 +112,94 @@ function extractPayloadBufferFromHex(hex) {
     }
     offset += 1; // Skip OP_RETURN
 
-    if (offset >= buffer.length) {
-        throw new Error('No data after OP_RETURN');
-    }
-
-    let dataLength;
-    const opcode = buffer[offset];
-    offset += 1;
-
-    if (opcode >= 0x01 && opcode <= 0x4b) {
-        // Single-byte push (1 to 75 bytes)
-        dataLength = opcode;
-    } else if (opcode === 0x4c) {
-        // OP_PUSHDATA1
-        if (offset >= buffer.length) {
-            throw new Error('Invalid OP_PUSHDATA1');
-        }
-        dataLength = buffer[offset];
+    while (offset < buffer.length) {
+        const opcode = buffer[offset];
+        console.log(`Opcode: ${opcode.toString(16)}, Remaining Buffer: ${buffer.slice(offset)}`);
         offset += 1;
-    } else if (opcode === 0x4d) {
-        // OP_PUSHDATA2
-        if (offset + 1 >= buffer.length) {
-            throw new Error('Invalid OP_PUSHDATA2');
-        }
-        dataLength = buffer.readUInt16LE(offset);
-        offset += 2;
-    } else if (opcode === 0x4e) {
-        // OP_PUSHDATA4
-        if (offset + 3 >= buffer.length) {
-            throw new Error('Invalid OP_PUSHDATA4');
-        }
-        dataLength = buffer.readUInt32LE(offset);
-        offset += 4;
-    } else if (opcode === 0x93) {
-        // Custom handling for opcode 93
-        console.log('Custom opcode 93 detected');
-        // Implement your own logic to extract the payload
-        dataLength = buffer[offset]; // Example: read next byte for length
-        offset += 1;
-    } else {
-        throw new Error(`Unsupported data push opcode: ${opcode}`);
-    }
 
-    if (offset + dataLength > buffer.length) {
-        throw new Error('Data push length exceeds buffer length');
-    }
+        let dataLength = 0;
 
-    const payload = buffer.slice(offset, offset + dataLength);
-    console.log('Extracted payload buffer:', payload);
-    return payload;
+        if (opcode >= 0x01 && opcode <= 0x4b) {
+            // Single-byte push (1 to 75 bytes)
+            dataLength = opcode;
+        } else if (opcode === 0x4c) {
+            // OP_PUSHDATA1
+            if (offset >= buffer.length) {
+                throw new Error('Invalid OP_PUSHDATA1');
+            }
+            dataLength = buffer[offset];
+            offset += 1;
+        } else if (opcode === 0x4d) {
+            // OP_PUSHDATA2
+            if (offset + 1 >= buffer.length) {
+                throw new Error('Invalid OP_PUSHDATA2');
+            }
+            dataLength = buffer.readUInt16LE(offset);
+            offset += 2;
+        } else if (opcode === 0x4e) {
+            // OP_PUSHDATA4
+            if (offset + 3 >= buffer.length) {
+                throw new Error('Invalid OP_PUSHDATA4');
+            }
+            dataLength = buffer.readUInt32LE(offset);
+            offset += 4;
+        } else {
+            console.error(`Unsupported data push opcode: ${opcode}`);
+            throw new Error(`Unsupported data push opcode: ${opcode}`);
+        }
+
+        console.log(`Data length: ${dataLength}, Offset after parsing: ${offset}`);
+        if (offset + dataLength > buffer.length) {
+            throw new Error('Data push length exceeds buffer length');
+        }
+
+        const payload = buffer.slice(offset, offset + dataLength);
+        console.log('Payload:', payload);
+        return payload;
+    }
+    throw new Error('No payload found in buffer');
 }
 
 function decodeLEB128(buffer) {
-  console.log('Decoding LEB128 buffer:', buffer);
-  const integers = [];
-  let offset = 0;
+    console.log('Decoding LEB128 buffer:', buffer);
+    const integers = [];
+    let offset = 0;
 
-  while (offset < buffer.length) {
-    let result = BigInt(0);
-    let shift = BigInt(0);
-    let byte;
-    let bytesRead = 0;
+    while (offset < buffer.length) {
+        let result = BigInt(0);
+        let shift = BigInt(0);
+        let byte;
+        let bytesRead = 0;
 
-    do {
-      if (offset >= buffer.length) {
-        console.error('LEB128 varint is truncated');
-        throw new Error('LEB128 varint is truncated');
-      }
-      byte = buffer[offset++];
-      bytesRead++;
-      result |= BigInt(byte & 0x7F) << shift;
-      shift += BigInt(7);
-    } while (byte & 0x80);
+        try {
+            do {
+                if (offset >= buffer.length) {
+                    console.error(`LEB128 varint truncated at offset: ${offset}`);
+                    console.log('Remaining buffer:', buffer.slice(offset));
+                    throw new Error('LEB128 varint is truncated');
+                }
+                byte = buffer[offset++];
+                bytesRead++;
+                result |= BigInt(byte & 0x7F) << shift;
+                shift += BigInt(7);
+                console.log(`Intermediate result: ${result}, Byte: ${byte.toString(16)}, Offset: ${offset}`);
+            } while (byte & 0x80);
 
-    if (bytesRead > 10) {
-      console.error('LEB128 varint is too long');
-      throw new Error('LEB128 varint is too long');
+            if (bytesRead > 10) {
+                console.error('LEB128 varint is too long');
+                throw new Error('LEB128 varint is too long');
+            }
+
+            console.log(`Decoded integer: ${result} at offset: ${offset}`);
+            integers.push(result);
+        } catch (error) {
+            console.error('Error during LEB128 decoding:', error.message);
+            console.log('Buffer at error:', buffer.slice(offset));
+            break; // Stop processing if there's an error
+        }
     }
 
-    console.log(`Decoded integer: ${result} at offset: ${offset}`);
-    integers.push(result);
-  }
-
-  console.log('Decoded Integers:', integers);
-  return integers;
+    return integers;
 }
 
 function parseMessage(integers) {
@@ -243,67 +247,67 @@ function parseMessage(integers) {
 }
 
 function extractFields(fields) {
-  console.log('Extracting fields from:', fields);
-  const result = {};
-  const tags = {
-    version: BigInt(19),
-    flags: BigInt(2),
-    rune: BigInt(4),
-    spacers: BigInt(3),
-    symbol: BigInt(5),
-    premine: BigInt(6),
-    cap: BigInt(8),
-    amount: BigInt(10),
-    heightStart: BigInt(12),
-    heightEnd: BigInt(14),
-    offsetStart: BigInt(16),
-    offsetEnd: BigInt(18),
-    mint: BigInt(20),
-    pointer: BigInt(22)
-  };
+    console.log('Extracting fields from:', fields);
+    const result = {};
+    const tags = {
+        version: BigInt(19),
+        flags: BigInt(2),
+        rune: BigInt(4),
+        spacers: BigInt(3),
+        symbol: BigInt(5),
+        premine: BigInt(6),
+        cap: BigInt(8),
+        amount: BigInt(10),
+        heightStart: BigInt(12),
+        heightEnd: BigInt(14),
+        offsetStart: BigInt(16),
+        offsetEnd: BigInt(18),
+        mint: BigInt(20),
+        pointer: BigInt(22),
+    };
 
-  for (const [tag, values] of fields.entries()) {
-    console.log(`Processing tag: ${tag}, values: ${values}`);
-    if (tag === tags.symbol) {
-      console.log(`Symbol tag found: ${values}`);
-    }
-    if (tag === tags.rune) {
-      console.log(`Rune tag found: ${values}`);
+    for (const [tag, values] of fields.entries()) {
+        console.log(`Processing tag: ${tag}, values: ${values}`);
+        if (tag === tags.symbol) {
+            console.log(`Symbol tag found: ${values}`);
+        }
+        if (tag === tags.rune) {
+            console.log(`Rune tag found: ${values}`);
+        }
+
+        if (tag === tags.version) result.version = Number(values[0]);
+        else if (tag === tags.flags) result.flags = Number(values[0]);
+        else if (tag === tags.rune) result.rune = values[0];
+        else if (tag === tags.spacers) result.spacers = Number(values[0]);
+        else if (tag === tags.symbol) {
+            const codePoint = Number(values[0]);
+            if (Number.isSafeInteger(codePoint)) {
+                result.symbol = String.fromCodePoint(codePoint);
+            } else {
+                console.warn('Symbol code point is not a safe integer:', values[0]);
+                result.symbol = undefined;
+            }
+        } else if (tag === tags.premine) result.premine = values[0].toString();
+        else if (tag === tags.cap) result.cap = values[0].toString();
+        else if (tag === tags.amount) result.amount = values[0].toString();
+        else if (tag === tags.heightStart) result.heightStart = Number(values[0]);
+        else if (tag === tags.heightEnd) result.heightEnd = Number(values[0]);
+        else if (tag === tags.offsetStart) result.offsetStart = Number(values[0]);
+        else if (tag === tags.offsetEnd) result.offsetEnd = Number(values[0]);
+        else if (tag === tags.mint) {
+            result.mint = {
+                block: Number(values[0]),
+                tx: values.length > 1 ? Number(values[1]) : 0,
+            };
+        } else if (tag === tags.pointer) result.pointer = Number(values[0]);
+        else {
+            console.log(`Unknown tag: ${tag}`);
+            result[tag.toString()] = values.map((v) => v.toString());
+        }
     }
 
-    if (tag === tags.version) result.version = Number(values[0]);
-    else if (tag === tags.flags) result.flags = Number(values[0]);
-    else if (tag === tags.rune) result.rune = values[0];
-    else if (tag === tags.spacers) result.spacers = Number(values[0]);
-    else if (tag === tags.symbol) {
-      const codePoint = Number(values[0]);
-      if (Number.isSafeInteger(codePoint)) {
-        result.symbol = String.fromCodePoint(codePoint);
-      } else {
-        console.warn('Symbol code point is not a safe integer:', values[0]);
-        result.symbol = undefined;
-      }
-    } else if (tag === tags.premine) result.premine = values[0].toString();
-    else if (tag === tags.cap) result.cap = values[0].toString();
-    else if (tag === tags.amount) result.amount = values[0].toString();
-    else if (tag === tags.heightStart) result.heightStart = Number(values[0]);
-    else if (tag === tags.heightEnd) result.heightEnd = Number(values[0]);
-    else if (tag === tags.offsetStart) result.offsetStart = Number(values[0]);
-    else if (tag === tags.offsetEnd) result.offsetEnd = Number(values[0]);
-    else if (tag === tags.mint) {
-      result.mint = {
-        block: Number(values[0]),
-        tx: values.length > 1 ? Number(values[1]) : 0
-      };
-    } else if (tag === tags.pointer) result.pointer = Number(values[0]);
-    else {
-      console.log(`Unknown tag: ${tag}`);
-      result[tag.toString()] = values.map(v => v.toString());
-    }
-  }
-
-  console.log('Extracted fields result:', result);
-  return result;
+    console.log('Extracted fields result:', result);
+    return result;
 }
 
 function decodeRuneName(runeValue) {

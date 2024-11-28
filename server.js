@@ -376,10 +376,6 @@ function decodeRuneData(scriptPubKey) {
   }
 }
 
-module.exports = {
-  decodeRuneData
-};
-
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('A client connected');

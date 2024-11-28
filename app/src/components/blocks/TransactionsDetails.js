@@ -61,10 +61,27 @@ const TransactionDetails = ({ transactionId }) => {
     setExpandedOpReturn(expandedOpReturn === index ? null : index);
   };
 
-  const renderRuneTransfer = (output, index) => {
-    if (!runeData?.edicts) return null;
+  const renderRuneTransfer = (item, index, isInput = false) => {
+    if (!runeData) return null;
 
-    const edict = runeData.edicts.find(e => e.output === index);
+    if (isInput) {
+      if (runeData.inputAmounts && runeData.inputAmounts[index]) {
+        return (
+          <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
+            <span>↳</span>
+            <span className="text-red-400" title="Amount">
+              {Number(runeData.inputAmounts[index]).toLocaleString()}
+            </span>
+            <span className="text-yellow-300">
+              Block {runeData.etching?.id?.block || '?'}.{runeData.etching?.id?.tx || '?'}
+            </span>
+          </div>
+        );
+      }
+      return null;
+    }
+
+    const edict = runeData.edicts?.find(e => e.output === index);
     if (!edict) return null;
 
     return (
@@ -129,6 +146,7 @@ const TransactionDetails = ({ transactionId }) => {
                     </span>
                     <span>{formatBTC(input.value)} BTC</span>
                   </div>
+                  {renderRuneTransfer(input, index, true)}
                 </div>
               </li>
             ))}
@@ -153,7 +171,7 @@ const TransactionDetails = ({ transactionId }) => {
                       </span>
                       <span>{formatBTC(output.value)} BTC</span>
                     </div>
-                    {renderRuneTransfer(output, index)}
+                    {renderRuneTransfer(output, index, false)}
                     {expandedOpReturn === index && isOpReturn && (
                       <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
                         {renderRuneDetails()}

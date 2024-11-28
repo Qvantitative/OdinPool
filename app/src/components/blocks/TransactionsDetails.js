@@ -67,77 +67,33 @@ const TransactionDetails = ({ transactionId }) => {
     const edict = runeData.edicts.find(e => e.output === index);
     if (!edict) return null;
 
-    const runeName = runeData.etching?.formattedRuneName ||
-                    runeData.etching?.runeName ||
-                    `Block ${edict.id.block}.${edict.id.tx}`;
-
-    const symbol = runeData.etching?.symbol || '🌋';
-
     return (
       <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
         <span>↳</span>
-        {symbol && (
-          <span className="text-xl" title="Rune Symbol">
-            {symbol}
-          </span>
-        )}
         <span className="text-red-400" title="Amount">
           {Number(edict.amount).toLocaleString()}
         </span>
-        <span className="text-yellow-300" title="Rune Name">
-          {runeName}
+        <span className="text-yellow-300" title="Block and TX">
+          Block {edict.id.block}.{edict.id.tx}
         </span>
-        {runeData.etching?.flagInterpretation?.isEtching && (
-          <span className="text-xs bg-purple-700 rounded px-2 py-0.5">
-            Etching
-          </span>
-        )}
       </div>
     );
   };
 
-  const renderExpandedRuneDetails = () => {
-    if (!runeData) return null;
+  const renderRuneDetails = () => {
+    if (!runeData?.etching) return null;
 
     return (
       <div className="space-y-1">
-        <h4 className="text-lg font-semibold mb-2">Rune Details</h4>
-        {runeData.etching && (
-          <>
-            <div className="flex items-center space-x-2">
-              <span className="text-gray-400">Symbol:</span>
-              <span className="text-2xl">{runeData.etching.symbol}</span>
-            </div>
-            <div>
-              <span className="text-gray-400">Name:</span>
-              <span className="text-yellow-300 ml-2">
-                {runeData.etching.formattedRuneName || runeData.etching.runeName}
-              </span>
-            </div>
-            {runeData.etching.premine && (
-              <div>
-                <span className="text-gray-400">Premine:</span>
-                <span className="text-green-400 ml-2">
-                  {Number(runeData.etching.premine).toLocaleString()}
-                </span>
-              </div>
-            )}
-            <div>
-              <span className="text-gray-400">Type:</span>
-              <span className="text-blue-400 ml-2">
-                {runeData.etching.flagInterpretation.isEtching ? 'Etching' : 'Transfer'}
-                {runeData.etching.flagInterpretation.hasOpenTerms ? ' (Open Terms)' : ''}
-              </span>
-            </div>
-          </>
-        )}
-        <div className="mt-2">
-          <div className="text-gray-400">Transfers:</div>
-          {runeData.edicts.map((edict, i) => (
-            <div key={i} className="ml-2 text-sm">
-              {Number(edict.amount).toLocaleString()} → Output #{edict.output}
-            </div>
-          ))}
+        <div>
+          <span className="text-gray-400">Rune: </span>
+          <span className="text-yellow-300">
+            {runeData.etching.formattedRuneName || runeData.etching.runeName}
+          </span>
+        </div>
+        <div>
+          <span className="text-gray-400">Symbol: </span>
+          <span className="text-2xl">{runeData.etching.symbol}</span>
         </div>
       </div>
     );
@@ -173,13 +129,6 @@ const TransactionDetails = ({ transactionId }) => {
                     </span>
                     <span>{formatBTC(input.value)} BTC</span>
                   </div>
-                  {runeData?.edicts && runeData.inputAmounts && runeData.inputAmounts[index] && (
-                    <div className="text-sm text-gray-400 ml-4">
-                      ↳ <span className="text-xl">🌋</span>
-                      <span className="text-red-400">{runeData.inputAmounts[index].toString()}</span>
-                      <span className="text-yellow-300">{runeData.formattedRuneName || runeData.runeName}</span>
-                    </div>
-                  )}
                 </div>
               </li>
             ))}
@@ -207,7 +156,7 @@ const TransactionDetails = ({ transactionId }) => {
                     {renderRuneTransfer(output, index)}
                     {expandedOpReturn === index && isOpReturn && (
                       <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                        {renderExpandedRuneDetails()}
+                        {renderRuneDetails()}
                       </div>
                     )}
                   </div>

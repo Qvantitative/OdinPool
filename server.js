@@ -900,14 +900,11 @@ app.get('/api/rune/:txid', async (req, res) => {
 
     try {
         const rawTx = await bitcoinClient.getRawTransaction(txid, true);
-        console.log('Raw Transaction:', JSON.stringify(rawTx, null, 2));
-
         const opReturnOutput = rawTx.vout.find(
             (vout) => vout.scriptPubKey.type === 'nulldata'
         );
 
         if (!opReturnOutput) {
-            console.warn(`No OP_RETURN output found in transaction: ${txid}`);
             return res.status(404).json({ error: 'No OP_RETURN output found in this transaction' });
         }
 
@@ -916,102 +913,98 @@ app.get('/api/rune/:txid', async (req, res) => {
         if (runeData.mintOperation) {
             try {
                 const block = Number(runeData.mintOperation.block);
-                const tx = Number(runeData.mintOperation.tx);
+                const targetTx = Number(runeData.mintOperation.tx);
 
                 console.log(`Fetching block hash for block: ${block}`);
                 const blockHash = await bitcoinClient.getBlockHash(block);
                 console.log(`Fetching block data for hash: ${blockHash}`);
                 const blockData = await bitcoinClient.getBlock(blockHash, 2);
                 console.log(`Block data received. Transactions count: ${blockData.tx.length}`);
-                console.log(`Looking for transaction at index: ${tx}`);
 
-                if (tx >= blockData.tx.length) {
-                    console.error(`Transaction index ${tx} out of range. Block has ${blockData.tx.length} transactions`);
-                    throw new Error('Transaction index out of range');
-                }
+                // Define a range to scan around the target tx index
+                const start = Math.max(0, targetTx - 5);
+                const end = Math.min(blockData.tx.length, targetTx + 5);
 
-                const mintTx = blockData.tx[tx];
-                console.log(`Found mint transaction: ${mintTx.txid}`);
-                console.log('Transaction outputs:', JSON.stringify(mintTx.vout, null, 2));
+                console.log(`Scanning transactions from index ${start} to ${end}`);
 
-                if (mintTx) {
-                    // Look for any OP_RETURN outputs
-                    const opReturnOutputs = mintTx.vout.filter(
+                for (let i = start; i < end; i++) {
+                    const tx = blockData.tx[i];
+                    console.log(`\nChecking transaction at index ${i}: ${tx.txid}`);
+
+                    // Find all OP_RETURN outputs
+                    const opReturnOutputs = tx.vout.filter(
                         (vout) => vout.scriptPubKey.type === 'nulldata'
                     );
 
-                    console.log(`Found ${opReturnOutputs.length} OP_RETURN outputs`);
+                    if (opReturnOutputs.length > 0) {
+                        console.log(`Found ${opReturnOutputs.length} OP_RETURN outputs in tx ${i}`);
 
-                    // Try each OP_RETURN output until we find valid rune data
-                    for (const output of opReturnOutputs) {
-                        try {
-                            console.log('Attempting to decode OP_RETURN:', output.scriptPubKey);
-                            const mintData = decodeRuneData(output.scriptPubKey);
+                        // Try each OP_RETURN output
+                        for (const output of opReturnOutputs) {
+                            try {
+                                const mintData = decodeRuneData(output.scriptPubKey);
 
-                            if (mintData && !mintData.error) {
-                                console.log('Successfully decoded mint data:', JSON.stringify(mintData, bigIntReplacer, 2));
-
-                                const response = {
-                                    type: 'mint_reference',
-                                    referenced_mint: {
-                                        txid: mintTx.txid,
-                                        block,
-                                        tx,
-                                        runeName: mintData.runeName,
-                                        formattedRuneName: mintData.formattedRuneName,
-                                        symbol: mintData.symbol,
-                                        supply: mintData.supply,
-                                        terms: mintData.terms,
-                                        ...JSON.parse(JSON.stringify(mintData, bigIntReplacer))
-                                    },
-                                    ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
-                                };
-                                console.log('Sending response:', JSON.stringify(response, null, 2));
-                                return res.json(response);
+                                // Check if this looks like valid rune data
+                                if (mintData && mintData.type === 'mint') {
+                                    console.log(`Found valid rune mint data in transaction ${i}`);
+                                    const response = {
+                                        type: 'mint_reference',
+                                        referenced_mint: {
+                                            txid: tx.txid,
+                                            block,
+                                            original_tx: targetTx,
+                                            found_tx: i,
+                                            runeName: mintData.runeName,
+                                            formattedRuneName: mintData.formattedRuneName,
+                                            symbol: mintData.symbol,
+                                            supply: mintData.supply,
+                                            terms: mintData.terms,
+                                            ...JSON.parse(JSON.stringify(mintData, bigIntReplacer))
+                                        },
+                                        ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+                                    };
+                                    return res.json(response);
+                                }
+                            } catch (decodeError) {
+                                console.log(`Failed to decode OP_RETURN in tx ${i}:`, decodeError.message);
                             }
-                        } catch (decodeError) {
-                            console.warn('Failed to decode OP_RETURN output:', decodeError);
                         }
                     }
-
-                    // If we get here, we couldn't find valid rune data in any OP_RETURN
-                    console.warn('No valid rune data found in any OP_RETURN output');
-                    return res.json({
-                        type: 'mint_reference',
-                        error: 'No valid rune data found in referenced transaction',
-                        mintOperation: {
-                            block,
-                            tx,
-                            txid: mintTx.txid
-                        },
-                        transaction_data: {
-                            vout_count: mintTx.vout.length,
-                            op_return_count: opReturnOutputs.length
-                        },
-                        ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
-                    });
                 }
-            } catch (mintError) {
-                console.error('Error fetching original mint transaction:', mintError);
-                console.error('Stack trace:', mintError.stack);
+
+                // If we get here, we couldn't find the mint data
                 return res.json({
                     type: 'mint_reference',
+                    error: 'Could not find valid rune mint data in nearby transactions',
+                    mintOperation: {
+                        block,
+                        tx: targetTx,
+                        scan_range: {
+                            start,
+                            end,
+                            target_tx: targetTx
+                        }
+                    },
+                    ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+                });
+            } catch (mintError) {
+                console.error('Error processing mint reference:', mintError);
+                return res.json({
+                    type: 'mint_reference',
+                    error: 'Error processing mint reference',
+                    details: mintError.message,
                     mintOperation: {
                         block: Number(runeData.mintOperation.block),
                         tx: Number(runeData.mintOperation.tx)
                     },
-                    error: 'Could not fetch original mint transaction',
-                    errorDetails: mintError.message,
                     ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
                 });
             }
         }
 
-        // Other handlers remain the same...
-        // Handle direct mint operations
+        // Handle regular mints
         if (runeData.type === 'mint') {
-            console.log('Processing direct mint operation');
-            const response = {
+            return res.json({
                 type: 'mint',
                 runeName: runeData.runeName,
                 formattedRuneName: runeData.formattedRuneName,
@@ -1021,13 +1014,11 @@ app.get('/api/rune/:txid', async (req, res) => {
                 flags: runeData.flagInterpretation,
                 txid: txid,
                 ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
-            };
-            return res.json(response);
+            });
         }
 
-        // Handle transfer operations
+        // Handle transfers
         if (runeData.type === 'transfer' && runeData.edicts && runeData.edicts.length > 0) {
-            console.log('Processing transfer operation');
             try {
                 const block = Number(runeData.edicts[0].id.block);
                 const tx = Number(runeData.edicts[0].id.tx);
@@ -1043,7 +1034,7 @@ app.get('/api/rune/:txid', async (req, res) => {
 
                     if (etchingOpReturn) {
                         const etchingData = decodeRuneData(etchingOpReturn.scriptPubKey);
-                        const response = {
+                        return res.json({
                             type: 'transfer',
                             ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
                             etching: {
@@ -1052,8 +1043,7 @@ app.get('/api/rune/:txid', async (req, res) => {
                                 formattedRuneName: etchingData.formattedRuneName,
                                 ...JSON.parse(JSON.stringify(etchingData, bigIntReplacer))
                             }
-                        };
-                        return res.json(response);
+                        });
                     }
                 }
             } catch (etchError) {
@@ -1066,16 +1056,13 @@ app.get('/api/rune/:txid', async (req, res) => {
             }
         }
 
-        // Return basic decode if we couldn't fetch referenced transactions
-        console.log('Returning basic decode data');
-        res.json({
+        return res.json({
             ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
             txid
         });
 
     } catch (error) {
         console.error('Error fetching rune data:', error);
-        console.error('Stack trace:', error.stack);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });

@@ -9,6 +9,14 @@ const TransactionDetails = ({ transactionId }) => {
   const [runeData, setRuneData] = useState(null);
   const [expandedOpReturn, setExpandedOpReturn] = useState(null);
 
+  // Helper function to increment the last letter
+  const incrementLastLetter = (str) => {
+    if (!str) return str;
+    const lastChar = str.charAt(str.length - 1);
+    const nextChar = String.fromCharCode(lastChar.charCodeAt(0) + 1);
+    return str.slice(0, -1) + nextChar;
+  };
+
   useEffect(() => {
     const fetchTransactionDetails = async () => {
       if (!transactionId) {
@@ -36,6 +44,15 @@ const TransactionDetails = ({ transactionId }) => {
           const runeResponse = await fetch(`/api/rune/${transactionId}`);
           if (runeResponse.ok) {
             const runeData = await runeResponse.json();
+            if (runeData.etching) {
+              // Modify the rune names
+              if (runeData.etching.formattedRuneName) {
+                runeData.etching.formattedRuneName = incrementLastLetter(runeData.etching.formattedRuneName);
+              }
+              if (runeData.etching.runeName) {
+                runeData.etching.runeName = incrementLastLetter(runeData.etching.runeName);
+              }
+            }
             setRuneData(runeData);
           }
         }

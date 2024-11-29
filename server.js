@@ -286,34 +286,45 @@ function parseMessage(integers) {
     return { fields, edicts, mintOperation };
 }
 
-function decodeMintData(fields) {
-    // Extract mint-specific data from fields
+function decodeMintData(fields, runeValue) {
+    console.log('Decoding mint data from fields:', fields);
+    console.log('Rune value:', runeValue);
+
+    // Extract mint-specific data
     const mintData = {
         divisibility: 0,
         symbol: undefined,
         supply: undefined,
-        terms: undefined
+        terms: undefined,
+        runeName: undefined
     };
 
-    // Extract additional mint-specific fields
-    if (fields.has(BigInt(5))) { // symbol tag
+    // Decode rune name if present
+    if (runeValue) {
+        mintData.runeName = decodeRuneName(runeValue);
+    }
+
+    // Extract symbol (tag 5)
+    if (fields.has(BigInt(5))) {
         const symbolValue = fields.get(BigInt(5))[0];
         if (Number.isSafeInteger(Number(symbolValue))) {
             mintData.symbol = String.fromCodePoint(Number(symbolValue));
         }
     }
 
-    if (fields.has(BigInt(6))) { // premine tag
+    // Extract premine/supply (tag 6)
+    if (fields.has(BigInt(6))) {
         mintData.supply = fields.get(BigInt(6))[0].toString();
     }
 
-    if (fields.has(BigInt(8))) { // cap tag
+    // Extract cap (tag 8)
+    if (fields.has(BigInt(8))) {
         mintData.terms = {
             cap: fields.get(BigInt(8))[0].toString()
         };
     }
 
-    // Extract height ranges if present
+    // Extract height ranges if present (tags 12 and 14)
     if (fields.has(BigInt(12)) && fields.has(BigInt(14))) {
         mintData.terms = {
             ...mintData.terms,
@@ -322,6 +333,7 @@ function decodeMintData(fields) {
         };
     }
 
+    console.log('Decoded mint data:', mintData);
     return mintData;
 }
 
@@ -456,23 +468,42 @@ function decodeRuneData(scriptPubKey) {
         const extractedFields = extractFields(fields, mintOperation);
         console.log('Extracted fields:', extractedFields);
 
+        // Get the rune value from the fields (tag 4)
+        const runeValue = fields.has(BigInt(4)) ? fields.get(BigInt(4))[0] : undefined;
+
         let runeName = '';
-        if (extractedFields.rune !== undefined) {
-            runeName = decodeRuneName(extractedFields.rune);
+        if (runeValue !== undefined) {
+            runeName = decodeRuneName(runeValue);
         }
 
         const flagInterpretation = interpretFlags(extractedFields.flags || 0);
         const formattedRuneName = formatRuneNameWithSpacers(runeName, extractedFields.spacers || 0);
         const cenotaph = isCenotaph(fields, edicts);
 
+        // Determine if this is a mint operation and decode accordingly
+        if (mintOperation) {
+            const mintData = decodeMintData(fields, runeValue);
+            return {
+                type: 'mint',
+                runeName,
+                formattedRuneName,
+                ...extractedFields,
+                ...mintData,
+                flagInterpretation,
+                mintOperation,
+                cenotaph
+            };
+        }
+
+        // Handle transfer operations
         return {
+            type: edicts.length > 0 ? 'transfer' : 'etch',
             runeName,
             formattedRuneName,
             ...extractedFields,
             flagInterpretation,
             edicts,
-            cenotaph,
-            type: mintOperation ? 'mint' : edicts.length > 0 ? 'transfer' : 'etch'
+            cenotaph
         };
     } catch (error) {
         console.error('Error decoding rune data:', error);
@@ -896,24 +927,25 @@ app.get('/api/rune/:txid', async (req, res) => {
 
         const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
 
-        // Check if this is a mint operation
-        if (runeData.flagInterpretation && runeData.flagInterpretation.isEtching) {
-            // This is a mint/etching operation
-            const mintData = decodeMintData(runeData.fields);
-
+        // Handle mint operations
+        if (runeData.type === 'mint') {
             const response = {
                 type: 'mint',
                 runeName: runeData.runeName,
                 formattedRuneName: runeData.formattedRuneName,
-                ...mintData,
+                symbol: runeData.symbol,
+                supply: runeData.supply,
+                terms: runeData.terms,
                 flags: runeData.flagInterpretation,
                 txid: txid,
                 ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
             };
 
             return res.json(response);
-        } else if (runeData.edicts && runeData.edicts.length > 0) {
-            // This is a transfer operation - use existing logic
+        }
+
+        // Handle transfer operations
+        if (runeData.type === 'transfer') {
             try {
                 const { block, tx } = runeData.edicts[0].id;
                 const blockHash = await bitcoinClient.getBlockHash(block);
@@ -945,17 +977,12 @@ app.get('/api/rune/:txid', async (req, res) => {
                 console.error('Error fetching etching transaction:', etchError);
                 return res.json({
                     type: 'transfer',
-                    ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
-                    etching: {
-                        error: 'Could not fetch etching transaction',
-                        block,
-                        tx
-                    }
+                    ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
                 });
             }
         }
 
-        // If we get here, it's an unknown type
+        // Handle unknown types
         res.json({
             type: 'unknown',
             ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))

@@ -167,45 +167,35 @@ function decodeLEB128(buffer) {
 
     while (offset < buffer.length) {
         let result = BigInt(0);
-        let shift = BigInt(0);
+        let shift = 0n;
         let bytesRead = 0;
 
-        try {
-            do {
-                if (offset >= buffer.length) {
-                    console.error(`LEB128 varint truncated at offset: ${offset}`);
-                    console.log('Remaining buffer:', buffer.slice(offset));
-                    throw new Error('LEB128 varint is truncated');
-                }
-                const byte = buffer[offset++];
-                bytesRead++;
+        while (true) {
+            if (offset >= buffer.length) {
+                throw new Error('LEB128 varint is truncated');
+            }
 
-                // Add maximum bytes check
-                if (bytesRead > 18) {
-                    console.error('LEB128 varint too large');
-                    throw new Error('LEB128 varint too large');
-                }
+            const byte = buffer[offset++];
+            bytesRead++;
 
-                result |= BigInt(byte & 0x7F) << shift;
-                shift += BigInt(7);
-                console.log(`Intermediate result: ${result}, Byte: ${byte.toString(16)}, Offset: ${offset}`);
+            result |= BigInt(byte & 0x7F) << shift;
+            shift += 7n;
 
-                // Check for overflow
-                if ((byte & 0x80) === 0) {
-                    if (result > BigInt(2) ** BigInt(128) - BigInt(1)) {
-                        throw new Error('Value would overflow u128');
-                    }
-                    break;
-                }
-            } while (true);
+            console.log(`Intermediate result: ${result}, Byte: ${byte.toString(16)}, Offset: ${offset}`);
 
-            console.log(`Decoded integer: ${result} at offset: ${offset}`);
-            integers.push(result);
-        } catch (error) {
-            console.error('Error during LEB128 decoding:', error.message);
-            console.log('Buffer at error:', buffer.slice(offset));
-            break;
+            // Check if the continuation bit is not set (meaning this is the last byte)
+            if ((byte & 0x80) === 0) {
+                break;
+            }
+
+            // Prevent infinite loops
+            if (bytesRead > 10) {
+                throw new Error('LEB128 varint too long');
+            }
         }
+
+        console.log(`Decoded integer: ${result} at offset: ${offset}`);
+        integers.push(result);
     }
 
     return integers;

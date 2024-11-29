@@ -480,30 +480,16 @@ function decodeRuneData(scriptPubKey) {
         const formattedRuneName = formatRuneNameWithSpacers(runeName, extractedFields.spacers || 0);
         const cenotaph = isCenotaph(fields, edicts);
 
-        // Determine if this is a mint operation and decode accordingly
-        if (mintOperation) {
-            const mintData = decodeMintData(fields, runeValue);
-            return {
-                type: 'mint',
-                runeName,
-                formattedRuneName,
-                ...extractedFields,
-                ...mintData,
-                flagInterpretation,
-                mintOperation,
-                cenotaph
-            };
-        }
-
-        // Handle transfer operations
         return {
-            type: edicts.length > 0 ? 'transfer' : 'etch',
+            type: mintOperation ? 'mint_reference' : edicts.length > 0 ? 'transfer' : 'etch',
             runeName,
             formattedRuneName,
             ...extractedFields,
             flagInterpretation,
+            mintOperation,
             edicts,
-            cenotaph
+            cenotaph,
+            fields: Object.fromEntries(fields)
         };
     } catch (error) {
         console.error('Error decoding rune data:', error);
@@ -927,7 +913,45 @@ app.get('/api/rune/:txid', async (req, res) => {
 
         const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
 
-        // Handle mint operations
+        // Handle mint reference - fetch the original mint transaction
+        if (runeData.type === 'mint_reference' && runeData.mintOperation) {
+            try {
+                const { block, tx } = runeData.mintOperation;
+                const blockHash = await bitcoinClient.getBlockHash(block);
+                const blockData = await bitcoinClient.getBlock(blockHash, 2);
+                const mintTx = blockData.tx[tx];
+
+                if (mintTx) {
+                    const mintOpReturn = mintTx.vout.find(
+                        (vout) => vout.scriptPubKey.type === 'nulldata'
+                    );
+
+                    if (mintOpReturn) {
+                        const mintData = decodeRuneData(mintOpReturn.scriptPubKey);
+                        const response = {
+                            type: 'mint_reference',
+                            referenced_mint: {
+                                txid: mintTx.txid,
+                                block,
+                                tx,
+                                runeName: mintData.runeName,
+                                formattedRuneName: mintData.formattedRuneName,
+                                symbol: mintData.symbol,
+                                supply: mintData.supply,
+                                terms: mintData.terms,
+                                ...JSON.parse(JSON.stringify(mintData, bigIntReplacer))
+                            },
+                            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+                        };
+                        return res.json(response);
+                    }
+                }
+            } catch (mintError) {
+                console.error('Error fetching original mint transaction:', mintError);
+            }
+        }
+
+        // Handle regular mint operations
         if (runeData.type === 'mint') {
             const response = {
                 type: 'mint',
@@ -940,11 +964,10 @@ app.get('/api/rune/:txid', async (req, res) => {
                 txid: txid,
                 ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
             };
-
             return res.json(response);
         }
 
-        // Handle transfer operations
+        // Handle transfers (unchanged)
         if (runeData.type === 'transfer') {
             try {
                 const { block, tx } = runeData.edicts[0].id;
@@ -969,23 +992,18 @@ app.get('/api/rune/:txid', async (req, res) => {
                                 ...JSON.parse(JSON.stringify(etchingData, bigIntReplacer))
                             }
                         };
-
                         return res.json(response);
                     }
                 }
             } catch (etchError) {
                 console.error('Error fetching etching transaction:', etchError);
-                return res.json({
-                    type: 'transfer',
-                    ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
-                });
             }
         }
 
-        // Handle unknown types
+        // Return the decoded data as-is if we couldn't fetch referenced transactions
         res.json({
-            type: 'unknown',
-            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
+            txid
         });
 
     } catch (error) {

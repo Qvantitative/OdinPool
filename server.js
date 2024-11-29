@@ -465,30 +465,14 @@ function decodeRuneData(scriptPubKey) {
         const formattedRuneName = formatRuneNameWithSpacers(runeName, extractedFields.spacers || 0);
         const cenotaph = isCenotaph(fields, edicts);
 
-        // Determine the type of operation
-        let type = 'unknown';
-        if (mintOperation) {
-            type = 'mint_pointer';  // This is a pointer to the original mint
-        } else if (edicts && edicts.length > 0) {
-            type = 'transfer';
-        } else if (flagInterpretation.isEtching) {
-            type = 'mint';  // This is an actual mint/etch operation
-        }
-
         return {
-            type,
             runeName,
             formattedRuneName,
             ...extractedFields,
             flagInterpretation,
             edicts,
             cenotaph,
-            ...(mintOperation && {
-                mintPointer: {
-                    block: Number(mintOperation.block),
-                    tx: Number(mintOperation.tx)
-                }
-            })
+            type: mintOperation ? 'mint' : edicts.length > 0 ? 'transfer' : 'etch'
         };
     } catch (error) {
         console.error('Error decoding rune data:', error);
@@ -912,43 +896,70 @@ app.get('/api/rune/:txid', async (req, res) => {
 
         const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
 
-        // Handle mint pointers by fetching the original mint transaction
-        if (runeData.type === 'mint_pointer' && runeData.mintPointer) {
+        // Check if this is a mint operation
+        if (runeData.flagInterpretation && runeData.flagInterpretation.isEtching) {
+            // This is a mint/etching operation
+            const mintData = decodeMintData(runeData.fields);
+
+            const response = {
+                type: 'mint',
+                runeName: runeData.runeName,
+                formattedRuneName: runeData.formattedRuneName,
+                ...mintData,
+                flags: runeData.flagInterpretation,
+                txid: txid,
+                ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+            };
+
+            return res.json(response);
+        } else if (runeData.edicts && runeData.edicts.length > 0) {
+            // This is a transfer operation - use existing logic
             try {
-                const { block, tx } = runeData.mintPointer;
+                const { block, tx } = runeData.edicts[0].id;
                 const blockHash = await bitcoinClient.getBlockHash(block);
                 const blockData = await bitcoinClient.getBlock(blockHash, 2);
-                const mintTx = blockData.tx[tx];
+                const etchingTx = blockData.tx[tx];
 
-                if (mintTx) {
-                    const mintOpReturn = mintTx.vout.find(
+                if (etchingTx) {
+                    const etchingOpReturn = etchingTx.vout.find(
                         (vout) => vout.scriptPubKey.type === 'nulldata'
                     );
 
-                    if (mintOpReturn) {
-                        const mintData = decodeRuneData(mintOpReturn.scriptPubKey);
-                        return res.json({
-                            ...runeData,
-                            originalMint: {
-                                txid: mintTx.txid,
-                                ...JSON.parse(JSON.stringify(mintData, bigIntReplacer))
+                    if (etchingOpReturn) {
+                        const etchingData = decodeRuneData(etchingOpReturn.scriptPubKey);
+                        const response = {
+                            type: 'transfer',
+                            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
+                            etching: {
+                                txid: etchingTx.txid,
+                                runeName: etchingData.runeName,
+                                formattedRuneName: etchingData.formattedRuneName,
+                                ...JSON.parse(JSON.stringify(etchingData, bigIntReplacer))
                             }
-                        });
+                        };
+
+                        return res.json(response);
                     }
                 }
-            } catch (error) {
-                console.error('Error fetching original mint transaction:', error);
+            } catch (etchError) {
+                console.error('Error fetching etching transaction:', etchError);
                 return res.json({
+                    type: 'transfer',
                     ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
-                    originalMint: {
-                        error: 'Could not fetch original mint transaction'
+                    etching: {
+                        error: 'Could not fetch etching transaction',
+                        block,
+                        tx
                     }
                 });
             }
         }
 
-        // Return the decoded data
-        res.json(JSON.parse(JSON.stringify(runeData, bigIntReplacer)));
+        // If we get here, it's an unknown type
+        res.json({
+            type: 'unknown',
+            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+        });
 
     } catch (error) {
         console.error('Error fetching rune data:', error);

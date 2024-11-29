@@ -1,7 +1,6 @@
 // app/components/blocks/TransactionDetails
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const TransactionDetails = ({ transactionId }) => {
   const [transactionData, setTransactionData] = useState(null);
@@ -9,13 +8,6 @@ const TransactionDetails = ({ transactionId }) => {
   const [error, setError] = useState(null);
   const [runeData, setRuneData] = useState(null);
   const [expandedOpReturn, setExpandedOpReturn] = useState(null);
-
-  const incrementLastLetter = (str) => {
-    if (!str) return str;
-    const lastChar = str.charAt(str.length - 1);
-    const nextChar = String.fromCharCode(lastChar.charCodeAt(0) + 1);
-    return str.slice(0, -1) + nextChar;
-  };
 
   // Updated getRuneOperationType to handle precedence correctly
   const getRuneOperationType = (runeData) => {
@@ -39,9 +31,6 @@ const TransactionDetails = ({ transactionId }) => {
         };
       }
     }
-
-    // Add mint detection if needed
-    // This would require additional logic based on your specific requirements
 
     return null;
   };
@@ -191,78 +180,76 @@ const TransactionDetails = ({ transactionId }) => {
   const { transaction, inputs, outputs } = transactionData;
 
   return (
-    <Card className="bg-gray-900 text-white">
-      <CardHeader>
-        <CardTitle className="text-center break-all">
-          {transaction.txid}
-        </CardTitle>
-        {runeData && (
-          <div className="flex justify-center mt-2">
-            <OperationBadge runeData={runeData} />
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        <div className="flex justify-between items-center mb-4">
-          <div>{formatBTC(transaction.total_input_value)} BTC</div>
-          <div className="text-sm">
-            {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
-          </div>
-          <div>{formatBTC(transaction.total_output_value)} BTC</div>
+    <div className="bg-gray-900 p-4 rounded-lg shadow text-white">
+      <h2 className="text-lg font-bold mb-4 text-center break-all">
+        {transaction.txid}
+      </h2>
+
+      {runeData && (
+        <div className="flex justify-center mb-4">
+          <OperationBadge runeData={runeData} />
+        </div>
+      )}
+
+      <div className="flex justify-between items-center mb-4">
+        <div>{formatBTC(transaction.total_input_value)} BTC</div>
+        <div className="text-sm">
+          {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+        </div>
+        <div>{formatBTC(transaction.total_output_value)} BTC</div>
+      </div>
+
+      <div className="flex justify-between gap-4">
+        <div className="w-1/2">
+          <h3 className="text-sm font-semibold mb-2">Inputs</h3>
+          <ul className="space-y-2">
+            {inputs.map((input, index) => (
+              <li key={index}>
+                <div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
+                      {input.address}
+                    </span>
+                    <span>{formatBTC(input.value)} BTC</span>
+                  </div>
+                  {renderRuneTransfer(input, index, true)}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <div className="flex justify-between gap-4">
-          <div className="w-1/2">
-            <h3 className="text-sm font-semibold mb-2">Inputs</h3>
-            <ul className="space-y-2">
-              {inputs.map((input, index) => (
+        <div className="w-1/2">
+          <h3 className="text-sm font-semibold mb-2">Outputs</h3>
+          <ul className="space-y-2">
+            {outputs.map((output, index) => {
+              const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
+              return (
                 <li key={index}>
                   <div>
                     <div className="flex justify-between items-center">
-                      <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
-                        {input.address}
+                      <span
+                        className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
+                        style={{ maxWidth: '70%' }}
+                        onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
+                      >
+                        {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
                       </span>
-                      <span>{formatBTC(input.value)} BTC</span>
+                      <span>{formatBTC(output.value)} BTC</span>
                     </div>
-                    {renderRuneTransfer(input, index, true)}
+                    {renderRuneTransfer(output, index, false)}
+                    {expandedOpReturn === index && isOpReturn && (
+                      <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
+                        {renderRuneDetails()}
+                      </div>
+                    )}
                   </div>
                 </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="w-1/2">
-            <h3 className="text-sm font-semibold mb-2">Outputs</h3>
-            <ul className="space-y-2">
-              {outputs.map((output, index) => {
-                const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
-                return (
-                  <li key={index}>
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <span
-                          className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
-                          style={{ maxWidth: '70%' }}
-                          onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
-                        >
-                          {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
-                        </span>
-                        <span>{formatBTC(output.value)} BTC</span>
-                      </div>
-                      {renderRuneTransfer(output, index, false)}
-                      {expandedOpReturn === index && isOpReturn && (
-                        <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                          {renderRuneDetails()}
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                )})}
-            </ul>
-          </div>
+              )})}
+          </ul>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

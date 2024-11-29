@@ -1,6 +1,7 @@
 // app/components/blocks/TransactionDetails
 
 import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const TransactionDetails = ({ transactionId }) => {
   const [transactionData, setTransactionData] = useState(null);
@@ -9,12 +10,51 @@ const TransactionDetails = ({ transactionId }) => {
   const [runeData, setRuneData] = useState(null);
   const [expandedOpReturn, setExpandedOpReturn] = useState(null);
 
-  // Helper function to increment the last letter
   const incrementLastLetter = (str) => {
     if (!str) return str;
     const lastChar = str.charAt(str.length - 1);
     const nextChar = String.fromCharCode(lastChar.charCodeAt(0) + 1);
     return str.slice(0, -1) + nextChar;
+  };
+
+  // Updated getRuneOperationType to handle precedence correctly
+  const getRuneOperationType = (runeData) => {
+    if (!runeData) return null;
+
+    // Check for transfer first as it takes precedence
+    if (runeData.edicts && runeData.edicts.length > 0) {
+      return {
+        type: 'Transfer',
+        className: 'bg-blue-600'
+      };
+    }
+
+    // Check for etching only if no transfer
+    if (runeData.etching && !runeData.edicts) {
+      const flags = runeData.etching.flags || 0;
+      if (flags === 1) { // isEtching flag
+        return {
+          type: 'Etch',
+          className: 'bg-purple-600'
+        };
+      }
+    }
+
+    // Add mint detection if needed
+    // This would require additional logic based on your specific requirements
+
+    return null;
+  };
+
+  const OperationBadge = ({ runeData }) => {
+    const operation = getRuneOperationType(runeData);
+    if (!operation) return null;
+
+    return (
+      <span className={`px-2 py-1 ${operation.className} text-white rounded-full text-sm`}>
+        {operation.type}
+      </span>
+    );
   };
 
   useEffect(() => {
@@ -44,15 +84,6 @@ const TransactionDetails = ({ transactionId }) => {
           const runeResponse = await fetch(`/api/rune/${transactionId}`);
           if (runeResponse.ok) {
             const runeData = await runeResponse.json();
-            if (runeData.etching) {
-              // Modify the rune names
-              if (runeData.etching.formattedRuneName) {
-                runeData.etching.formattedRuneName = incrementLastLetter(runeData.etching.formattedRuneName);
-              }
-              if (runeData.etching.runeName) {
-                runeData.etching.runeName = incrementLastLetter(runeData.etching.runeName);
-              }
-            }
             setRuneData(runeData);
           }
         }
@@ -79,39 +110,29 @@ const TransactionDetails = ({ transactionId }) => {
   };
 
   const renderRuneTransfer = (item, index, isInput = false) => {
-    if (!runeData) return null;
+    if (!runeData?.edicts) return null;
 
     // For inputs
-    if (isInput && runeData.edicts) {
-      if (index === 0 && runeData.edicts[0]) {
+    if (isInput) {
+      const edict = runeData.edicts[index];
+      if (edict) {
         return (
           <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
             <span>↳</span>
             <span className="text-red-400" title="Amount">
-              {Number(runeData.edicts[0].amount).toLocaleString()}
+              {Number(edict.amount).toLocaleString()}
             </span>
             <span className="text-yellow-300" title="Rune Name">
-              {runeData.etching?.formattedRuneName || runeData.etching?.runeName}
+              {runeData.etching?.formattedRuneName || runeData.etching?.runeName || `${edict.id.block}:${edict.id.tx}`}
             </span>
           </div>
         );
       }
-      if (index === 1 && runeData.edicts[1]) {
-        return (
-          <div className="text-sm text-gray-400 ml-4 flex items-center space-x-2">
-            <span>↳</span>
-            <span className="text-red-400" title="Amount">
-              {Number(runeData.edicts[1].amount).toLocaleString()}
-            </span>
-            <span className="text-yellow-300" title="Rune Name">
-              {runeData.etching?.formattedRuneName || runeData.etching?.runeName}
-            </span>
-          </div>
-        );
-      }
+      return null;
     }
 
-    const edict = runeData.edicts?.find(e => e.output === index);
+    // For outputs
+    const edict = runeData.edicts.find(e => e.output === index);
     if (!edict) return null;
 
     return (
@@ -121,27 +142,45 @@ const TransactionDetails = ({ transactionId }) => {
           {Number(edict.amount).toLocaleString()}
         </span>
         <span className="text-yellow-300" title="Rune Name">
-          {runeData.etching?.formattedRuneName || runeData.etching?.runeName}
+          {runeData.etching?.formattedRuneName || runeData.etching?.runeName || `${edict.id.block}:${edict.id.tx}`}
         </span>
       </div>
     );
   };
 
   const renderRuneDetails = () => {
-    if (!runeData?.etching) return null;
+    if (!runeData) return null;
+
+    const operation = getRuneOperationType(runeData);
+    if (!operation) return null;
 
     return (
-      <div className="space-y-1">
-        <div>
-          <span className="text-gray-400">Rune: </span>
-          <span className="text-yellow-300">
-            {runeData.etching.formattedRuneName || runeData.etching.runeName}
-          </span>
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <OperationBadge runeData={runeData} />
+          {runeData.etching && (
+            <>
+              <span className="text-gray-400">Rune:</span>
+              <span className="text-yellow-300">
+                {runeData.etching.formattedRuneName || runeData.etching.runeName}
+              </span>
+            </>
+          )}
         </div>
-        <div>
-          <span className="text-gray-400">Symbol: </span>
-          <span className="text-2xl">{runeData.etching.symbol}</span>
-        </div>
+        {runeData.etching && operation.type === 'Etch' && (
+          <div>
+            <span className="text-gray-400">Symbol: </span>
+            <span className="text-2xl">{runeData.etching.symbol}</span>
+          </div>
+        )}
+        {operation.type === 'Transfer' && runeData.edicts && (
+          <div>
+            <span className="text-gray-400">Transfers: </span>
+            <span className="text-white">
+              {runeData.edicts.map(e => e.amount).reduce((a, b) => a + Number(b), 0).toLocaleString()} total
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -152,69 +191,78 @@ const TransactionDetails = ({ transactionId }) => {
   const { transaction, inputs, outputs } = transactionData;
 
   return (
-    <div className="bg-gray-900 p-4 rounded-lg shadow text-white">
-      <h2 className="text-lg font-bold mb-4 text-center">{transaction.txid}</h2>
-
-      <div className="flex justify-between items-center mb-4">
-        <div>{formatBTC(transaction.total_input_value)} BTC</div>
-        <div className="text-sm">
-          {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
-        </div>
-        <div>{formatBTC(transaction.total_output_value)} BTC</div>
-      </div>
-
-      <div className="flex justify-between">
-        <div className="w-1/2 pr-2">
-          <h3 className="text-sm font-semibold mb-2">Inputs</h3>
-          <ul className="space-y-2">
-            {inputs.map((input, index) => (
-              <li key={index}>
-                <div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
-                      {input.address}
-                    </span>
-                    <span>{formatBTC(input.value)} BTC</span>
-                  </div>
-                  {renderRuneTransfer(input, index, true)}
-                </div>
-              </li>
-            ))}
-          </ul>
+    <Card className="bg-gray-900 text-white">
+      <CardHeader>
+        <CardTitle className="text-center break-all">
+          {transaction.txid}
+        </CardTitle>
+        {runeData && (
+          <div className="flex justify-center mt-2">
+            <OperationBadge runeData={runeData} />
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <div className="flex justify-between items-center mb-4">
+          <div>{formatBTC(transaction.total_input_value)} BTC</div>
+          <div className="text-sm">
+            {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+          </div>
+          <div>{formatBTC(transaction.total_output_value)} BTC</div>
         </div>
 
-        <div className="w-1/2 pl-2">
-          <h3 className="text-sm font-semibold mb-2">Outputs</h3>
-          <ul className="space-y-2">
-            {outputs.map((output, index) => {
-              const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
-              return (
+        <div className="flex justify-between gap-4">
+          <div className="w-1/2">
+            <h3 className="text-sm font-semibold mb-2">Inputs</h3>
+            <ul className="space-y-2">
+              {inputs.map((input, index) => (
                 <li key={index}>
                   <div>
                     <div className="flex justify-between items-center">
-                      <span
-                        className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
-                        style={{ maxWidth: '70%' }}
-                        onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
-                      >
-                        {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
+                      <span className="text-red-400 truncate mr-2" style={{ maxWidth: '70%' }}>
+                        {input.address}
                       </span>
-                      <span>{formatBTC(output.value)} BTC</span>
+                      <span>{formatBTC(input.value)} BTC</span>
                     </div>
-                    {renderRuneTransfer(output, index, false)}
-                    {expandedOpReturn === index && isOpReturn && (
-                      <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
-                        {renderRuneDetails()}
-                      </div>
-                    )}
+                    {renderRuneTransfer(input, index, true)}
                   </div>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          </div>
+
+          <div className="w-1/2">
+            <h3 className="text-sm font-semibold mb-2">Outputs</h3>
+            <ul className="space-y-2">
+              {outputs.map((output, index) => {
+                const isOpReturn = output.scriptPubKey && output.scriptPubKey.type === 'nulldata';
+                return (
+                  <li key={index}>
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span
+                          className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 cursor-pointer' : 'text-blue-400'}`}
+                          style={{ maxWidth: '70%' }}
+                          onClick={isOpReturn ? () => handleOpReturnClick(index) : undefined}
+                        >
+                          {isOpReturn ? 'OP_RETURN (🌋 Runestone message)' : output.address}
+                        </span>
+                        <span>{formatBTC(output.value)} BTC</span>
+                      </div>
+                      {renderRuneTransfer(output, index, false)}
+                      {expandedOpReturn === index && isOpReturn && (
+                        <div className="mt-2 ml-4 p-2 bg-gray-800 rounded">
+                          {renderRuneDetails()}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                )})}
+            </ul>
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

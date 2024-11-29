@@ -218,9 +218,18 @@ function parseMessage(integers) {
     let currentBlock = 0n;
     let currentTx = 0n;
     let parsingEdicts = false;
+    let mintOperation = null;
 
     while (index < integers.length) {
         const tag = integers[index++];
+
+        // Check for mint operation tag (20)
+        if (tag === BigInt(20) && index + 1 < integers.length) {
+            const block = integers[index++];
+            const tx = integers[index++];
+            mintOperation = { block, tx };
+            continue;
+        }
 
         if (tag === BigInt(0)) {
             parsingEdicts = true;
@@ -265,11 +274,13 @@ function parseMessage(integers) {
         }
     }
 
-    return { fields, edicts };
+    return { fields, edicts, mintOperation };
 }
 
-function extractFields(fields) {
+function extractFields(fields, mintOperation = null) {
     console.log('Extracting fields from:', fields);
+    console.log('Mint operation:', mintOperation);
+
     const result = {};
     const tags = {
         version: BigInt(19),
@@ -288,15 +299,8 @@ function extractFields(fields) {
         pointer: BigInt(22),
     };
 
+    // Handle fields
     for (const [tag, values] of fields.entries()) {
-        console.log(`Processing tag: ${tag}, values: ${values}`);
-        if (tag === tags.symbol) {
-            console.log(`Symbol tag found: ${values}`);
-        }
-        if (tag === tags.rune) {
-            console.log(`Rune tag found: ${values}`);
-        }
-
         if (tag === tags.version) result.version = Number(values[0]);
         else if (tag === tags.flags) result.flags = Number(values[0]);
         else if (tag === tags.rune) result.rune = values[0];
@@ -305,27 +309,24 @@ function extractFields(fields) {
             const codePoint = Number(values[0]);
             if (Number.isSafeInteger(codePoint)) {
                 result.symbol = String.fromCodePoint(codePoint);
-            } else {
-                console.warn('Symbol code point is not a safe integer:', values[0]);
-                result.symbol = undefined;
             }
-        } else if (tag === tags.premine) result.premine = values[0].toString();
+        }
+        else if (tag === tags.premine) result.premine = values[0].toString();
         else if (tag === tags.cap) result.cap = values[0].toString();
         else if (tag === tags.amount) result.amount = values[0].toString();
         else if (tag === tags.heightStart) result.heightStart = Number(values[0]);
         else if (tag === tags.heightEnd) result.heightEnd = Number(values[0]);
         else if (tag === tags.offsetStart) result.offsetStart = Number(values[0]);
         else if (tag === tags.offsetEnd) result.offsetEnd = Number(values[0]);
-        else if (tag === tags.mint) {
-            result.mint = {
-                block: Number(values[0]),
-                tx: values.length > 1 ? Number(values[1]) : 0,
-            };
-        } else if (tag === tags.pointer) result.pointer = Number(values[0]);
-        else {
-            console.log(`Unknown tag: ${tag}`);
-            result[tag.toString()] = values.map((v) => v.toString());
-        }
+        else if (tag === tags.pointer) result.pointer = Number(values[0]);
+    }
+
+    // Add mint operation if present
+    if (mintOperation) {
+        result.mint = {
+            block: Number(mintOperation.block),
+            tx: Number(mintOperation.tx)
+        };
     }
 
     console.log('Extracted fields result:', result);
@@ -399,11 +400,12 @@ function decodeRuneData(scriptPubKey) {
         const integers = decodeLEB128(payloadBuffer);
         console.log('Decoded integers:', integers);
 
-        const { fields, edicts } = parseMessage(integers);
+        const { fields, edicts, mintOperation } = parseMessage(integers);
         console.log('Parsed fields:', fields);
         console.log('Parsed edicts:', edicts);
+        console.log('Parsed mint operation:', mintOperation);
 
-        const extractedFields = extractFields(fields);
+        const extractedFields = extractFields(fields, mintOperation);
         console.log('Extracted fields:', extractedFields);
 
         let runeName = '';
@@ -411,14 +413,8 @@ function decodeRuneData(scriptPubKey) {
             runeName = decodeRuneName(extractedFields.rune);
         }
 
-        console.log('Decoded rune name:', runeName);
-
         const flagInterpretation = interpretFlags(extractedFields.flags || 0);
-        console.log('Flag interpretation:', flagInterpretation);
-
         const formattedRuneName = formatRuneNameWithSpacers(runeName, extractedFields.spacers || 0);
-        console.log('Formatted rune name:', formattedRuneName);
-
         const cenotaph = isCenotaph(fields, edicts);
 
         return {
@@ -427,7 +423,8 @@ function decodeRuneData(scriptPubKey) {
             ...extractedFields,
             flagInterpretation,
             edicts,
-            cenotaph
+            cenotaph,
+            type: mintOperation ? 'mint' : edicts.length > 0 ? 'transfer' : 'etch'
         };
     } catch (error) {
         console.error('Error decoding rune data:', error);
@@ -1227,7 +1224,7 @@ app._router.stack.forEach(r => {
   }
 });
 
-export { decodeRuneData, bigIntReplacer };
+export { decodeRuneData, parseMessage, extractFields, bigIntReplacer };
 
 // Start server
 const PORT = 3001;

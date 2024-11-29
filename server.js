@@ -401,8 +401,18 @@ function decodeRuneName(runeValue) {
     return undefined;
   }
 
+  // Split the last digit into two numbers (before and after)
+  const runeString = runeValue.toString();
+  const lastDigit = BigInt(runeString[runeString.length - 1]);
+  const before = lastDigit - 1n;
+  const after = lastDigit + 1n;
+
+  // Form the new runeValue with the modified last part
+  const modifiedRuneValue = BigInt(runeString.slice(0, -1) + before + after);
+  console.log('Modified rune value:', modifiedRuneValue);
+
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let n = runeValue - 1n;
+  let n = modifiedRuneValue - 1n;
   const chars = [];
 
   while (n >= 0n) {
@@ -414,6 +424,7 @@ function decodeRuneName(runeValue) {
   console.log('Decoded rune name:', result);
   return result;
 }
+
 
 function interpretFlags(flags) {
   console.log('Interpreting flags:', flags);

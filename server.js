@@ -384,25 +384,26 @@ function extractFields(fields, mintOperation = null) {
 }
 
 function decodeRuneName(runeValue) {
-  console.log('Decoding rune value:', runeValue);
+    console.log('Decoding rune value:', runeValue);
 
-  if (!runeValue || runeValue <= 0n) {
-    console.warn('Invalid rune value:', runeValue);
-    return undefined;
-  }
+    if (!runeValue || runeValue <= 0n) {
+        console.warn('Invalid rune value:', runeValue);
+        return undefined;
+    }
 
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let n = runeValue - 1n;
-  const chars = [];
+    // Convert runeValue to a hexadecimal string
+    let hex = runeValue.toString(16);
+    // Ensure even length
+    if (hex.length % 2 !== 0) hex = '0' + hex;
 
-  while (n >= 0n) {
-    chars.push(letters[Number(n % 26n)]);
-    n = (n / 26n) - 1n;
-  }
+    // Convert hex string to Buffer
+    const buffer = Buffer.from(hex, 'hex');
 
-  const result = chars.reverse().join('');
-  console.log('Decoded rune name:', result);
-  return result;
+    // Convert Buffer to ASCII string
+    const runeName = buffer.toString('ascii');
+
+    console.log('Decoded rune name:', runeName);
+    return runeName;
 }
 
 function interpretFlags(flags) {

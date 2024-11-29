@@ -915,7 +915,6 @@ app.get('/api/rune/:txid', async (req, res) => {
 
         if (runeData.mintOperation) {
             try {
-                // Convert BigInt to Number for Bitcoin RPC calls
                 const block = Number(runeData.mintOperation.block);
                 const tx = Number(runeData.mintOperation.tx);
 
@@ -923,7 +922,16 @@ app.get('/api/rune/:txid', async (req, res) => {
                 const blockHash = await bitcoinClient.getBlockHash(block);
                 console.log(`Fetching block data for hash: ${blockHash}`);
                 const blockData = await bitcoinClient.getBlock(blockHash, 2);
+                console.log(`Block data received. Transactions count: ${blockData.tx.length}`);
+                console.log(`Looking for transaction at index: ${tx}`);
+
+                if (tx >= blockData.tx.length) {
+                    console.error(`Transaction index ${tx} out of range. Block has ${blockData.tx.length} transactions`);
+                    throw new Error('Transaction index out of range');
+                }
+
                 const mintTx = blockData.tx[tx];
+                console.log(`Found mint transaction: ${mintTx.txid}`);
 
                 if (mintTx) {
                     const mintOpReturn = mintTx.vout.find(
@@ -931,7 +939,10 @@ app.get('/api/rune/:txid', async (req, res) => {
                     );
 
                     if (mintOpReturn) {
+                        console.log('Found OP_RETURN in mint transaction');
                         const mintData = decodeRuneData(mintOpReturn.scriptPubKey);
+                        console.log('Decoded mint data:', JSON.stringify(mintData, bigIntReplacer, 2));
+
                         const response = {
                             type: 'mint_reference',
                             referenced_mint: {
@@ -947,11 +958,15 @@ app.get('/api/rune/:txid', async (req, res) => {
                             },
                             ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
                         };
+                        console.log('Sending response:', JSON.stringify(response, null, 2));
                         return res.json(response);
+                    } else {
+                        console.warn('No OP_RETURN found in mint transaction');
                     }
                 }
             } catch (mintError) {
                 console.error('Error fetching original mint transaction:', mintError);
+                console.error('Stack trace:', mintError.stack);
                 return res.json({
                     type: 'mint_reference',
                     mintOperation: {
@@ -959,6 +974,7 @@ app.get('/api/rune/:txid', async (req, res) => {
                         tx: Number(runeData.mintOperation.tx)
                     },
                     error: 'Could not fetch original mint transaction',
+                    errorDetails: mintError.message,
                     ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
                 });
             }
@@ -966,6 +982,7 @@ app.get('/api/rune/:txid', async (req, res) => {
 
         // Handle direct mint operations
         if (runeData.type === 'mint') {
+            console.log('Processing direct mint operation');
             const response = {
                 type: 'mint',
                 runeName: runeData.runeName,
@@ -982,8 +999,8 @@ app.get('/api/rune/:txid', async (req, res) => {
 
         // Handle transfer operations
         if (runeData.type === 'transfer' && runeData.edicts && runeData.edicts.length > 0) {
+            console.log('Processing transfer operation');
             try {
-                // Convert BigInt to Number for Bitcoin RPC calls
                 const block = Number(runeData.edicts[0].id.block);
                 const tx = Number(runeData.edicts[0].id.tx);
 
@@ -991,14 +1008,18 @@ app.get('/api/rune/:txid', async (req, res) => {
                 const blockHash = await bitcoinClient.getBlockHash(block);
                 console.log(`Fetching block data for hash: ${blockHash}`);
                 const blockData = await bitcoinClient.getBlock(blockHash, 2);
+                console.log(`Block data received. Looking for transaction at index: ${tx}`);
+
                 const etchingTx = blockData.tx[tx];
 
                 if (etchingTx) {
+                    console.log(`Found etching transaction: ${etchingTx.txid}`);
                     const etchingOpReturn = etchingTx.vout.find(
                         (vout) => vout.scriptPubKey.type === 'nulldata'
                     );
 
                     if (etchingOpReturn) {
+                        console.log('Found OP_RETURN in etching transaction');
                         const etchingData = decodeRuneData(etchingOpReturn.scriptPubKey);
                         const response = {
                             type: 'transfer',
@@ -1015,15 +1036,18 @@ app.get('/api/rune/:txid', async (req, res) => {
                 }
             } catch (etchError) {
                 console.error('Error fetching etching transaction:', etchError);
+                console.error('Stack trace:', etchError.stack);
                 return res.json({
                     type: 'transfer',
                     error: 'Could not fetch etching transaction',
+                    errorDetails: etchError.message,
                     ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
                 });
             }
         }
 
         // Return basic decode if we couldn't fetch referenced transactions
+        console.log('Returning basic decode data');
         res.json({
             ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
             txid
@@ -1031,6 +1055,7 @@ app.get('/api/rune/:txid', async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching rune data:', error);
+        console.error('Stack trace:', error.stack);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });

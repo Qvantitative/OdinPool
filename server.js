@@ -226,49 +226,58 @@ function parseMessage(integers) {
         // Check for mint operation tag (20)
         if (tag === BigInt(20) && index + 1 < integers.length) {
             const block = integers[index++];
-            const tx = integers[index++];
-            mintOperation = { block, tx };
+            if (index < integers.length) {
+                const tx = integers[index++];
+                mintOperation = { block, tx };
+            }
             continue;
         }
 
+        // Check for edict marker (0)
         if (tag === BigInt(0)) {
             parsingEdicts = true;
             break;
         }
 
-        if (index >= integers.length) {
-            throw new Error('Tag without a following value');
-        }
-
-        const value = integers[index++];
-
-        if (fields.has(tag)) {
-            fields.get(tag).push(value);
-        } else {
-            fields.set(tag, [value]);
+        // Handle regular field tags
+        if (index < integers.length) {
+            const value = integers[index++];
+            if (fields.has(tag)) {
+                fields.get(tag).push(value);
+            } else {
+                fields.set(tag, [value]);
+            }
         }
     }
 
+    // Parse edicts if we're in edict parsing mode
     if (parsingEdicts) {
+        // Make sure we have enough integers for at least one complete edict
         while (index + 3 < integers.length) {
             const blockDelta = integers[index];
             const txDelta = integers[index + 1];
+            const amount = integers[index + 2];
+            const output = integers[index + 3];
 
-            if (blockDelta > 0n) {
-                currentBlock += blockDelta;
-                currentTx = txDelta;
-            } else {
-                currentTx += txDelta;
+            if (blockDelta !== undefined && txDelta !== undefined &&
+                amount !== undefined && output !== undefined) {
+
+                if (blockDelta > 0n) {
+                    currentBlock += blockDelta;
+                    currentTx = txDelta;
+                } else {
+                    currentTx += txDelta;
+                }
+
+                edicts.push({
+                    id: {
+                        block: Number(currentBlock),
+                        tx: Number(currentTx)
+                    },
+                    amount: amount,
+                    output: Number(output)
+                });
             }
-
-            edicts.push({
-                id: {
-                    block: Number(currentBlock),
-                    tx: Number(currentTx)
-                },
-                amount: integers[index + 2],
-                output: Number(integers[index + 3])
-            });
 
             index += 4;
         }

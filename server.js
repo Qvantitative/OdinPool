@@ -277,6 +277,45 @@ function parseMessage(integers) {
     return { fields, edicts, mintOperation };
 }
 
+function decodeMintData(fields) {
+    // Extract mint-specific data from fields
+    const mintData = {
+        divisibility: 0,
+        symbol: undefined,
+        supply: undefined,
+        terms: undefined
+    };
+
+    // Extract additional mint-specific fields
+    if (fields.has(BigInt(5))) { // symbol tag
+        const symbolValue = fields.get(BigInt(5))[0];
+        if (Number.isSafeInteger(Number(symbolValue))) {
+            mintData.symbol = String.fromCodePoint(Number(symbolValue));
+        }
+    }
+
+    if (fields.has(BigInt(6))) { // premine tag
+        mintData.supply = fields.get(BigInt(6))[0].toString();
+    }
+
+    if (fields.has(BigInt(8))) { // cap tag
+        mintData.terms = {
+            cap: fields.get(BigInt(8))[0].toString()
+        };
+    }
+
+    // Extract height ranges if present
+    if (fields.has(BigInt(12)) && fields.has(BigInt(14))) {
+        mintData.terms = {
+            ...mintData.terms,
+            heightStart: Number(fields.get(BigInt(12))[0]),
+            heightEnd: Number(fields.get(BigInt(14))[0])
+        };
+    }
+
+    return mintData;
+}
+
 function extractFields(fields, mintOperation = null) {
     console.log('Extracting fields from:', fields);
     console.log('Mint operation:', mintOperation);
@@ -830,83 +869,93 @@ app.get('/api/ord/address/:address', async (req, res) => {
 });
 
 app.get('/api/rune/:txid', async (req, res) => {
-  const { txid } = req.params;
-  console.log(`Fetching raw transaction for txid: ${txid}`);
+    const { txid } = req.params;
+    console.log(`Fetching raw transaction for txid: ${txid}`);
 
-  try {
-    const rawTx = await bitcoinClient.getRawTransaction(txid, true);
-    console.log('Raw Transaction:', JSON.stringify(rawTx, null, 2));
+    try {
+        const rawTx = await bitcoinClient.getRawTransaction(txid, true);
+        console.log('Raw Transaction:', JSON.stringify(rawTx, null, 2));
 
-    const opReturnOutput = rawTx.vout.find(
-      (vout) => vout.scriptPubKey.type === 'nulldata'
-    );
+        const opReturnOutput = rawTx.vout.find(
+            (vout) => vout.scriptPubKey.type === 'nulldata'
+        );
 
-    if (opReturnOutput) {
-      const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
-
-      // If this is a transfer (has edicts), fetch the original etching transaction
-      if (runeData.edicts && runeData.edicts.length > 0) {
-        // Get the first edict's rune ID
-        const { block, tx } = runeData.edicts[0].id;
-
-        try {
-          // First, get the block hash for the etching block
-          const blockHash = await bitcoinClient.getBlockHash(block);
-
-          // Then get the block data
-          const blockData = await bitcoinClient.getBlock(blockHash, 2); // verbosity 2 to get full tx data
-
-          // Find the etching transaction
-          const etchingTx = blockData.tx[tx];
-
-          if (etchingTx) {
-            // Find the OP_RETURN output in the etching transaction
-            const etchingOpReturn = etchingTx.vout.find(
-              (vout) => vout.scriptPubKey.type === 'nulldata'
-            );
-
-            if (etchingOpReturn) {
-              // Decode the etching data to get the rune name
-              const etchingData = decodeRuneData(etchingOpReturn.scriptPubKey);
-
-              // Combine the etching data with the transfer data
-              const combinedData = {
-                ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
-                etching: {
-                  txid: etchingTx.txid,
-                  runeName: etchingData.runeName,
-                  formattedRuneName: etchingData.formattedRuneName,
-                  ...JSON.parse(JSON.stringify(etchingData, bigIntReplacer))
-                }
-              };
-
-              return res.json(combinedData);
-            }
-          }
-        } catch (etchError) {
-          console.error('Error fetching etching transaction:', etchError);
-          // Still return the transfer data even if we couldn't get the etching
-          return res.json({
-            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
-            etching: {
-              error: 'Could not fetch etching transaction',
-              block,
-              tx
-            }
-          });
+        if (!opReturnOutput) {
+            console.warn(`No OP_RETURN output found in transaction: ${txid}`);
+            return res.status(404).json({ error: 'No OP_RETURN output found in this transaction' });
         }
-      }
 
-      // If no edicts or couldn't get etching data, return the original decode
-      res.json(JSON.parse(JSON.stringify(runeData, bigIntReplacer)));
-    } else {
-      console.warn(`No OP_RETURN output found in transaction: ${txid}`);
-      res.status(404).json({ error: 'No OP_RETURN output found in this transaction' });
+        const runeData = decodeRuneData(opReturnOutput.scriptPubKey);
+
+        // Check if this is a mint operation
+        if (runeData.flagInterpretation && runeData.flagInterpretation.isEtching) {
+            // This is a mint/etching operation
+            const mintData = decodeMintData(runeData.fields);
+
+            const response = {
+                type: 'mint',
+                runeName: runeData.runeName,
+                formattedRuneName: runeData.formattedRuneName,
+                ...mintData,
+                flags: runeData.flagInterpretation,
+                txid: txid,
+                ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+            };
+
+            return res.json(response);
+        } else if (runeData.edicts && runeData.edicts.length > 0) {
+            // This is a transfer operation - use existing logic
+            try {
+                const { block, tx } = runeData.edicts[0].id;
+                const blockHash = await bitcoinClient.getBlockHash(block);
+                const blockData = await bitcoinClient.getBlock(blockHash, 2);
+                const etchingTx = blockData.tx[tx];
+
+                if (etchingTx) {
+                    const etchingOpReturn = etchingTx.vout.find(
+                        (vout) => vout.scriptPubKey.type === 'nulldata'
+                    );
+
+                    if (etchingOpReturn) {
+                        const etchingData = decodeRuneData(etchingOpReturn.scriptPubKey);
+                        const response = {
+                            type: 'transfer',
+                            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
+                            etching: {
+                                txid: etchingTx.txid,
+                                runeName: etchingData.runeName,
+                                formattedRuneName: etchingData.formattedRuneName,
+                                ...JSON.parse(JSON.stringify(etchingData, bigIntReplacer))
+                            }
+                        };
+
+                        return res.json(response);
+                    }
+                }
+            } catch (etchError) {
+                console.error('Error fetching etching transaction:', etchError);
+                return res.json({
+                    type: 'transfer',
+                    ...JSON.parse(JSON.stringify(runeData, bigIntReplacer)),
+                    etching: {
+                        error: 'Could not fetch etching transaction',
+                        block,
+                        tx
+                    }
+                });
+            }
+        }
+
+        // If we get here, it's an unknown type
+        res.json({
+            type: 'unknown',
+            ...JSON.parse(JSON.stringify(runeData, bigIntReplacer))
+        });
+
+    } catch (error) {
+        console.error('Error fetching rune data:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
     }
-  } catch (error) {
-    console.error('Error fetching rune data:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
-  }
 });
 
 // Get basic wallet statistics per project

@@ -132,6 +132,7 @@ const AnalyticsPage = () => {
 
       // Update upcoming block based on latest data
       const processedData = processBlockData(data);
+      console.log("Processed Block:", processedData)
       setUpcomingBlock(generateUpcomingBlock(processedData[0]));
     } catch (err) {
       console.error('Error fetching block data:', err);

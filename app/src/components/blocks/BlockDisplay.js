@@ -17,7 +17,12 @@ const BlockDisplay = ({ block, onBlockClick }) => {
     >
       <h3 className="text-xl font-bold text-blue-500">#{block_height}</h3>
       <div className="relative perspective-3d m-4">
-        <div className="block-face bg-blue-500 text-white p-4 top-4 left-4 flex flex-col justify-between relative">
+        <div
+          className="block-face text-white p-4 top-4 left-4 flex flex-col justify-between relative"
+          style={{
+            background: 'linear-gradient(to bottom, #008080, #007BFF)', // Teal to Blue gradient
+          }}
+        >
           <div>
             <p className="text-xs mb-1">{fees_estimate ? `${fees_estimate} sat/vB` : 'sat/vB'}</p>
             <p className="text-xs mb-1">

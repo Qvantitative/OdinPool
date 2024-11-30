@@ -20,7 +20,7 @@ const UpcomingBlockDisplay = ({ block, mempoolSize }) => {
         <div
           className="block-face text-white p-4 top-4 left-4 flex flex-col justify-between relative animate-pulse-color"
           style={{
-            background: 'radial-gradient(circle, #FFD700, #FF4500)', // Radiating yellow to orange gradient
+            background: 'linear-gradient(90deg, #FFFF00, #FFA500)', // Bright yellow to vivid orange
           }}
         >
           <div>
@@ -32,10 +32,22 @@ const UpcomingBlockDisplay = ({ block, mempoolSize }) => {
             </p>
             <p className="text-xs">{mempoolSize ? `${mempoolSize} Transactions in Mempool` : 'Mempool Size Not Available'}</p>
           </div>
-          <p className="text-sm">~ 10 min</p>
+          <p className="text-sm">
+            ~ 10 min
+          </p>
         </div>
-        <div className="block-side absolute h-full w-4 skew-y-[44deg] bg-[rgba(255,165,0,0.4)] dark:bg-[#ffb84d] top-0 left-0 origin-top-left z-10 animate-pulse-color"></div>
-        <div className="block-top absolute w-full h-4 skew-x-[45deg] bg-[rgba(255,165,0,0.2)] dark:bg-[#ffcc80] top-0 right-0 origin-top-right z-10 animate-pulse-color"></div>
+        <div
+          className="block-side absolute h-full w-4 skew-y-[44deg] top-0 left-0 origin-top-left z-10 animate-pulse-color"
+          style={{
+            background: 'linear-gradient(90deg, #FFFF00, #FFA500, rgba(255,165,0,0.4))',
+          }}
+        ></div>
+        <div
+          className="block-top absolute w-full h-4 skew-x-[45deg] top-0 right-0 origin-top-right z-10 animate-pulse-color"
+          style={{
+            background: 'linear-gradient(90deg, #FFFF00, #FFA500, rgba(255,165,0,0.2))',
+          }}
+        ></div>
       </div>
     </div>
   );

@@ -681,13 +681,22 @@ app.get('/api/transactions/:id', async (req, res) => {
 
   try {
     // Fetch the transaction from your database
-    const transactionResult = await pool.query('SELECT * FROM transactions WHERE txid = $1', [id]);
+    const transactionResult = await pool.query(
+        'SELECT * FROM transactions WHERE txid = $1', [id]
+    );
     const transaction = transactionResult.rows[0];
 
     if (!transaction) {
       console.log(`Transaction with txid: ${id} not found.`);
       return res.status(404).json({ error: 'Transaction not found' });
     }
+
+    // Fetch transaction timing data
+    const timingResult = await pool.query(
+      'SELECT confirmation_duration FROM transaction_timing WHERE txid = $1',
+      [id]
+    );
+    const timing = timingResult.rows[0];
 
     // Fetch inputs and outputs from your database
     const inputsResult = await pool.query('SELECT * FROM inputs WHERE transaction_id = $1', [transaction.id]);
@@ -709,7 +718,10 @@ app.get('/api/transactions/:id', async (req, res) => {
     });
 
     res.json({
-      transaction,
+      transaction: {
+        ...transaction,
+        confirmation_duration: timing?.confirmation_duration || null,
+      },
       inputs,
       outputs,
     });

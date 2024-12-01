@@ -259,50 +259,16 @@ async function processTransaction(txid, blockHeight, blockTime) {
 
     // Insert transaction into the database and get the transaction ID
     const transactionQuery = `
-      INSERT INTO transactions (
-        txid,
-        block_height,
-        total_input_value,
-        total_output_value,
-        fee,
-        size,
-        created_at,
-        mempool_entry_time,
-        confirmation_time,
-        confirmation_duration
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6, $7,
-        CASE
-          WHEN $2 IS NULL THEN CURRENT_TIMESTAMP  -- mempool entry time
-          ELSE (SELECT mempool_entry_time FROM transactions WHERE txid = $1)
-        END,
-        CASE
-          WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP  -- confirmation time
-          ELSE NULL
-        END,
-        CASE
-          WHEN $2 IS NOT NULL THEN
-            CURRENT_TIMESTAMP - (SELECT mempool_entry_time FROM transactions WHERE txid = $1)
-          ELSE NULL
-        END
-      )
+      INSERT INTO transactions
+      (txid, block_height, total_input_value, total_output_value, fee, size, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (txid) DO UPDATE SET
         block_height = COALESCE(EXCLUDED.block_height, transactions.block_height),
         total_input_value = EXCLUDED.total_input_value,
         total_output_value = EXCLUDED.total_output_value,
         fee = EXCLUDED.fee,
         size = EXCLUDED.size,
-        confirmation_time = CASE
-          WHEN transactions.confirmation_time IS NULL AND EXCLUDED.block_height IS NOT NULL THEN
-            CURRENT_TIMESTAMP
-          ELSE transactions.confirmation_time
-        END,
-        confirmation_duration = CASE
-          WHEN transactions.confirmation_duration IS NULL AND EXCLUDED.block_height IS NOT NULL THEN
-            CURRENT_TIMESTAMP - transactions.mempool_entry_time
-          ELSE transactions.confirmation_duration
-        END
+        created_at = EXCLUDED.created_at
       RETURNING id
     `;
 

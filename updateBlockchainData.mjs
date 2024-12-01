@@ -298,11 +298,11 @@ async function backfillAllBlocksWithInscriptions(batchSize = 100) {
 let isBackfillRunning = false;
 
 async function recheckZeroInscriptionBlocks() {
-  console.log('Starting to recheck blocks with zero inscriptions');
+  console.log('Starting to recheck blocks with zero or -1 inscriptions');
   try {
-    // Fetch all blocks with zero inscriptions
+    // Fetch all blocks with zero or -1 inscriptions
     const { rows } = await pool.query(
-      'SELECT block_height FROM blocks WHERE inscriptions = 0 ORDER BY block_height DESC'
+      'SELECT block_height FROM blocks WHERE inscriptions IN (0, -1) ORDER BY block_height DESC'
     );
 
     for (const row of rows) {
@@ -311,31 +311,31 @@ async function recheckZeroInscriptionBlocks() {
 
       let inscriptionsCount = await fetchInscriptionCount(height);
 
-      // Double-check after a short delay if it's still 0
-      if (inscriptionsCount === 0) {
-        console.log(`Block ${height} still shows 0 inscriptions. Double-checking...`);
+      // Double-check after a short delay if it's still 0 or -1
+      if (inscriptionsCount === 0 || inscriptionsCount === -1) {
+        console.log(`Block ${height} still shows ${inscriptionsCount} inscriptions. Double-checking...`);
         await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
         inscriptionsCount = await fetchInscriptionCount(height);
       }
 
       // Update the database with the new count
-      if (inscriptionsCount !== 0) {
+      if (inscriptionsCount !== 0 && inscriptionsCount !== -1) {
         await pool.query(
           'UPDATE blocks SET inscriptions = $1 WHERE block_height = $2',
           [inscriptionsCount, height]
         );
         console.log(`Updated block ${height} with ${inscriptionsCount} inscriptions.`);
       } else {
-        console.log(`Block ${height} confirmed to have 0 inscriptions.`);
+        console.log(`Block ${height} confirmed to have ${inscriptionsCount} inscriptions.`);
       }
 
-      // Add a small delay between blocks to avoid overwhelming the Ord server
+      // Add a small delay between blocks to avoid overwhelming the server
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    console.log('Finished rechecking blocks with zero inscriptions');
+    console.log('Finished rechecking blocks with zero or -1 inscriptions');
   } catch (error) {
-    console.error('Error during zero inscription block recheck:', error);
+    console.error('Error during zero or -1 inscription block recheck:', error);
   }
 }
 

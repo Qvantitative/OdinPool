@@ -1,9 +1,11 @@
+// BlockDataTable.js
 import React, { useState, useEffect } from 'react';
 import Inscriptions from './Inscriptions';
 import Runes from './Runes';
 import Transactions from './Transactions';
+import TransactionsTreeMap from './charts/TransactionsTreeMap';
 
-const BlockDataTable = ({ block, onAddressClick }) => {  // Add onAddressClick prop here
+const BlockDataTable = ({ block, onAddressClick }) => {
   const [blockDetails, setBlockDetails] = useState(null);
   const [transactionData, setTransactionData] = useState([]);
   const [error, setError] = useState(null);
@@ -14,26 +16,16 @@ const BlockDataTable = ({ block, onAddressClick }) => {  // Add onAddressClick p
   useEffect(() => {
     const fetchBlockDetails = async () => {
       try {
-        const response = await fetch(
-          `/api/ord/block/${block_height}`
-        );
-        console.log('Response:', response)
+        const response = await fetch(`/api/ord/block/${block_height}`);
         if (!response.ok) {
-          throw new Error(
-            `Failed to fetch block details: ${response.statusText}`
-          );
+          throw new Error(`Failed to fetch block details: ${response.statusText}`);
         }
         const blockData = await response.json();
-        console.log('Fetched Block Details:', blockData); // Debugging line
         setBlockDetails(blockData);
 
-        const transactionResponse = await fetch(
-          `/api/transactions?block_height=${block_height}`
-        );
+        const transactionResponse = await fetch(`/api/transactions?block_height=${block_height}`);
         if (!transactionResponse.ok) {
-          throw new Error(
-            `Failed to fetch transactions: ${transactionResponse.statusText}`
-          );
+          throw new Error(`Failed to fetch transactions: ${transactionResponse.statusText}`);
         }
         const transactionData = await transactionResponse.json();
         setTransactionData(transactionData);
@@ -76,10 +68,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {  // Add onAddressClick p
       </div>
 
       {activeSection === 'inscriptions' && (
-        <Inscriptions
-          blockDetails={blockDetails}
-          onAddressClick={onAddressClick}  // Pass the prop here
-        />
+        <Inscriptions blockDetails={blockDetails} onAddressClick={onAddressClick} />
       )}
 
       {activeSection === 'runes' && blockDetails && blockDetails.runes && (
@@ -87,7 +76,12 @@ const BlockDataTable = ({ block, onAddressClick }) => {  // Add onAddressClick p
       )}
 
       {activeSection === 'transactions' && transactionData.length > 0 && (
-        <Transactions transactionData={transactionData} />
+        <>
+          <TransactionsTreeMap transactionData={transactionData} />
+          <div className="mt-6">
+            <Transactions transactionData={transactionData} />
+          </div>
+        </>
       )}
 
       {error && <div className="text-red-500 mt-4">Error: {error}</div>}

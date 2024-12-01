@@ -7,10 +7,46 @@ const TransactionsTreeMap = ({ transactionData }) => {
   const svgRef = useRef(null);
 
   useEffect(() => {
-    if (!transactionData?.length) return;
+    // Debug logging
+    console.log('Raw transaction data:', transactionData);
+
+    if (!transactionData?.length) {
+      console.log('No transaction data available');
+      return;
+    }
 
     // Clear any existing SVG content
     d3.select(svgRef.current).selectAll("*").remove();
+
+    // Filter valid transactions and log results
+    const validTransactions = transactionData.filter(tx => {
+      const isValid = tx && tx.confirmation_duration !== undefined && tx.size;
+      if (!isValid) {
+        console.log('Invalid transaction:', tx);
+      }
+      return isValid;
+    });
+
+    console.log('Valid transactions:', validTransactions);
+
+    if (validTransactions.length === 0) {
+      console.log('No valid transactions with confirmation duration');
+      // Display a message in the SVG when no data is available
+      const svg = d3.select(svgRef.current)
+        .attr("width", 960)
+        .attr("height", 600);
+
+      svg.append("text")
+        .attr("x", 480)
+        .attr("y", 300)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .style("fill", "white")
+        .style("font-size", "14px")
+        .text("No confirmation duration data available");
+
+      return;
+    }
 
     // Set up dimensions
     const margin = { top: 10, right: 10, bottom: 10, left: 10 };
@@ -27,36 +63,39 @@ const TransactionsTreeMap = ({ transactionData }) => {
     // Prepare the data with a hierarchical structure
     const data = {
       name: "Transactions",
-      children: transactionData
-        .filter(tx => tx.confirmation_duration !== undefined)
-        .map(tx => ({
-          name: tx.txid,
-          size: tx.size,
-          duration: tx.confirmation_duration,
-          value: tx.size
-        }))
+      children: validTransactions.map(tx => ({
+        name: tx.txid,
+        size: tx.size || 0,
+        duration: tx.confirmation_duration,
+        value: tx.size || 0,
+        raw: tx // Keep raw data for debugging
+      }))
     };
 
-    // Create the treemap layout with custom sorting
+    console.log('Processed hierarchy data:', data);
+
+    // Create the treemap layout
     const treemap = d3.treemap()
       .size([width, height])
       .padding(1)
       .round(true);
 
-    // Create the root node and sort by confirmation duration
+    // Create the root node
     const root = d3.hierarchy(data)
       .sum(d => d.value)
-      .sort((a, b) => {
-        if (a.data.duration === undefined || b.data.duration === undefined) return 0;
-        return b.data.duration - a.data.duration;
-      });
+      .sort((a, b) => (b.data.duration || 0) - (a.data.duration || 0));
 
     // Generate the treemap layout
     treemap(root);
 
-    // Create color scale based on confirmation duration
+    console.log('Treemap layout data:', root);
+
+    // Create color scale
+    const maxDuration = d3.max(validTransactions, d => d.confirmation_duration) || 1;
+    console.log('Max duration:', maxDuration);
+
     const colorScale = d3.scaleSequential(d3.interpolateReds)
-      .domain([0, d3.max(transactionData, d => d.confirmation_duration)]);
+      .domain([0, maxDuration]);
 
     // Create tooltip
     const tooltip = d3.select("body").append("div")
@@ -78,12 +117,13 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
     cell.append("rect")
-      .attr("width", d => d.x1 - d.x0)
-      .attr("height", d => d.y1 - d.y0)
+      .attr("width", d => Math.max(0, d.x1 - d.x0))
+      .attr("height", d => Math.max(0, d.y1 - d.y0))
       .style("fill", d => colorScale(d.data.duration))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
       .on("mouseover", (event, d) => {
+        console.log('Mouseover data:', d);
         tooltip
           .style("visibility", "visible")
           .html(`
@@ -115,21 +155,40 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .style("fill", "white")
       .style("pointer-events", "none")
       .filter(d => (d.x1 - d.x0) > 60 && (d.y1 - d.y0) > 30)
-      .text(d => `${formatDuration(d.data.duration)}`);
+      .text(d => formatDuration(d.data.duration));
 
     // Add legend
+    addLegend(svg, width, height, colorScale, maxDuration);
+
+    // Cleanup function
+    return () => {
+      tooltip.remove();
+    };
+  }, [transactionData]);
+
+  // Helper function to format duration
+  const formatDuration = (seconds) => {
+    if (!seconds) return 'N/A';
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  // Helper function to add legend
+  const addLegend = (svg, width, height, colorScale, maxDuration) => {
     const legendHeight = 10;
     const legendWidth = 200;
     const legendX = width - legendWidth - 20;
     const legendY = height - 40;
 
     const legendScale = d3.scaleLinear()
-      .domain(colorScale.domain())
+      .domain([0, maxDuration])
       .range([0, legendWidth]);
 
     const legendAxis = d3.axisBottom(legendScale)
       .ticks(5)
-      .tickFormat(d => formatDuration(d));
+      .tickFormat(formatDuration);
 
     const defs = svg.append("defs");
     const linearGradient = defs.append("linearGradient")
@@ -164,19 +223,6 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .attr("text-anchor", "middle")
       .style("fill", "white")
       .text("Confirmation Duration");
-
-    // Cleanup function
-    return () => {
-      tooltip.remove();
-    };
-  }, [transactionData]);
-
-  // Helper function to format duration
-  const formatDuration = (seconds) => {
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
   };
 
   return (

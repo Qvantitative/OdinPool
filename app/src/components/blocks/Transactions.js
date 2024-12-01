@@ -339,6 +339,10 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
       <h3 className="text-xl font-semibold mb-4 text-center text-white">
         Transactions ({transactionData.length} total)
       </h3>
+
+      {/* Add TreeMap component here */}
+      <TransactionsTreeMap transactionData={transactionData} />
+
       <div className="space-y-4">
         {currentTransactions.map(renderTransaction)}
       </div>

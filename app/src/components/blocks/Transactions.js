@@ -226,8 +226,15 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
 
         <div className="flex justify-between items-center mb-4">
           <div>{formatBTC(transaction.total_input_value)} BTC</div>
-          <div className="text-sm">
-            {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+          <div className="flex flex-col items-center text-sm space-y-1">
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-400">{transaction.size} bytes</span>
+              <span className="text-gray-400">|</span>
+              <span>{transaction.fee} sat/vB</span>
+            </div>
+            <div className="text-gray-400">
+              = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+            </div>
           </div>
           <div>{formatBTC(transaction.total_output_value)} BTC</div>
         </div>

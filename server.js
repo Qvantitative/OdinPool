@@ -764,6 +764,76 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
+app.get('/api/transaction-timing', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;  // Default limit of 10 entries
+    const offset = parseInt(req.query.offset) || 0;  // Support pagination
+
+    const query = `
+      SELECT
+        txid,
+        mempool_time,
+        confirmation_time,
+        EXTRACT(EPOCH FROM (confirmation_time - mempool_time))::INTEGER as confirmation_duration
+      FROM transaction_timing
+      ORDER BY mempool_time DESC
+      LIMIT $1 OFFSET $2
+    `;
+
+    const countQuery = 'SELECT COUNT(*) FROM transaction_timing';
+
+    // Execute both queries in parallel
+    const [result, countResult] = await Promise.all([
+      pool.query(query, [limit, offset]),
+      pool.query(countQuery)
+    ]);
+
+    // Format the response
+    const response = {
+      data: result.rows,
+      pagination: {
+        total: parseInt(countResult.rows[0].count),
+        limit,
+        offset,
+        hasMore: offset + result.rows.length < parseInt(countResult.rows[0].count)
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching transaction timing:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Optional: Add endpoint for single transaction timing
+app.get('/api/transaction-timing/:txid', async (req, res) => {
+  try {
+    const { txid } = req.params;
+
+    const query = `
+      SELECT
+        txid,
+        mempool_time,
+        confirmation_time,
+        EXTRACT(EPOCH FROM (confirmation_time - mempool_time))::INTEGER as confirmation_duration
+      FROM transaction_timing
+      WHERE txid = $1
+    `;
+
+    const result = await pool.query(query, [txid]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Transaction timing not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching transaction timing:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Endpoint to fetch top addresses by balance
 app.get('/api/top-addresses', async (req, res) => {
   try {

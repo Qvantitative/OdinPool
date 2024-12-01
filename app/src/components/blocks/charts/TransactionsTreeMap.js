@@ -27,12 +27,14 @@ const TransactionsTreeMap = ({ transactionData }) => {
     // Prepare the data with a hierarchical structure
     const data = {
       name: "Transactions",
-      children: transactionData.map(tx => ({
-        name: tx.txid,
-        size: tx.size,
-        duration: tx.confirmation_duration,
-        value: tx.size // Keep size as value for rectangle area
-      }))
+      children: transactionData
+        .filter(tx => tx.confirmation_duration !== undefined)
+        .map(tx => ({
+          name: tx.txid,
+          size: tx.size,
+          duration: tx.confirmation_duration,
+          value: tx.size
+        }))
     };
 
     // Create the treemap layout with custom sorting

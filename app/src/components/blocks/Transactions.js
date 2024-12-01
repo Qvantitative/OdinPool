@@ -49,19 +49,21 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
       try {
         setLoading(prev => ({ ...prev, [txid]: true }));
 
-        // Fetch transaction details
+        // Fetch transaction details including confirmation_duration
         const response = await fetch(`/api/transactions/${txid}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
+
+        // Add timing data if it exists
+        const timingResponse = await fetch(`/api/transaction-timing/${txid}`);
+        if (timingResponse.ok) {
+          const timingData = await timingResponse.json();
+          data.transaction.confirmation_duration = timingData.confirmation_duration;
+        }
+
         setDetailedData(prev => ({ ...prev, [txid]: data }));
 
-        // Fetch inscription data
-        const inscriptionId = txid + 'i0';
-        const inscriptionResponse = await fetch(`/api/ord/inscription/${inscriptionId}`);
-        if (inscriptionResponse.ok) {
-          const inscription = await inscriptionResponse.json();
-          setInscriptionData(prev => ({ ...prev, [txid]: inscription }));
-        }
+        // Rest of your existing fetch logic...
       } catch (error) {
         console.error(`Error fetching details for ${txid}:`, error);
         setErrors(prev => ({ ...prev, [txid]: error.message }));

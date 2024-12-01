@@ -370,12 +370,12 @@ async function updateTransactionTiming(txid, blockHeight) {
     const query = `
       INSERT INTO transaction_timing (txid, mempool_time, confirmation_time)
       VALUES ($1,
-        CASE WHEN $2 IS NULL THEN CURRENT_TIMESTAMP ELSE NULL END,
-        CASE WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END
+        CASE WHEN ($2::integer IS NULL) THEN CURRENT_TIMESTAMP ELSE NULL END,
+        CASE WHEN ($2::integer IS NOT NULL) THEN CURRENT_TIMESTAMP ELSE NULL END
       )
       ON CONFLICT (txid) DO UPDATE SET
         confirmation_time = CASE
-          WHEN transaction_timing.confirmation_time IS NULL AND $2 IS NOT NULL
+          WHEN transaction_timing.confirmation_time IS NULL AND ($2::integer IS NOT NULL)
           THEN CURRENT_TIMESTAMP
           ELSE transaction_timing.confirmation_time
         END;

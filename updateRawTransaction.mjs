@@ -260,8 +260,8 @@ async function processTransaction(txid, blockHeight, blockTime) {
     // Insert transaction into the database and get the transaction ID
     const transactionQuery = `
       INSERT INTO transactions
-      (txid, block_height, total_input_value, total_output_value, fee, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      (txid, block_height, total_input_value, total_output_value, fee, size, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (txid) DO UPDATE SET
         block_height = COALESCE(EXCLUDED.block_height, transactions.block_height),
         total_input_value = EXCLUDED.total_input_value,
@@ -278,6 +278,7 @@ async function processTransaction(txid, blockHeight, blockTime) {
       totalInputValue,
       totalOutputValue,
       fee,
+      rawTx.size, // Ensure this field is passed correctly
       new Date(blockTime * 1000),
     ]);
 

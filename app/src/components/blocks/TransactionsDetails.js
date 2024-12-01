@@ -10,6 +10,12 @@ const OperationBadge = ({ type, className }) => (
   </span>
 );
 
+const SizeIndicator = ({ size }) => (
+  <div className="flex items-center justify-center gap-2 bg-gray-800 px-3 py-1 rounded-full">
+    <span className="text-sm font-medium">{size} bytes</span>
+  </div>
+);
+
 const RuneTransfer = ({ edict, runeData, direction = 'right' }) => {
   if (!edict) return null;
 
@@ -180,8 +186,11 @@ const TransactionDetails = ({ transactionId }) => {
 
       <div className="flex justify-between items-center mb-4">
         <div>{formatBTC(transaction.total_input_value)} BTC</div>
-        <div className="text-sm">
-          {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+        <div className="flex items-center space-x-4">
+          <SizeIndicator size={transaction.size} />
+          <div className="text-sm">
+            {transaction.fee} sat/vB = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+          </div>
         </div>
         <div>{formatBTC(transaction.total_output_value)} BTC</div>
       </div>

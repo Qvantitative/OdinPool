@@ -80,6 +80,7 @@ const TransactionDetails = ({ transactionId }) => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log('Transaction data:', data); // Add this line
         setTransactionData(data);
 
         // Reset states

@@ -282,6 +282,9 @@ async function processTransaction(txid, blockHeight, blockTime) {
       new Date(blockTime * 1000),
     ]);
 
+    // Add timing update after successful transaction insert
+    await updateTransactionTiming(txid, blockHeight);
+
     const transactionId = transactionResult.rows[0].id; // This is the integer id
 
     // Insert outputs
@@ -358,6 +361,29 @@ async function processBlock(height) {
   } catch (error) {
     console.error(`Error processing block ${height}:`, error);
     return false;
+  }
+}
+
+// Add this function to handle timing updates
+async function updateTransactionTiming(txid, blockHeight) {
+  try {
+    const query = `
+      INSERT INTO transaction_timing (txid, mempool_time, confirmation_time)
+      VALUES ($1,
+        CASE WHEN $2 IS NULL THEN CURRENT_TIMESTAMP ELSE NULL END,
+        CASE WHEN $2 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END
+      )
+      ON CONFLICT (txid) DO UPDATE SET
+        confirmation_time = CASE
+          WHEN transaction_timing.confirmation_time IS NULL AND $2 IS NOT NULL
+          THEN CURRENT_TIMESTAMP
+          ELSE transaction_timing.confirmation_time
+        END;
+    `;
+
+    await pool.query(query, [txid, blockHeight]);
+  } catch (error) {
+    console.error(`Error updating timing for transaction ${txid}:`, error);
   }
 }
 

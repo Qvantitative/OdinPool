@@ -736,6 +736,13 @@ app.get('/api/transactions/:txid', async (req, res) => {
     const { txid } = req.params;
     const rawTx = await client.getRawTransaction(txid, true);
 
+    // Fetch confirmation_duration from transaction_timing table
+    const timingResult = await pool.query(
+      'SELECT confirmation_duration FROM transaction_timing WHERE txid = $1',
+      [txid]
+    );
+    const timing = timingResult.rows[0];
+
     const inputs = await Promise.all(
       rawTx.vin.map(async (input) => {
         const prevTx = await client.getRawTransaction(input.txid, true);
@@ -752,13 +759,19 @@ app.get('/api/transactions/:txid', async (req, res) => {
       value: output.value,
     }));
 
-    res.json({ transaction: rawTx, inputs, outputs });
+    res.json({
+      transaction: {
+        ...rawTx,
+        confirmation_duration: timing?.confirmation_duration || null,
+      },
+      inputs,
+      outputs
+    });
   } catch (error) {
     console.error(`Error fetching transaction details for ${txid}:`, error);
     res.status(500).json({ error: 'Failed to fetch transaction details' });
   }
 });
-
 
 // Modified /api/transactions endpoint to fetch all transactions for a block
 app.get('/api/transactions', async (req, res) => {

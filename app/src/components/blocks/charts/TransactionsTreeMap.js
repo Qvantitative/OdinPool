@@ -7,7 +7,6 @@ const TransactionsTreeMap = ({ transactionData }) => {
   const svgRef = useRef(null);
 
   useEffect(() => {
-    // Debug logging
     console.log('Raw transaction data:', transactionData);
 
     if (!transactionData?.length) {
@@ -18,20 +17,22 @@ const TransactionsTreeMap = ({ transactionData }) => {
     // Clear any existing SVG content
     d3.select(svgRef.current).selectAll("*").remove();
 
-    // Filter valid transactions and log results
-    const validTransactions = transactionData.filter(tx => {
-      const isValid = tx && tx.confirmation_duration !== undefined && tx.size;
-      if (!isValid) {
-        console.log('Invalid transaction:', tx);
-      }
-      return isValid;
-    });
+    // Process and filter valid transactions
+    const validTransactions = transactionData.map(tx => ({
+      txid: tx.txid,
+      size: tx.size || 0,
+      duration: tx.transaction?.confirmation_duration || 0, // Handle nested structure
+      value: tx.size || 0,
+      block_height: tx.block_height,
+      total_input_value: tx.total_input_value,
+      total_output_value: tx.total_output_value,
+      fee: tx.fee
+    })).filter(tx => tx.size > 0); // Filter out any invalid transactions
 
-    console.log('Valid transactions:', validTransactions);
+    console.log('Processed transactions:', validTransactions);
 
     if (validTransactions.length === 0) {
-      console.log('No valid transactions with confirmation duration');
-      // Display a message in the SVG when no data is available
+      // Display a message when no valid data is available
       const svg = d3.select(svgRef.current)
         .attr("width", 960)
         .attr("height", 600);
@@ -43,61 +44,45 @@ const TransactionsTreeMap = ({ transactionData }) => {
         .attr("dominant-baseline", "middle")
         .style("fill", "white")
         .style("font-size", "14px")
-        .text("No confirmation duration data available");
+        .text("Processing transaction data...");
 
       return;
     }
 
-    // Set up dimensions
+    // Set up dimensions and create SVG
     const margin = { top: 10, right: 10, bottom: 10, left: 10 };
     const width = 960 - margin.left - margin.right;
     const height = 600 - margin.top - margin.bottom;
 
-    // Create the SVG container
     const svg = d3.select(svgRef.current)
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.top + margin.bottom)
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Prepare the data with a hierarchical structure
+    // Create hierarchical data structure
     const data = {
       name: "Transactions",
-      children: validTransactions.map(tx => ({
-        name: tx.txid,
-        size: tx.size || 0,
-        duration: tx.confirmation_duration,
-        value: tx.size || 0,
-        raw: tx // Keep raw data for debugging
-      }))
+      children: validTransactions
     };
 
-    console.log('Processed hierarchy data:', data);
-
-    // Create the treemap layout
+    // Create treemap layout
     const treemap = d3.treemap()
       .size([width, height])
       .padding(1)
       .round(true);
 
-    // Create the root node
     const root = d3.hierarchy(data)
-      .sum(d => d.value)
-      .sort((a, b) => (b.data.duration || 0) - (a.data.duration || 0));
+      .sum(d => d.size)
+      .sort((a, b) => b.value - a.value);
 
-    // Generate the treemap layout
     treemap(root);
 
-    console.log('Treemap layout data:', root);
-
-    // Create color scale
-    const maxDuration = d3.max(validTransactions, d => d.confirmation_duration) || 1;
-    console.log('Max duration:', maxDuration);
-
+    // Create color scale based on sizes initially
     const colorScale = d3.scaleSequential(d3.interpolateReds)
-      .domain([0, maxDuration]);
+      .domain([0, d3.max(validTransactions, d => d.size)]);
 
-    // Create tooltip
+    // Create and configure tooltip
     const tooltip = d3.select("body").append("div")
       .attr("class", "treemap-tooltip")
       .style("position", "absolute")
@@ -108,9 +93,10 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .style("border-radius", "4px")
       .style("font-size", "12px")
       .style("max-width", "300px")
-      .style("pointer-events", "none");
+      .style("pointer-events", "none")
+      .style("z-index", "1000");
 
-    // Add rectangles
+    // Add rectangles for each transaction
     const cell = svg.selectAll("g")
       .data(root.leaves())
       .enter().append("g")
@@ -119,20 +105,20 @@ const TransactionsTreeMap = ({ transactionData }) => {
     cell.append("rect")
       .attr("width", d => Math.max(0, d.x1 - d.x0))
       .attr("height", d => Math.max(0, d.y1 - d.y0))
-      .style("fill", d => colorScale(d.data.duration))
+      .style("fill", d => colorScale(d.data.size))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
       .on("mouseover", (event, d) => {
-        console.log('Mouseover data:', d);
-        tooltip
-          .style("visibility", "visible")
+        tooltip.style("visibility", "visible")
           .html(`
             <div>
               <strong>Transaction ID:</strong><br/>
-              <span style="font-size: 10px;">${d.data.name}</span><br/>
+              <span style="font-size: 10px;">${d.data.txid}</span><br/>
+              <strong>Block Height:</strong> ${d.data.block_height}<br/>
               <strong>Size:</strong> ${d.data.size} bytes<br/>
-              <strong>Confirmation Duration:</strong> ${d.data.duration}s<br/>
-              <strong>Time to Confirm:</strong> ${formatDuration(d.data.duration)}
+              <strong>Fee:</strong> ${d.data.fee} sat/vB<br/>
+              <strong>Input:</strong> ${d.data.total_input_value} BTC<br/>
+              <strong>Output:</strong> ${d.data.total_output_value} BTC
             </div>
           `);
       })
@@ -155,64 +141,21 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .style("fill", "white")
       .style("pointer-events", "none")
       .filter(d => (d.x1 - d.x0) > 60 && (d.y1 - d.y0) > 30)
-      .text(d => formatDuration(d.data.duration));
+      .text(d => `${d.data.size}b`);
 
     // Add legend
-    addLegend(svg, width, height, colorScale, maxDuration);
-
-    // Cleanup function
-    return () => {
-      tooltip.remove();
-    };
-  }, [transactionData]);
-
-  // Helper function to format duration
-  const formatDuration = (seconds) => {
-    if (!seconds) return 'N/A';
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
-
-  // Helper function to add legend
-  const addLegend = (svg, width, height, colorScale, maxDuration) => {
     const legendHeight = 10;
     const legendWidth = 200;
     const legendX = width - legendWidth - 20;
     const legendY = height - 40;
 
     const legendScale = d3.scaleLinear()
-      .domain([0, maxDuration])
+      .domain(colorScale.domain())
       .range([0, legendWidth]);
 
     const legendAxis = d3.axisBottom(legendScale)
       .ticks(5)
-      .tickFormat(formatDuration);
-
-    const defs = svg.append("defs");
-    const linearGradient = defs.append("linearGradient")
-      .attr("id", "duration-gradient")
-      .attr("x1", "0%")
-      .attr("y1", "0%")
-      .attr("x2", "100%")
-      .attr("y2", "0%");
-
-    linearGradient.selectAll("stop")
-      .data(colorScale.ticks().map((t, i, n) => ({
-        offset: `${100 * i / n.length}%`,
-        color: colorScale(t)
-      })))
-      .enter().append("stop")
-      .attr("offset", d => d.offset)
-      .attr("stop-color", d => d.color);
-
-    svg.append("g")
-      .attr("transform", `translate(${legendX}, ${legendY})`)
-      .append("rect")
-      .attr("width", legendWidth)
-      .attr("height", legendHeight)
-      .style("fill", "url(#duration-gradient)");
+      .tickFormat(d => `${d}b`);
 
     svg.append("g")
       .attr("transform", `translate(${legendX}, ${legendY + legendHeight})`)
@@ -222,19 +165,24 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .attr("y", 35)
       .attr("text-anchor", "middle")
       .style("fill", "white")
-      .text("Confirmation Duration");
-  };
+      .text("Transaction Size (bytes)");
+
+    // Cleanup
+    return () => {
+      tooltip.remove();
+    };
+  }, [transactionData]);
 
   return (
     <div className="bg-gray-900 p-4 rounded-lg">
       <h3 className="text-xl font-semibold mb-4 text-center text-white">
-        Transaction Confirmation Duration Distribution
+        Transaction Size Distribution
       </h3>
       <div className="overflow-auto">
         <svg ref={svgRef} className="w-full" style={{ minWidth: '960px' }}></svg>
       </div>
       <div className="mt-4 text-center text-sm text-gray-400">
-        Hover over rectangles to see transaction details. Color indicates confirmation duration, size represents transaction size in bytes.
+        Hover over rectangles to see transaction details. Color and size represent transaction size in bytes.
       </div>
     </div>
   );

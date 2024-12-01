@@ -143,30 +143,6 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .filter(d => (d.x1 - d.x0) > 60 && (d.y1 - d.y0) > 30)
       .text(d => `${d.data.size}b`);
 
-    // Add legend
-    const legendHeight = 10;
-    const legendWidth = 200;
-    const legendX = width - legendWidth - 20;
-    const legendY = height - 40;
-
-    const legendScale = d3.scaleLinear()
-      .domain(colorScale.domain())
-      .range([0, legendWidth]);
-
-    const legendAxis = d3.axisBottom(legendScale)
-      .ticks(5)
-      .tickFormat(d => `${d}b`);
-
-    svg.append("g")
-      .attr("transform", `translate(${legendX}, ${legendY + legendHeight})`)
-      .call(legendAxis)
-      .append("text")
-      .attr("x", legendWidth / 2)
-      .attr("y", 35)
-      .attr("text-anchor", "middle")
-      .style("fill", "white")
-      .text("Transaction Size (bytes)");
-
     // Cleanup
     return () => {
       tooltip.remove();

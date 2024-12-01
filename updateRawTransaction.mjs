@@ -267,6 +267,7 @@ async function processTransaction(txid, blockHeight, blockTime) {
         total_input_value = EXCLUDED.total_input_value,
         total_output_value = EXCLUDED.total_output_value,
         fee = EXCLUDED.fee,
+        size = EXCLUDED.size,
         created_at = EXCLUDED.created_at
       RETURNING id
     `;

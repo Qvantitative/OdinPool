@@ -22,33 +22,37 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Prepare the data
+    // Prepare the data with a hierarchical structure
     const data = {
       name: "Transactions",
       children: transactionData.map(tx => ({
         name: tx.txid,
         size: tx.size,
-        fee: tx.fee,
-        totalFee: (tx.fee * tx.size / 100000000).toFixed(8)
+        duration: tx.confirmation_duration,
+        value: tx.size // Keep size as value for rectangle area
       }))
     };
 
-    // Create the treemap layout
+    // Create the treemap layout with custom sorting
     const treemap = d3.treemap()
       .size([width, height])
-      .padding(1);
+      .padding(1)
+      .round(true);
 
-    // Create the root node
+    // Create the root node and sort by confirmation duration
     const root = d3.hierarchy(data)
-      .sum(d => d.size)
-      .sort((a, b) => b.value - a.value);
+      .sum(d => d.value)
+      .sort((a, b) => {
+        if (a.data.duration === undefined || b.data.duration === undefined) return 0;
+        return b.data.duration - a.data.duration;
+      });
 
     // Generate the treemap layout
     treemap(root);
 
-    // Create color scale
-    const colorScale = d3.scaleSequential(d3.interpolateBlues)
-      .domain([0, d3.max(transactionData, d => d.size)]);
+    // Create color scale based on confirmation duration
+    const colorScale = d3.scaleSequential(d3.interpolateReds)
+      .domain([0, d3.max(transactionData, d => d.confirmation_duration)]);
 
     // Create tooltip
     const tooltip = d3.select("body").append("div")
@@ -72,7 +76,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
     cell.append("rect")
       .attr("width", d => d.x1 - d.x0)
       .attr("height", d => d.y1 - d.y0)
-      .style("fill", d => colorScale(d.data.size))
+      .style("fill", d => colorScale(d.data.duration))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
       .on("mouseover", (event, d) => {
@@ -83,8 +87,8 @@ const TransactionsTreeMap = ({ transactionData }) => {
               <strong>Transaction ID:</strong><br/>
               <span style="font-size: 10px;">${d.data.name}</span><br/>
               <strong>Size:</strong> ${d.data.size} bytes<br/>
-              <strong>Fee Rate:</strong> ${d.data.fee} sat/vB<br/>
-              <strong>Total Fee:</strong> ${d.data.totalFee} BTC
+              <strong>Confirmation Duration:</strong> ${d.data.duration}s<br/>
+              <strong>Time to Confirm:</strong> ${formatDuration(d.data.duration)}
             </div>
           `);
       })
@@ -107,7 +111,55 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .style("fill", "white")
       .style("pointer-events", "none")
       .filter(d => (d.x1 - d.x0) > 60 && (d.y1 - d.y0) > 30)
-      .text(d => `${d.data.size}b`);
+      .text(d => `${formatDuration(d.data.duration)}`);
+
+    // Add legend
+    const legendHeight = 10;
+    const legendWidth = 200;
+    const legendX = width - legendWidth - 20;
+    const legendY = height - 40;
+
+    const legendScale = d3.scaleLinear()
+      .domain(colorScale.domain())
+      .range([0, legendWidth]);
+
+    const legendAxis = d3.axisBottom(legendScale)
+      .ticks(5)
+      .tickFormat(d => formatDuration(d));
+
+    const defs = svg.append("defs");
+    const linearGradient = defs.append("linearGradient")
+      .attr("id", "duration-gradient")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "100%")
+      .attr("y2", "0%");
+
+    linearGradient.selectAll("stop")
+      .data(colorScale.ticks().map((t, i, n) => ({
+        offset: `${100 * i / n.length}%`,
+        color: colorScale(t)
+      })))
+      .enter().append("stop")
+      .attr("offset", d => d.offset)
+      .attr("stop-color", d => d.color);
+
+    svg.append("g")
+      .attr("transform", `translate(${legendX}, ${legendY})`)
+      .append("rect")
+      .attr("width", legendWidth)
+      .attr("height", legendHeight)
+      .style("fill", "url(#duration-gradient)");
+
+    svg.append("g")
+      .attr("transform", `translate(${legendX}, ${legendY + legendHeight})`)
+      .call(legendAxis)
+      .append("text")
+      .attr("x", legendWidth / 2)
+      .attr("y", 35)
+      .attr("text-anchor", "middle")
+      .style("fill", "white")
+      .text("Confirmation Duration");
 
     // Cleanup function
     return () => {
@@ -115,16 +167,24 @@ const TransactionsTreeMap = ({ transactionData }) => {
     };
   }, [transactionData]);
 
+  // Helper function to format duration
+  const formatDuration = (seconds) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
   return (
     <div className="bg-gray-900 p-4 rounded-lg">
       <h3 className="text-xl font-semibold mb-4 text-center text-white">
-        Transaction Size Distribution
+        Transaction Confirmation Duration Distribution
       </h3>
       <div className="overflow-auto">
         <svg ref={svgRef} className="w-full" style={{ minWidth: '960px' }}></svg>
       </div>
       <div className="mt-4 text-center text-sm text-gray-400">
-        Hover over rectangles to see transaction details. Size of each rectangle represents transaction size in bytes.
+        Hover over rectangles to see transaction details. Color indicates confirmation duration, size represents transaction size in bytes.
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
         setLoading(prev => ({ ...prev, [txid]: true }));
 
         // Single API call to get transaction details
-        const response = await fetch(`/api/transactions/${txid}`);
+        const response = await fetch(`/api/transactions/${transactionId}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
 

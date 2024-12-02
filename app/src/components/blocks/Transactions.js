@@ -43,9 +43,10 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
   }, [transactionData]);
 
   useEffect(() => {
-    const fetchAllDetails = async (txid) => {
+    const fetchAllDetails = async (transaction) => {
+      const transactionId = transaction.txid; // Get txid from transaction object
       try {
-        setLoading(prev => ({ ...prev, [txid]: true }));
+        setLoading(prev => ({ ...prev, [transactionId]: true }));
 
         // Single API call to get transaction details
         const response = await fetch(`/api/transactions/${transactionId}`);
@@ -53,43 +54,44 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
         const data = await response.json();
 
         // Set the detailed data
-        setDetailedData(prev => ({ ...prev, [txid]: data }));
+        setDetailedData(prev => ({ ...prev, [transactionId]: data }));
 
       } catch (error) {
-        console.error(`Error fetching details for ${txid}:`, error);
-        setErrors(prev => ({ ...prev, [txid]: error.message }));
+        console.error(`Error fetching details for ${transactionId}:`, error);
+        setErrors(prev => ({ ...prev, [transactionId]: error.message }));
       } finally {
-        setLoading(prev => ({ ...prev, [txid]: false }));
+        setLoading(prev => ({ ...prev, [transactionId]: false }));
       }
     };
 
     // Only fetch details for transactions on the current page
-    currentTransactions.forEach(tx => {
-      if (!detailedData[tx.txid]) {
-        fetchAllDetails(tx.txid);
+    currentTransactions.forEach(transaction => {
+      const transactionId = transaction.txid;
+      if (!detailedData[transactionId]) {
+        fetchAllDetails(transaction);
       }
     });
   }, [currentPage, transactionData, detailedData]);
 
-  const handleOpReturnClick = async (txid, index) => {
-    const currentKey = `${txid}-${index}`;
+  const handleOpReturnClick = async (transactionId, index) => {
+    const currentKey = `${transactionId}-${index}`;
 
     if (expandedOpReturns[currentKey]) {
       setExpandedOpReturns(prev => ({ ...prev, [currentKey]: false }));
-      setRuneData(prev => ({ ...prev, [txid]: null }));
+      setRuneData(prev => ({ ...prev, [transactionId]: null }));
     } else {
       setExpandedOpReturns(prev => ({ ...prev, [currentKey]: true }));
       try {
-        const response = await fetch(`/api/rune/${txid}`);
+        const response = await fetch(`/api/rune/${transactionId}`);
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch rune data');
         }
         const data = await response.json();
-        setRuneData(prev => ({ ...prev, [txid]: data }));
+        setRuneData(prev => ({ ...prev, [transactionId]: data }));
       } catch (error) {
         console.error('Error fetching rune data:', error);
-        setErrors(prev => ({ ...prev, [txid]: `Failed to fetch rune data: ${error.message}` }));
+        setErrors(prev => ({ ...prev, [transactionId]: `Failed to fetch rune data: ${error.message}` }));
       }
     }
   };
@@ -179,35 +181,36 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
     );
   };
 
-  const renderTransaction = (tx) => {
-    const txDetails = detailedData[tx.txid];
-    const isLoading = loading[tx.txid];
-    const error = errors[tx.txid];
-    const inscription = inscriptionData[tx.txid];
-    const rune = runeData[tx.txid];
+  const renderTransaction = (transaction) => {
+    const transactionId = transaction.txid;
+    const txDetails = detailedData[transactionId];
+    const isLoading = loading[transactionId];
+    const error = errors[transactionId];
+    const inscription = inscriptionData[transactionId];
+    const rune = runeData[transactionId];
 
     if (error) {
       return (
-        <div key={tx.txid} className="bg-gray-900 p-4 rounded-lg shadow text-red-500">
-          Error loading transaction {tx.txid}: {error}
+        <div key={transactionId} className="bg-gray-900 p-4 rounded-lg shadow text-red-500">
+          Error loading transaction {transactionId}: {error}
         </div>
       );
     }
 
-    const transaction = txDetails?.transaction || {
-      txid: tx.txid,
-      total_input_value: tx.total_input_value,
-      total_output_value: tx.total_output_value,
-      fee: tx.fee_rate,
-      size: tx.size
+    const currentTransaction = txDetails?.transaction || {
+      txid: transactionId,
+      total_input_value: transaction.total_input_value,
+      total_output_value: transaction.total_output_value,
+      fee: transaction.fee_rate,
+      size: transaction.size
     };
 
-    const inputs = txDetails?.inputs || tx.input || [];
-    const outputs = txDetails?.outputs || tx.output || [];
-    const confirmationDuration = transaction.confirmation_duration;
+    const inputs = txDetails?.inputs || transaction.input || [];
+    const outputs = txDetails?.outputs || transaction.output || [];
+    const confirmationDuration = currentTransaction.confirmation_duration;
 
     return (
-      <div key={transaction.txid} className="bg-gray-900 p-4 rounded-lg shadow text-white relative">
+      <div key={transactionId} className="bg-gray-900 p-4 rounded-lg shadow text-white relative">
         {isLoading && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
             <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
@@ -216,18 +219,18 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
 
         <h2
           className="text-lg font-bold mb-4 text-center cursor-pointer hover:text-blue-400 truncate overflow-auto max-w-full"
-          onClick={() => handleTransactionClick(transaction.txid)}
+          onClick={() => handleTransactionClick(transactionId)}
         >
-          {transaction.txid}
+          {transactionId}
         </h2>
 
         <div className="flex justify-between items-center mb-4">
-          <div>{formatBTC(transaction.total_input_value)} BTC</div>
+          <div>{formatBTC(currentTransaction.total_input_value)} BTC</div>
           <div className="flex flex-col items-center text-sm space-y-1">
             <div className="flex items-center space-x-2">
-              <span className="text-gray-400">{transaction.size} bytes</span>
+              <span className="text-gray-400">{currentTransaction.size} bytes</span>
               <span className="text-gray-400">|</span>
-              <span>{transaction.fee} sat/vB</span>
+              <span>{currentTransaction.fee} sat/vB</span>
               {confirmationDuration && (
                 <>
                   <span className="text-gray-400">|</span>
@@ -236,10 +239,10 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
               )}
             </div>
             <div className="text-gray-400">
-              = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC
+              = {(currentTransaction.fee * currentTransaction.size / 100000000).toFixed(8)} BTC
             </div>
           </div>
-          <div>{formatBTC(transaction.total_output_value)} BTC</div>
+          <div>{formatBTC(currentTransaction.total_output_value)} BTC</div>
         </div>
 
         <div className="flex justify-between">
@@ -262,7 +265,7 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
             <ul className="space-y-2">
               {outputs.map((output, index) => {
                 const isOpReturn = output.scriptPubKey?.type === 'nulldata';
-                const isExpanded = expandedOpReturns[`${transaction.txid}-${index}`];
+                const isExpanded = expandedOpReturns[`${transactionId}-${index}`];
 
                 return (
                   <li key={index}>
@@ -277,7 +280,7 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
                           maxWidth: '70%',
                           boxShadow: isOpReturn ? '0 0 10px #FCD34D' : 'none'
                         }}
-                        onClick={isOpReturn ? () => handleOpReturnClick(transaction.txid, index) : undefined}
+                        onClick={isOpReturn ? () => handleOpReturnClick(transactionId, index) : undefined}
                       >
                         {isOpReturn ? 'OP_RETURN' : output.address}
                       </span>

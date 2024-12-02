@@ -34,9 +34,9 @@ const BlockDataTable = ({ block, onAddressClick }) => {
   const [blockDetails, setBlockDetails] = useState(null);
   const [transactionData, setTransactionData] = useState([]);
   const [error, setError] = useState(null);
-  const [activeSection, setActiveSection] = useState('inscriptions');
+  const [activeSection, setActiveSection] = useState('transactions'); // Changed initial state to 'transactions'
   const [showTreeMap, setShowTreeMap] = useState(false);
-  const [isTreeMapLoading, setIsTreeMapLoading] = useState(false);
+  const [isTreeMapLoading, setIsTreeMapLoading] = useState(true); // Set initial loading state to true
 
   const { block_height } = block || {};
 
@@ -55,9 +55,10 @@ const BlockDataTable = ({ block, onAddressClick }) => {
           throw new Error(`Failed to fetch transactions: ${transactionResponse.statusText}`);
         }
         const transactionData = await transactionResponse.json();
-        console.log("Transaction Data", transactionData)
+        console.log("Transaction Data", transactionData);
         setTransactionData(transactionData);
 
+        // Since transactions is now the initial section, we want to show the TreeMap right away
         if (activeSection === 'transactions') {
           setIsTreeMapLoading(true);
           setTimeout(() => {
@@ -72,8 +73,6 @@ const BlockDataTable = ({ block, onAddressClick }) => {
     };
 
     fetchBlockDetails();
-    setShowTreeMap(false);
-    setIsTreeMapLoading(false);
   }, [block_height, activeSection]);
 
   useEffect(() => {

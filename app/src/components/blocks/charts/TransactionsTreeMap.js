@@ -24,38 +24,29 @@ const TransactionsTreeMap = ({ transactionData }) => {
       duration: tx.confirmation_duration?.seconds ||
                 (tx.confirmation_duration?.minutes * 60) ||
                 (tx.confirmation_duration?.hours * 3600) || 0,
-      value: tx.size || 0,
+      fee: parseFloat(tx.fee) || 0,
       block_height: tx.block_height,
       total_input_value: tx.total_input_value,
       total_output_value: tx.total_output_value,
-      fee: parseFloat(tx.fee) || 0,
       confirmation_time: tx.confirmation_duration ?
         `${tx.confirmation_duration.hours || 0}h ${tx.confirmation_duration.minutes || 0}m ${tx.confirmation_duration.seconds || 0}s` :
         'Pending'
     })).filter(tx => tx.size > 0);
 
-    // Sort transactions by confirmation duration
+    // Sort transactions by duration (descending) and split into rows
+    const numRows = 10; // Number of vertical sections
     validTransactions.sort((a, b) => a.duration - b.duration);
 
-    // Group transactions by time ranges
-    const timeRanges = [];
-    const rangeSize = Math.ceil(validTransactions.length / 5); // Divide into ~5 groups
-
-    for (let i = 0; i < validTransactions.length; i += rangeSize) {
-      const rangeTransactions = validTransactions.slice(i, i + rangeSize);
-      const minTime = Math.min(...rangeTransactions.map(tx => tx.duration));
-      const maxTime = Math.max(...rangeTransactions.map(tx => tx.duration));
-
-      timeRanges.push({
-        name: `${Math.floor(minTime/60)}-${Math.ceil(maxTime/60)} min`,
-        children: rangeTransactions
-      });
-    }
+    const transactionsPerRow = Math.ceil(validTransactions.length / numRows);
+    const rows = Array.from({ length: numRows }, (_, i) => ({
+      name: `row-${i}`,
+      children: validTransactions.slice(i * transactionsPerRow, (i + 1) * transactionsPerRow)
+    }));
 
     // Create hierarchical data structure
     const data = {
       name: "Transactions",
-      children: timeRanges
+      children: rows
     };
 
     if (validTransactions.length === 0) {
@@ -86,26 +77,20 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Create treemap layout with custom sorting
+    // Create treemap layout with fixed row heights
     const treemap = d3.treemap()
       .size([width, height])
-      .padding(1)
+      .paddingOuter(3)
+      .paddingTop(20)
+      .paddingInner(2)
       .round(true);
 
     const root = d3.hierarchy(data)
-      .sum(d => d.size) // Size of rectangles based on transaction size
-      .sort((a, b) => {
-        // Sort by time range at the top level
-        if (!a.data.duration && !b.data.duration) {
-          return d3.ascending(a.data.name, b.data.name);
-        }
-        // Sort by size within each time range
-        return b.value - a.value;
-      });
+      .sum(d => d.size); // Size based on transaction bytes
 
     treemap(root);
 
-    // Create color scale based on fee rate
+    // Create color scale for fees
     const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
       .domain([0, d3.max(validTransactions, d => d.fee)]);
 
@@ -123,18 +108,21 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .style("pointer-events", "none")
       .style("z-index", "1000");
 
-    // Add time range labels
-    svg.selectAll(".time-label")
+    // Add row labels with timing information
+    svg.selectAll(".row-label")
       .data(root.children)
       .enter()
       .append("text")
-      .attr("class", "time-label")
+      .attr("class", "row-label")
       .attr("x", d => d.x0)
-      .attr("y", d => d.y0 - 2)
-      .attr("text-anchor", "start")
-      .style("font-size", "12px")
+      .attr("y", d => d.y0 - 5)
+      .style("font-size", "10px")
       .style("fill", "white")
-      .text(d => d.data.name);
+      .text((d, i) => {
+        const minTime = Math.min(...d.leaves().map(leaf => leaf.data.duration));
+        const maxTime = Math.max(...d.leaves().map(leaf => leaf.data.duration));
+        return `${Math.floor(minTime/60)}-${Math.ceil(maxTime/60)} min`;
+      });
 
     // Add rectangles for each transaction
     const cell = svg.selectAll("g.cell")
@@ -194,14 +182,14 @@ const TransactionsTreeMap = ({ transactionData }) => {
   return (
     <div className="bg-gray-900 p-4 rounded-lg">
       <h3 className="text-xl font-semibold mb-4 text-center text-white">
-        Transaction Size Distribution by Confirmation Time
+        Transaction Distribution
       </h3>
       <div className="overflow-auto">
         <svg ref={svgRef} className="w-full" style={{ minWidth: '960px' }}></svg>
       </div>
       <div className="mt-4 text-center text-sm text-gray-400">
-        Hover over rectangles to see transaction details. Color intensity represents fee rate, size represents transaction size in bytes.
-        Transactions are grouped vertically by confirmation time (faster confirmations at top).
+        Hover over rectangles to see transaction details. Transactions are organized by confirmation time (faster at top).
+        Rectangle size represents transaction size in bytes, color intensity represents fee rate.
       </div>
     </div>
   );

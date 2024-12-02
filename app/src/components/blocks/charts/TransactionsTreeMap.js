@@ -55,8 +55,8 @@ const TransactionsTreeMap = ({ transactionData }) => {
 
     // Set up dimensions and create SVG
     const margin = { top: 10, right: 10, bottom: 10, left: 10 };
-    const width = 960 - margin.left - margin.right;
-    const height = 600 - margin.top - margin.bottom;
+    const width = svgRef.current.parentElement.offsetWidth - margin.left - margin.right;
+    const height = Math.min(600, width * 0.75);
 
     const svg = d3.select(svgRef.current)
       .attr("width", width + margin.left + margin.right)
@@ -83,7 +83,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
     treemap(root);
 
     // Create color scale based on confirmation duration
-    const colorScale = d3.scaleSequential(d3.interpolateReds)
+    const colorScale = d3.scaleSequential(d3.interpolateViridis)
       .domain([0, d3.max(validTransactions, d => d.duration || 0)]);
 
     // Create and configure tooltip
@@ -126,14 +126,24 @@ const TransactionsTreeMap = ({ transactionData }) => {
               <strong>Confirmation Time:</strong> ${d.data.confirmation_time}
             </div>
           `);
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style("stroke-width", "2px")
+          .style("opacity", 0.8);
       })
       .on("mousemove", (event) => {
         tooltip
           .style("top", (event.pageY - 10) + "px")
           .style("left", (event.pageX + 10) + "px");
       })
-      .on("mouseout", () => {
+      .on("mouseout", (event) => {
         tooltip.style("visibility", "hidden");
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style("stroke-width", "1px")
+          .style("opacity", 1);
       });
 
     // Add text labels to larger rectangles

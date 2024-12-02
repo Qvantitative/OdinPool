@@ -1,4 +1,5 @@
 // BlockDataTable.js
+
 import React, { useState, useEffect } from 'react';
 import Inscriptions from './Inscriptions';
 import Runes from './Runes';
@@ -10,6 +11,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
   const [transactionData, setTransactionData] = useState([]);
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState('inscriptions');
+  const [showTreeMap, setShowTreeMap] = useState(false); // New state for controlling TreeMap visibility
 
   const { block_height } = block || {};
 
@@ -29,6 +31,11 @@ const BlockDataTable = ({ block, onAddressClick }) => {
         }
         const transactionData = await transactionResponse.json();
         setTransactionData(transactionData);
+
+        // Add a slight delay before showing the TreeMap
+        setTimeout(() => {
+          setShowTreeMap(true);
+        }, 500); // Half second delay - adjust as needed
       } catch (err) {
         console.error(err);
         setError(err.message);
@@ -36,7 +43,21 @@ const BlockDataTable = ({ block, onAddressClick }) => {
     };
 
     fetchBlockDetails();
+    // Reset showTreeMap when block height changes
+    setShowTreeMap(false);
   }, [block_height]);
+
+  // Reset showTreeMap when section changes
+  useEffect(() => {
+    if (activeSection !== 'transactions') {
+      setShowTreeMap(false);
+    } else {
+      // When switching back to transactions, add a delay before showing TreeMap
+      setTimeout(() => {
+        setShowTreeMap(true);
+      }, 500);
+    }
+  }, [activeSection]);
 
   const handleSectionClick = (section) => {
     setActiveSection(section);
@@ -77,10 +98,12 @@ const BlockDataTable = ({ block, onAddressClick }) => {
 
       {activeSection === 'transactions' && transactionData.length > 0 && (
         <>
-          <TransactionsTreeMap transactionData={transactionData} />
-          <div className="mt-6">
-            <Transactions transactionData={transactionData} />
-          </div>
+          <Transactions transactionData={transactionData} />
+          {showTreeMap && (
+            <div className="mt-6">
+              <TransactionsTreeMap transactionData={transactionData} />
+            </div>
+          )}
         </>
       )}
 

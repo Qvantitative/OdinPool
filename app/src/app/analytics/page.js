@@ -23,6 +23,7 @@ import BlockDataTable from '../../components/blocks/BlockDataTable';
 import InscriptionsLatest from '../../components/blocks/InscriptionsLatest';
 import Wallet from '../../components/blocks/Wallet';
 import ProjectActivities from '../../components/blocks/charts/ProjectActivities';
+import Ord from '../../components/blocks/Ord';
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
 const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
@@ -474,7 +475,7 @@ const AnalyticsPage = () => {
         ) : selectedView === 'blocks' ? (
           <section>
             {/* Render the Blocks view */}
-            <BitcoinBlockTable />
+            <Ord />
           </section>
         ) : selectedView === 'transactions' ? (
           <section>

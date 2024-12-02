@@ -136,6 +136,8 @@ const BlockDataTable = ({ block, onAddressClick }) => {
         </button>
       </div>
 
+      {activeSection === 'transactions' && renderTransactionsSection()}
+
       {activeSection === 'inscriptions' && (
         <Inscriptions blockDetails={blockDetails} onAddressClick={onAddressClick} />
       )}
@@ -143,8 +145,6 @@ const BlockDataTable = ({ block, onAddressClick }) => {
       {activeSection === 'runes' && blockDetails && blockDetails.runes && (
         <Runes runes={blockDetails.runes} />
       )}
-
-      {activeSection === 'transactions' && renderTransactionsSection()}
 
       {error && <div className="text-red-500 mt-4">Error: {error}</div>}
     </div>

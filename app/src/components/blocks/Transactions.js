@@ -37,7 +37,6 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
   const totalPages = Math.ceil(transactionData.length / transactionsPerPage);
 
   useEffect(() => {
-    // Set initial loading to false once we have transaction data
     if (transactionData.length > 0) {
       setIsInitialLoading(false);
     }
@@ -48,21 +47,14 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
       try {
         setLoading(prev => ({ ...prev, [txid]: true }));
 
-        // Fetch transaction details including confirmation_duration
+        // Single API call to get transaction details
         const response = await fetch(`/api/transactions/${txid}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
 
-        // Add timing data if it exists
-        const timingResponse = await fetch(`/api/transaction-timing/${txid}`);
-        if (timingResponse.ok) {
-          const timingData = await timingResponse.json();
-          data.transaction.confirmation_duration = timingData.confirmation_duration;
-        }
-
+        // Set the detailed data
         setDetailedData(prev => ({ ...prev, [txid]: data }));
 
-        // Rest of your existing fetch logic...
       } catch (error) {
         console.error(`Error fetching details for ${txid}:`, error);
         setErrors(prev => ({ ...prev, [txid]: error.message }));
@@ -212,6 +204,7 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
 
     const inputs = txDetails?.inputs || tx.input || [];
     const outputs = txDetails?.outputs || tx.output || [];
+    const confirmationDuration = transaction.confirmation_duration;
 
     return (
       <div key={transaction.txid} className="bg-gray-900 p-4 rounded-lg shadow text-white relative">
@@ -235,6 +228,12 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
               <span className="text-gray-400">{transaction.size} bytes</span>
               <span className="text-gray-400">|</span>
               <span>{transaction.fee} sat/vB</span>
+              {confirmationDuration && (
+                <>
+                  <span className="text-gray-400">|</span>
+                  <span>{confirmationDuration.hours}h {confirmationDuration.minutes}m {confirmationDuration.seconds}s</span>
+                </>
+              )}
             </div>
             <div className="text-gray-400">
               = {(transaction.fee * transaction.size / 100000000).toFixed(8)} BTC

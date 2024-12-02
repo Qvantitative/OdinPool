@@ -1,4 +1,4 @@
-// app/components/blocks/TransactionDetails.js
+// app/components/blocks/TransactionDetails
 
 import React, { useState, useEffect } from 'react';
 
@@ -80,7 +80,7 @@ const TransactionDetails = ({ transactionId }) => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log('Transaction data:', data);
+        console.log('Transaction data:', data); // Add this line
         setTransactionData(data);
 
         // Reset states
@@ -172,20 +172,12 @@ const TransactionDetails = ({ transactionId }) => {
   if (!transactionData) return <div className="text-white">Loading...</div>;
 
   const { transaction, inputs, outputs } = transactionData;
-  const { confirmation_duration } = transaction;
 
   return (
     <div className="bg-gray-900 p-4 rounded-lg shadow text-white">
       <h2 className="text-lg font-bold mb-4 text-center break-all">
         {transaction.txid}
       </h2>
-
-      {confirmation_duration && (
-        <div className="text-center mb-4">
-          <span className="text-sm text-gray-400">Confirmation Duration: </span>
-          <span className="text-white">{confirmation_duration} seconds</span>
-        </div>
-      )}
 
       {runeData && (
         <div className="flex justify-center mb-4">
@@ -263,8 +255,7 @@ const TransactionDetails = ({ transactionId }) => {
                     )}
                   </div>
                 </li>
-              );
-            })}
+              )})}
           </ul>
         </div>
       </div>

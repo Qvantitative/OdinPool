@@ -17,37 +17,24 @@ const TransactionsTreeMap = ({ transactionData }) => {
     // Clear any existing SVG content
     d3.select(svgRef.current).selectAll("*").remove();
 
-    // Process and filter valid transactions
+    // Process and filter valid transactions with corrected confirmation_duration access
     const validTransactions = transactionData.map(tx => ({
       txid: tx.txid,
       size: tx.size || 0,
       duration: tx.confirmation_duration?.seconds ||
                 (tx.confirmation_duration?.minutes * 60) ||
                 (tx.confirmation_duration?.hours * 3600) || 0,
-      fee: parseFloat(tx.fee) || 0,
+      value: tx.size || 0,
       block_height: tx.block_height,
       total_input_value: tx.total_input_value,
       total_output_value: tx.total_output_value,
+      fee: tx.fee,
       confirmation_time: tx.confirmation_duration ?
         `${tx.confirmation_duration.hours || 0}h ${tx.confirmation_duration.minutes || 0}m ${tx.confirmation_duration.seconds || 0}s` :
         'Pending'
     })).filter(tx => tx.size > 0);
 
-    // Sort transactions by duration (descending) and split into rows
-    const numRows = 10; // Number of vertical sections
-    validTransactions.sort((a, b) => a.duration - b.duration);
-
-    const transactionsPerRow = Math.ceil(validTransactions.length / numRows);
-    const rows = Array.from({ length: numRows }, (_, i) => ({
-      name: `row-${i}`,
-      children: validTransactions.slice(i * transactionsPerRow, (i + 1) * transactionsPerRow)
-    }));
-
-    // Create hierarchical data structure
-    const data = {
-      name: "Transactions",
-      children: rows
-    };
+    console.log('Processed transactions:', validTransactions);
 
     if (validTransactions.length === 0) {
       const svg = d3.select(svgRef.current)
@@ -77,22 +64,27 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Create treemap layout with fixed row heights
+    // Create hierarchical data structure
+    const data = {
+      name: "Transactions",
+      children: validTransactions
+    };
+
+    // Create treemap layout
     const treemap = d3.treemap()
       .size([width, height])
-      .paddingOuter(3)
-      .paddingTop(20)
-      .paddingInner(2)
+      .padding(1)
       .round(true);
 
     const root = d3.hierarchy(data)
-      .sum(d => d.size); // Size based on transaction bytes
+      .sum(d => d.size)
+      .sort((a, b) => b.value - a.value);
 
     treemap(root);
 
-    // Create color scale for fees
-    const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
-      .domain([0, d3.max(validTransactions, d => d.fee)]);
+    // Create color scale based on confirmation duration
+    const colorScale = d3.scaleSequential(d3.interpolateReds)
+      .domain([0, d3.max(validTransactions, d => d.duration || 0)]);
 
     // Create and configure tooltip
     const tooltip = d3.select("body").append("div")
@@ -108,33 +100,16 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .style("pointer-events", "none")
       .style("z-index", "1000");
 
-    // Add row labels with timing information
-    svg.selectAll(".row-label")
-      .data(root.children)
-      .enter()
-      .append("text")
-      .attr("class", "row-label")
-      .attr("x", d => d.x0)
-      .attr("y", d => d.y0 - 5)
-      .style("font-size", "10px")
-      .style("fill", "white")
-      .text((d, i) => {
-        const minTime = Math.min(...d.leaves().map(leaf => leaf.data.duration));
-        const maxTime = Math.max(...d.leaves().map(leaf => leaf.data.duration));
-        return `${Math.floor(minTime/60)}-${Math.ceil(maxTime/60)} min`;
-      });
-
     // Add rectangles for each transaction
-    const cell = svg.selectAll("g.cell")
+    const cell = svg.selectAll("g")
       .data(root.leaves())
       .enter().append("g")
-      .attr("class", "cell")
       .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
     cell.append("rect")
       .attr("width", d => Math.max(0, d.x1 - d.x0))
       .attr("height", d => Math.max(0, d.y1 - d.y0))
-      .style("fill", d => colorScale(d.data.fee))
+      .style("fill", d => colorScale(d.data.duration))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
       .on("mouseover", (event, d) => {
@@ -182,14 +157,13 @@ const TransactionsTreeMap = ({ transactionData }) => {
   return (
     <div className="bg-gray-900 p-4 rounded-lg">
       <h3 className="text-xl font-semibold mb-4 text-center text-white">
-        Transaction Distribution
+        Transaction Size Distribution
       </h3>
       <div className="overflow-auto">
         <svg ref={svgRef} className="w-full" style={{ minWidth: '960px' }}></svg>
       </div>
       <div className="mt-4 text-center text-sm text-gray-400">
-        Hover over rectangles to see transaction details. Transactions are organized by confirmation time (faster at top).
-        Rectangle size represents transaction size in bytes, color intensity represents fee rate.
+        Hover over rectangles to see transaction details. Color intensity represents confirmation duration, size represents transaction size in bytes.
       </div>
     </div>
   );

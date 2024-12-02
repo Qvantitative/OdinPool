@@ -29,7 +29,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
       fee: tx.fee
     })).filter(tx => tx.size > 0); // Filter out any invalid transactions
 
-    //console.log('Processed transactions:', validTransactions);
+    console.log('Processed transactions:', validTransactions);
 
     if (validTransactions.length === 0) {
       // Display a message when no valid data is available

@@ -28,7 +28,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
       block_height: tx.block_height,
       total_input_value: tx.total_input_value,
       total_output_value: tx.total_output_value,
-      fee: tx.fee,
+      fee: tx.fee || 0,
       confirmation_time: tx.confirmation_duration ?
         `${tx.confirmation_duration.hours || 0}h ${tx.confirmation_duration.minutes || 0}m ${tx.confirmation_duration.seconds || 0}s` :
         'Pending'
@@ -70,21 +70,22 @@ const TransactionsTreeMap = ({ transactionData }) => {
       children: validTransactions
     };
 
-    // Create treemap layout
+    // Create treemap layout with horizontal slicing
     const treemap = d3.treemap()
+      .tile(d3.treemapSlice) // Use horizontal slicing
       .size([width, height])
       .padding(1)
       .round(true);
 
     const root = d3.hierarchy(data)
       .sum(d => d.size)
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => a.data.duration - b.data.duration); // Sort by duration ascending
 
     treemap(root);
 
-    // Create color scale based on confirmation duration
-    const colorScale = d3.scaleSequential(d3.interpolateReds)
-      .domain([0, d3.max(validTransactions, d => d.duration || 0)]);
+    // Create color scale based on fee
+    const colorScale = d3.scaleSequential(d3.interpolateBlues)
+      .domain([0, d3.max(validTransactions, d => d.fee || 0)]);
 
     // Create and configure tooltip
     const tooltip = d3.select("body").append("div")
@@ -109,13 +110,13 @@ const TransactionsTreeMap = ({ transactionData }) => {
     cell.append("rect")
       .attr("width", d => Math.max(0, d.x1 - d.x0))
       .attr("height", d => Math.max(0, d.y1 - d.y0))
-      .style("fill", d => colorScale(d.data.duration))
+      .style("fill", d => colorScale(d.data.fee))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
       .on("mouseover", (event, d) => {
         tooltip.style("visibility", "visible")
-          .html(`
-            <div>
+          .html(
+            `<div>
               <strong>Transaction ID:</strong><br/>
               <span style="font-size: 10px;">${d.data.txid}</span><br/>
               <strong>Block Height:</strong> ${d.data.block_height}<br/>
@@ -124,8 +125,8 @@ const TransactionsTreeMap = ({ transactionData }) => {
               <strong>Input:</strong> ${d.data.total_input_value} BTC<br/>
               <strong>Output:</strong> ${d.data.total_output_value} BTC<br/>
               <strong>Confirmation Time:</strong> ${d.data.confirmation_time}
-            </div>
-          `);
+            </div>`
+          );
       })
       .on("mousemove", (event) => {
         tooltip
@@ -163,7 +164,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
         <svg ref={svgRef} className="w-full" style={{ minWidth: '960px' }}></svg>
       </div>
       <div className="mt-4 text-center text-sm text-gray-400">
-        Hover over rectangles to see transaction details. Color intensity represents confirmation duration, size represents transaction size in bytes.
+        Hover over rectangles to see transaction details. Color intensity represents fee size, size represents transaction size in bytes.
       </div>
     </div>
   );

@@ -17,22 +17,26 @@ const TransactionsTreeMap = ({ transactionData }) => {
     // Clear any existing SVG content
     d3.select(svgRef.current).selectAll("*").remove();
 
-    // Process and filter valid transactions
+    // Process and filter valid transactions with corrected confirmation_duration access
     const validTransactions = transactionData.map(tx => ({
       txid: tx.txid,
       size: tx.size || 0,
-      duration: tx.transaction?.confirmation_duration || 0, // Handle nested structure
+      duration: tx.confirmation_duration?.seconds ||
+                (tx.confirmation_duration?.minutes * 60) ||
+                (tx.confirmation_duration?.hours * 3600) || 0,
       value: tx.size || 0,
       block_height: tx.block_height,
       total_input_value: tx.total_input_value,
       total_output_value: tx.total_output_value,
-      fee: tx.fee
-    })).filter(tx => tx.size > 0); // Filter out any invalid transactions
+      fee: tx.fee,
+      confirmation_time: tx.confirmation_duration ?
+        `${tx.confirmation_duration.hours || 0}h ${tx.confirmation_duration.minutes || 0}m ${tx.confirmation_duration.seconds || 0}s` :
+        'Pending'
+    })).filter(tx => tx.size > 0);
 
     console.log('Processed transactions:', validTransactions);
 
     if (validTransactions.length === 0) {
-      // Display a message when no valid data is available
       const svg = d3.select(svgRef.current)
         .attr("width", 960)
         .attr("height", 600);
@@ -78,9 +82,9 @@ const TransactionsTreeMap = ({ transactionData }) => {
 
     treemap(root);
 
-    // Create color scale based on sizes initially
+    // Create color scale based on confirmation duration
     const colorScale = d3.scaleSequential(d3.interpolateReds)
-      .domain([0, d3.max(validTransactions, d => d.size)]);
+      .domain([0, d3.max(validTransactions, d => d.duration || 0)]);
 
     // Create and configure tooltip
     const tooltip = d3.select("body").append("div")
@@ -105,7 +109,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
     cell.append("rect")
       .attr("width", d => Math.max(0, d.x1 - d.x0))
       .attr("height", d => Math.max(0, d.y1 - d.y0))
-      .style("fill", d => colorScale(d.data.size))
+      .style("fill", d => colorScale(d.data.duration))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
       .on("mouseover", (event, d) => {
@@ -118,7 +122,8 @@ const TransactionsTreeMap = ({ transactionData }) => {
               <strong>Size:</strong> ${d.data.size} bytes<br/>
               <strong>Fee:</strong> ${d.data.fee} sat/vB<br/>
               <strong>Input:</strong> ${d.data.total_input_value} BTC<br/>
-              <strong>Output:</strong> ${d.data.total_output_value} BTC
+              <strong>Output:</strong> ${d.data.total_output_value} BTC<br/>
+              <strong>Confirmation Time:</strong> ${d.data.confirmation_time}
             </div>
           `);
       })
@@ -158,7 +163,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
         <svg ref={svgRef} className="w-full" style={{ minWidth: '960px' }}></svg>
       </div>
       <div className="mt-4 text-center text-sm text-gray-400">
-        Hover over rectangles to see transaction details. Color and size represent transaction size in bytes.
+        Hover over rectangles to see transaction details. Color intensity represents confirmation duration, size represents transaction size in bytes.
       </div>
     </div>
   );

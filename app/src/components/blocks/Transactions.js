@@ -52,7 +52,6 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
         const response = await fetch(`/api/transactions/${transactionId}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        console.log("Transactions:", data)
 
         // Set the detailed data
         setDetailedData(prev => ({ ...prev, [transactionId]: data }));

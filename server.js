@@ -737,7 +737,11 @@ app.get('/api/transactions', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT * FROM transactions WHERE block_height = $1 ORDER BY created_at DESC',
+      `SELECT t.*, tt.confirmation_duration
+       FROM transactions t
+       LEFT JOIN transaction_timing tt ON t.txid = tt.txid
+       WHERE t.block_height = $1
+       ORDER BY t.created_at DESC`,
       [block_height]
     );
     res.json(result.rows);

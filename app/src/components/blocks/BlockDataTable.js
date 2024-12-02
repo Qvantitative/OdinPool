@@ -55,6 +55,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
           throw new Error(`Failed to fetch transactions: ${transactionResponse.statusText}`);
         }
         const transactionData = await transactionResponse.json();
+        console.log("Transaction Data", transactionData)
         setTransactionData(transactionData);
 
         if (activeSection === 'transactions') {

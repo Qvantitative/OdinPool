@@ -11,7 +11,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
   const [transactionData, setTransactionData] = useState([]);
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState('inscriptions');
-  const [showTreeMap, setShowTreeMap] = useState(false); // New state for controlling TreeMap visibility
+  const [showTreeMap, setShowTreeMap] = useState(false);
 
   const { block_height } = block || {};
 
@@ -35,7 +35,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
         // Add a slight delay before showing the TreeMap
         setTimeout(() => {
           setShowTreeMap(true);
-        }, 500); // Half second delay - adjust as needed
+        }, 500);
       } catch (err) {
         console.error(err);
         setError(err.message);
@@ -43,16 +43,13 @@ const BlockDataTable = ({ block, onAddressClick }) => {
     };
 
     fetchBlockDetails();
-    // Reset showTreeMap when block height changes
     setShowTreeMap(false);
   }, [block_height]);
 
-  // Reset showTreeMap when section changes
   useEffect(() => {
     if (activeSection !== 'transactions') {
       setShowTreeMap(false);
     } else {
-      // When switching back to transactions, add a delay before showing TreeMap
       setTimeout(() => {
         setShowTreeMap(true);
       }, 500);
@@ -61,6 +58,21 @@ const BlockDataTable = ({ block, onAddressClick }) => {
 
   const handleSectionClick = (section) => {
     setActiveSection(section);
+  };
+
+  const renderTransactionsSection = () => {
+    if (!transactionData.length) return null;
+
+    return (
+      <div className="space-y-6">
+        <div className={`transition-opacity duration-500 ${showTreeMap ? 'opacity-100' : 'opacity-0'}`}>
+          {showTreeMap && <TransactionsTreeMap transactionData={transactionData} />}
+        </div>
+        <div className="mt-6">
+          <Transactions transactionData={transactionData} />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -96,16 +108,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
         <Runes runes={blockDetails.runes} />
       )}
 
-      {activeSection === 'transactions' && transactionData.length > 0 && (
-        <>
-          <Transactions transactionData={transactionData} />
-          {showTreeMap && (
-            <div className="mt-6">
-              <TransactionsTreeMap transactionData={transactionData} />
-            </div>
-          )}
-        </>
-      )}
+      {activeSection === 'transactions' && renderTransactionsSection()}
 
       {error && <div className="text-red-500 mt-4">Error: {error}</div>}
     </div>

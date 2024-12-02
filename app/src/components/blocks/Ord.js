@@ -23,13 +23,12 @@ const Ord = () => {
     return Array.from(inscriptionElements).map(element => {
       const href = element.getAttribute('href');
       const inscriptionId = href.replace('/inscription/', '');
-      // Get the short ID for preview URL
-      const shortId = inscriptionId.substring(0, 10);
+      const iframe = element.querySelector('iframe');
+      const previewSrc = iframe?.getAttribute('src');
 
       return {
         id: inscriptionId,
-        previewUrl: `/preview/${shortId}`,
-        shortId
+        previewUrl: previewSrc ? `/${previewSrc}` : null
       };
     });
   };
@@ -45,7 +44,6 @@ const Ord = () => {
       });
 
       const parsedInscriptions = parseInscriptionsFromHTML(response.data);
-      console.log('Parsed inscriptions:', parsedInscriptions);
       setInscriptionsList(parsedInscriptions);
     } catch (err) {
       console.error('Error fetching latest inscriptions:', err);
@@ -101,13 +99,9 @@ const Ord = () => {
                 {inscription.previewUrl ? (
                   <img
                     src={inscription.previewUrl}
-                    alt={`Inscription ${inscription.shortId}`}
+                    alt={`Inscription ${inscription.id}`}
                     className="w-full h-full object-cover"
                     loading="lazy"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = `/preview/${inscription.shortId}`;
-                    }}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full p-4 text-gray-400">
@@ -121,7 +115,7 @@ const Ord = () => {
                 <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <div className="text-white text-center p-4">
                     <p className="text-sm font-medium">
-                      #{inscription.shortId}...
+                      #{inscription.id.slice(0, 8)}...
                     </p>
                   </div>
                 </div>

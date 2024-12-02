@@ -18,29 +18,27 @@ const Ord = () => {
 
   const fetchInscriptionContent = async (inscriptionId) => {
     try {
-      // Fetch inscription details
       const detailsResponse = await axiosInstance.get(`/inscription/${inscriptionId}`);
       const details = detailsResponse.data;
 
-      // Fetch the content
       const contentResponse = await axiosInstance.get(`/content/${inscriptionId}`, {
         responseType: 'blob',
       });
 
       const contentType = contentResponse.headers['content-type'];
 
-      // Handle different content types
       if (contentType.startsWith('image/')) {
         let imageUrl;
         if (contentType === 'image/svg+xml') {
-          // Handle SVG content
-          const svgText = await contentResponse.data.text();
+          const reader = new FileReader();
+          reader.readAsText(contentResponse.data);
+          const svgText = await new Promise(resolve => {
+            reader.onload = () => resolve(reader.result);
+          });
           const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
           imageUrl = URL.createObjectURL(svgBlob);
         } else {
-          // Handle other images
-          const blob = new Blob([contentResponse.data]);
-          imageUrl = URL.createObjectURL(blob);
+          imageUrl = URL.createObjectURL(contentResponse.data);
         }
 
         setInscriptions(prev => ({
@@ -53,8 +51,11 @@ const Ord = () => {
           }
         }));
       } else if (contentType.startsWith('text/')) {
-        // Handle text content
-        const textContent = await contentResponse.data.text();
+        const reader = new FileReader();
+        reader.readAsText(contentResponse.data);
+        const textContent = await new Promise(resolve => {
+          reader.onload = () => resolve(reader.result);
+        });
         setInscriptions(prev => ({
           ...prev,
           [inscriptionId]: {
@@ -65,7 +66,6 @@ const Ord = () => {
           }
         }));
       } else {
-        // Handle unsupported content
         setInscriptions(prev => ({
           ...prev,
           [inscriptionId]: {
@@ -91,11 +91,28 @@ const Ord = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get('/');
-      setInscriptionsList(response.data);
 
-      // Fetch content for each inscription
-      await Promise.all(response.data.map(inscription =>
-        fetchInscriptionContent(inscription.id)
+      let inscriptions = [];
+      if (response.data && typeof response.data === 'object') {
+        if (Array.isArray(response.data.inscriptions)) {
+          inscriptions = response.data.inscriptions;
+        } else if (Array.isArray(response.data)) {
+          inscriptions = response.data;
+        } else {
+          const extractedInscriptions = Object.values(response.data).filter(item =>
+            item && (item.id || item.inscription_id)
+          );
+          if (extractedInscriptions.length > 0) {
+            inscriptions = extractedInscriptions;
+          } else {
+            throw new Error('Invalid response format: No inscription data found');
+          }
+        }
+      }
+
+      setInscriptionsList(inscriptions);
+      await Promise.all(inscriptions.map(inscription =>
+        fetchInscriptionContent(inscription.id || inscription.inscription_id)
       ));
     } catch (err) {
       console.error('Error fetching latest inscriptions:', err);
@@ -111,7 +128,6 @@ const Ord = () => {
     const pollInterval = setInterval(fetchLatestInscriptions, 30000);
     return () => {
       clearInterval(pollInterval);
-      // Cleanup URLs
       Object.values(inscriptions).forEach(inscription => {
         if (inscription.type === 'image' && inscription.url) {
           URL.revokeObjectURL(inscription.url);
@@ -200,23 +216,23 @@ const Ord = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {inscriptionsList.map((inscription) => (
             <div
-              key={inscription.id}
+              key={inscription.id || inscription.inscription_id}
               className="relative group cursor-pointer"
-              onClick={() => handleInscriptionClick(inscription.id)}
+              onClick={() => handleInscriptionClick(inscription.id || inscription.inscription_id)}
             >
               <div className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
-                {renderInscriptionContent(inscription, inscriptions[inscription.id])}
+                {renderInscriptionContent(inscription, inscriptions[inscription.id || inscription.inscription_id])}
 
                 <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <div className="text-white text-center p-4">
                     <p className="text-sm font-medium mb-2">
-                      #{inscription.number}
+                      #{inscription.number || 'Unknown'}
                     </p>
                     {inscriptions[inscription.id]?.rune && (
                       <p className="text-xs mb-1">{inscriptions[inscription.id].rune}</p>
                     )}
                     <p className="text-xs opacity-75">
-                      {inscriptions[inscription.id]?.details?.content_type || 'Loading...'}
+                      {inscriptions[inscription.id || inscription.inscription_id]?.details?.content_type || 'Loading...'}
                     </p>
                   </div>
                 </div>

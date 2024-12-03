@@ -751,31 +751,6 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-app.get('/transaction-timing', async (req, res) => {
-  try {
-      const query = `
-          SELECT *
-          FROM transaction_timing
-          ORDER BY mempool_time ASC
-          LIMIT 10
-      `;
-
-      const result = await pool.query(query);
-
-      res.status(200).json({
-          success: true,
-          count: result.rows.length,
-          data: result.rows
-      });
-  } catch (error) {
-      res.status(500).json({
-          success: false,
-          error: 'Error fetching transaction timing data',
-          details: error.message
-      });
-  }
-});
-
 app.get('/api/transaction-timing', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;  // Default limit of 10 entries

@@ -477,7 +477,7 @@ const AnalyticsPage = () => {
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column: MempoolTreeMap */}
             <div className="bg-gray-800 rounded-lg p-4 h-full">
-              <MempoolTreeMap transactions={blockData.flatMap(block => block.transactions || [])} />
+              <MempoolTreeMap transactionData={blockData.flatMap(block => block.transactions || [])} />
             </div>
 
             {/* Right Column: Ord */}

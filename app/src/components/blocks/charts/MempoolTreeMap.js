@@ -3,11 +3,11 @@
 import React, { useMemo } from 'react';
 import { TreeMap, ResponsiveContainer } from 'recharts';
 
-const MempoolTreeMap = ({ transactions }) => {
+const MempoolTreeMap = ({ transactionData }) => {
   const mempoolData = useMemo(() => {
-    if (!transactions) return [];
+    if (!transactionData) return [];
 
-    const unconfirmedTxs = transactions.filter(tx =>
+    const unconfirmedTxs = transactionData.filter(tx =>
       tx.mempool_time && !tx.confirmation_duration
     );
 
@@ -22,7 +22,7 @@ const MempoolTreeMap = ({ transactions }) => {
         value: tx.total_input_value
       }))
     }];
-  }, [transactions]);
+  }, [transactionData]);
 
   const CustomContent = ({ root, depth, x, y, width, height, name, fullTxid, mempoolTime, fee, value }) => {
     if (depth === 1 && width > 50 && height > 50) {

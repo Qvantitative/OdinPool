@@ -475,7 +475,7 @@ const AnalyticsPage = () => {
         ) : selectedView === 'blocks' ? (
           <section>
             {/* Render the Blocks view */}
-            <BitcoinBlockTable />
+            <Ord />
           </section>
         ) : selectedView === 'transactions' ? (
           <section>

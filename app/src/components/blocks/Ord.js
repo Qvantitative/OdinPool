@@ -26,6 +26,7 @@ const Ord = () => {
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedInscription, setSelectedInscription] = useState(null);
 
   const parseInscriptionsFromHTML = (htmlString) => {
     const parser = new DOMParser();
@@ -46,7 +47,10 @@ const Ord = () => {
       });
 
       const imageUrl = URL.createObjectURL(contentResponse.data);
-      return imageUrl;
+      return {
+        url: imageUrl,
+        blob: contentResponse.data
+      };
     } catch (error) {
       console.error(`Error fetching content for inscription ${inscriptionId}:`, error);
       return null;
@@ -65,13 +69,13 @@ const Ord = () => {
 
       const parsedInscriptions = parseInscriptionsFromHTML(response.data);
 
-      // Fetch content for each inscription
       const inscriptionsWithContent = await Promise.all(
         parsedInscriptions.map(async (inscription) => {
-          const previewUrl = await fetchInscriptionContent(inscription.id);
+          const content = await fetchInscriptionContent(inscription.id);
           return {
             ...inscription,
-            previewUrl
+            previewUrl: content?.url,
+            contentBlob: content?.blob
           };
         })
       );
@@ -82,6 +86,28 @@ const Ord = () => {
       setError('Failed to load latest inscriptions');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleInscriptionClick = async (inscriptionId, inscriptionData) => {
+    console.log('Inscription ID:', inscriptionId);
+    console.log('Inscription Data:', inscriptionData);
+
+    try {
+      const response = await axiosInstance.get(`/inscription/${inscriptionId}`, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('API Response:', response.data);
+
+      setSelectedInscription({
+        ...response.data,
+        inscriptionData, // This contains the image or content data
+      });
+    } catch (error) {
+      console.error('Error fetching inscription data:', error);
     }
   };
 
@@ -98,10 +124,6 @@ const Ord = () => {
       });
     };
   }, []);
-
-  const handleInscriptionClick = (id) => {
-    window.open(`/inscription/${id}`, '_blank');
-  };
 
   if (error) {
     return (
@@ -133,7 +155,10 @@ const Ord = () => {
             <div
               key={inscription.id}
               className="relative group cursor-pointer"
-              onClick={() => handleInscriptionClick(inscription.id)}
+              onClick={() => handleInscriptionClick(inscription.id, {
+                previewUrl: inscription.previewUrl,
+                contentBlob: inscription.contentBlob
+              })}
             >
               <div className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
                 {inscription.previewUrl ? (
@@ -162,6 +187,23 @@ const Ord = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedInscription && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
+            <h2 className="text-2xl font-bold text-white mb-4">
+              Inscription #{selectedInscription.id}
+            </h2>
+            {/* Add more details as needed based on the inscription data */}
+            <button
+              onClick={() => setSelectedInscription(null)}
+              className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>

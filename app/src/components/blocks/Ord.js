@@ -20,6 +20,9 @@ const Ord = () => {
     const doc = parser.parseFromString(htmlString, 'text/html');
     const inscriptionElements = doc.querySelectorAll('a[href^="/inscription/"]');
 
+    // Get the current domain
+    const domain = window.location.origin;
+
     return Array.from(inscriptionElements).map(element => {
       const href = element.getAttribute('href');
       const inscriptionId = href.replace('/inscription/', '');
@@ -28,7 +31,8 @@ const Ord = () => {
 
       return {
         id: inscriptionId,
-        previewUrl: previewSrc ? `/${previewSrc}` : null
+        // Construct full URL using domain if preview source exists
+        previewUrl: previewSrc ? `${domain}${previewSrc}` : null
       };
     });
   };

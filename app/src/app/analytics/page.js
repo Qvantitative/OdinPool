@@ -24,6 +24,7 @@ import InscriptionsLatest from '../../components/blocks/InscriptionsLatest';
 import Wallet from '../../components/blocks/Wallet';
 import ProjectActivities from '../../components/blocks/charts/ProjectActivities';
 import Ord from '../../components/blocks/Ord';
+import MempoolTreeMap from '../../components/blocks/charts/MempoolTreeMap';
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
 const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
@@ -473,9 +474,16 @@ const AnalyticsPage = () => {
             />
           </section>
         ) : selectedView === 'mempool' ? (
-          <section>
-            {/* Render the Blocks view */}
-            <Ord />
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column: MempoolTreeMap */}
+            <div className="bg-gray-800 rounded-lg p-4 h-full">
+              <MempoolTreeMap transactions={blockData.flatMap(block => block.transactions || [])} />
+            </div>
+
+            {/* Right Column: Ord */}
+            <div className="bg-gray-800 rounded-lg p-4 h-full">
+              <Ord />
+            </div>
           </section>
         ) : selectedView === 'transactions' ? (
           <section>

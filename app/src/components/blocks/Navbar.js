@@ -21,11 +21,11 @@ const AnalyticsLogo = ({ width = 24, height = 24, className = '' }) => (
 );
 
 const Navbar = ({
-  onShowBlocks,
+  onShowMempool,
   onShowTransactions,
   onShowAnalytics,
   onShowBubbleMap,
-  onShowTrendingCollections, // Add this line
+  onShowTrendingCollections,
   selectedView,
   onSearch,
 }) => {
@@ -40,7 +40,7 @@ const Navbar = ({
     if (onSearch) {
       onSearch({
         type: searchType,
-        value: searchInput.trim()
+        value: searchInput.trim(),
       });
     }
     setSearchInput('');
@@ -49,29 +49,29 @@ const Navbar = ({
 
   const navItems = [
     {
-      label: 'Blocks',
+      label: 'Mempool',
       icon: <Database className="w-5 h-5" />,
-      onClick: onShowBlocks,
-      active: selectedView === 'blocks'
+      onClick: onShowMempool,
+      active: selectedView === 'mempool',
     },
     {
       label: 'Trending Collections',
       icon: <BarChart2 className="w-5 h-5" />,
       onClick: onShowTrendingCollections,
-      active: selectedView === 'trendingCollections'
+      active: selectedView === 'trendingCollections',
     },
     {
       label: 'Analytics',
       icon: <LineChart className="w-5 h-5" />,
       onClick: onShowAnalytics,
-      active: selectedView === 'analytics'
+      active: selectedView === 'analytics',
     },
     {
       label: 'Bubble Map',
       icon: <CircleDot className="w-5 h-5" />,
       onClick: onShowBubbleMap,
-      active: selectedView === 'bubbleMap'
-    }
+      active: selectedView === 'bubbleMap',
+    },
   ];
 
   return (

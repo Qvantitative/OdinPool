@@ -10,6 +10,18 @@ const axiosInstance = axios.create({
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
+const fetchWithRetry = async (url, options = {}, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axiosInstance.get(url, options);
+      return response;
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+};
+
 const Ord = () => {
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,21 +32,25 @@ const Ord = () => {
     const doc = parser.parseFromString(htmlString, 'text/html');
     const inscriptionElements = doc.querySelectorAll('a[href^="/inscription/"]');
 
-    // Get the current domain
-    const domain = window.location.origin;
-
     return Array.from(inscriptionElements).map(element => {
       const href = element.getAttribute('href');
       const inscriptionId = href.replace('/inscription/', '');
-      const iframe = element.querySelector('iframe');
-      const previewSrc = iframe?.getAttribute('src');
-
-      return {
-        id: inscriptionId,
-        // Construct full URL using domain if preview source exists
-        previewUrl: previewSrc ? `${domain}${previewSrc}` : null
-      };
+      return { id: inscriptionId };
     });
+  };
+
+  const fetchInscriptionContent = async (inscriptionId) => {
+    try {
+      const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, {
+        responseType: 'blob',
+      });
+
+      const imageUrl = URL.createObjectURL(contentResponse.data);
+      return imageUrl;
+    } catch (error) {
+      console.error(`Error fetching content for inscription ${inscriptionId}:`, error);
+      return null;
+    }
   };
 
   const fetchLatestInscriptions = async () => {
@@ -48,7 +64,19 @@ const Ord = () => {
       });
 
       const parsedInscriptions = parseInscriptionsFromHTML(response.data);
-      setInscriptionsList(parsedInscriptions);
+
+      // Fetch content for each inscription
+      const inscriptionsWithContent = await Promise.all(
+        parsedInscriptions.map(async (inscription) => {
+          const previewUrl = await fetchInscriptionContent(inscription.id);
+          return {
+            ...inscription,
+            previewUrl
+          };
+        })
+      );
+
+      setInscriptionsList(inscriptionsWithContent);
     } catch (err) {
       console.error('Error fetching latest inscriptions:', err);
       setError('Failed to load latest inscriptions');
@@ -60,7 +88,15 @@ const Ord = () => {
   useEffect(() => {
     fetchLatestInscriptions();
     const pollInterval = setInterval(fetchLatestInscriptions, 30000);
-    return () => clearInterval(pollInterval);
+    return () => {
+      clearInterval(pollInterval);
+      // Cleanup object URLs to prevent memory leaks
+      inscriptionsList.forEach(inscription => {
+        if (inscription.previewUrl) {
+          URL.revokeObjectURL(inscription.previewUrl);
+        }
+      });
+    };
   }, []);
 
   const handleInscriptionClick = (id) => {

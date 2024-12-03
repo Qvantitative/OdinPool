@@ -39,7 +39,7 @@ const AnalyticsPage = () => {
   const [selectedTableCard, setSelectedTableCard] = useState('BitcoinBlockTable');
   const [searchType, setSearchType] = useState('Transaction ID');
   const [selectedBlock, setSelectedBlock] = useState(null);
-  const [selectedView, setSelectedView] = useState('blocks');
+  const [selectedView, setSelectedView] = useState('mempool');
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [showBubbleChart, setShowBubbleChart] = useState(false);
   const [projectRankings, setProjectRankings] = useState([]);
@@ -334,7 +334,7 @@ const AnalyticsPage = () => {
   };
 
   const handleShowBlocks = () => {
-    setSelectedView('blocks');
+    setSelectedView('mempool');
     setShowBubbleChart(false); // Add this line
   };
 
@@ -375,7 +375,7 @@ const AnalyticsPage = () => {
   return (
     <div className="bg-gray min-h-screen relative">
       <Navbar
-        onShowBlocks={handleShowBlocks}
+        onShowMempool={handleShowMempool}
         onShowTransactions={handleShowTransactions}
         onShowAnalytics={handleShowAnalytics}
         onShowBubbleMap={handleShowBubbleChart}
@@ -472,7 +472,7 @@ const AnalyticsPage = () => {
               onAddressClick={handleAddressClick}
             />
           </section>
-        ) : selectedView === 'blocks' ? (
+        ) : selectedView === 'mempool' ? (
           <section>
             {/* Render the Blocks view */}
             <Ord />
@@ -553,10 +553,10 @@ const AnalyticsPage = () => {
               <h2 className="text-2xl font-semibold text-white mb-4">No View Selected</h2>
               <p className="text-gray-300 mb-4">Please select a view from the navigation bar above.</p>
               <button
-                onClick={() => setSelectedView('blocks')}
+                onClick={() => setSelectedView('mempool')}
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
               >
-                View Blocks
+                View Mempool
               </button>
             </div>
           </section>

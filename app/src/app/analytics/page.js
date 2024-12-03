@@ -333,9 +333,9 @@ const AnalyticsPage = () => {
     });
   };
 
-  const handleShowBlocks = () => {
+  const handleShowMempool = () => {
     setSelectedView('mempool');
-    setShowBubbleChart(false); // Add this line
+    setShowBubbleChart(false);
   };
 
   const handleShowTransactions = () => setSelectedView('transactions');

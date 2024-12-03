@@ -7,15 +7,30 @@ const MempoolTreeMap = ({ transactionData }) => {
   const mempoolData = useMemo(() => {
     if (!transactionData) return [];
 
-    const unconfirmedTxs = transactionData.filter(tx =>
-      tx.mempool_time && !tx.confirmation_duration
+    // Process and filter for unconfirmed transactions
+    const validTransactions = transactionData.map(tx => ({
+      txid: tx.txid,
+      size: tx.size || 0,
+      value: tx.size || 0,
+      block_height: tx.block_height,
+      total_input_value: tx.total_input_value || 0,
+      total_output_value: tx.total_output_value || 0,
+      fee: tx.fee || 0,
+      mempool_time: tx.mempool_time,
+      confirmation_duration: tx.confirmation_duration
+    })).filter(tx =>
+      tx.size > 0 &&
+      tx.mempool_time &&
+      !tx.confirmation_duration
     );
+
+    console.log('Processed mempool transactions:', validTransactions);
 
     return [{
       name: 'Mempool',
-      children: unconfirmedTxs.map(tx => ({
+      children: validTransactions.map(tx => ({
         name: tx.txid.substring(0, 8) + '...',
-        size: parseFloat(tx.total_input_value) || 0,
+        size: tx.size,
         fullTxid: tx.txid,
         mempoolTime: tx.mempool_time,
         fee: tx.fee,

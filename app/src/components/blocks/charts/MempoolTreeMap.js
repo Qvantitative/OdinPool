@@ -8,38 +8,36 @@ const MempoolTreeMap = ({ transactionData }) => {
     if (!transactionData) return [];
 
     // Process and filter for unconfirmed transactions
-    const validTransactions = transactionData.map(tx => ({
+    const unconfirmedTxs = transactionData.map(tx => ({
       txid: tx.txid,
       size: tx.size || 0,
-      value: tx.size || 0,
       block_height: tx.block_height,
       total_input_value: tx.total_input_value || 0,
       total_output_value: tx.total_output_value || 0,
       fee: tx.fee || 0,
-      mempool_time: tx.mempool_time,
-      confirmation_duration: tx.confirmation_duration
+      value: tx.value || 0,
+      confirmation_time: tx.confirmation_time
     })).filter(tx =>
       tx.size > 0 &&
-      tx.mempool_time &&
-      !tx.confirmation_duration
+      !tx.confirmation_time // Transaction is unconfirmed if it has no confirmation time
     );
 
-    console.log('Processed mempool transactions:', validTransactions);
+    console.log('Processed mempool transactions:', unconfirmedTxs);
 
     return [{
       name: 'Mempool',
-      children: validTransactions.map(tx => ({
+      children: unconfirmedTxs.map(tx => ({
         name: tx.txid.substring(0, 8) + '...',
         size: tx.size,
         fullTxid: tx.txid,
-        mempoolTime: tx.mempool_time,
         fee: tx.fee,
-        value: tx.total_input_value
+        value: tx.total_input_value,
+        height: tx.block_height
       }))
     }];
   }, [transactionData]);
 
-  const CustomContent = ({ root, depth, x, y, width, height, name, fullTxid, mempoolTime, fee, value }) => {
+  const CustomContent = ({ root, depth, x, y, width, height, name, fullTxid, fee, value, size }) => {
     if (depth === 1 && width > 50 && height > 50) {
       return (
         <g>
@@ -78,7 +76,7 @@ const MempoolTreeMap = ({ transactionData }) => {
             fill="#fff"
             fontSize={10}
           >
-            {`${(parseFloat(fee) * 100000000).toFixed(0)} sats/vB`}
+            {`${parseFloat(fee).toFixed(8)} sat/vB`}
           </text>
         </g>
       );

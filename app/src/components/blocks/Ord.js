@@ -229,7 +229,7 @@ const Ord = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-white">
+      <div className="flex items-center justify-center h-64 text-white">
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button
@@ -244,8 +244,8 @@ const Ord = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 p-4">
-      <h1 className="text-4xl font-bold text-white mb-8 mt-4">Latest Inscriptions</h1>
+    <div className="bg-gray-900 p-4">
+      <h1 className="text-2xl font-bold text-white mb-4">Latest Inscriptions</h1>
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -253,7 +253,7 @@ const Ord = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {paginatedInscriptions.map((inscription) => (
               <div
                 key={inscription.id}
@@ -297,7 +297,7 @@ const Ord = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center items-center mt-8 space-x-4">
+            <div className="flex justify-center items-center mt-4 space-x-4">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
                 disabled={currentPage === 0}

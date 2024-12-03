@@ -210,9 +210,7 @@ const Ord = () => {
 
   useEffect(() => {
     fetchLatestInscriptions();
-    const pollInterval = setInterval(fetchLatestInscriptions, 30000);
     return () => {
-      clearInterval(pollInterval);
       inscriptionsList.forEach(inscription => {
         if (inscription.url) {
           URL.revokeObjectURL(inscription.url);
@@ -245,7 +243,15 @@ const Ord = () => {
 
   return (
     <div className="bg-gray-900 p-4">
-      <h1 className="text-2xl font-bold text-white mb-4">Latest Inscriptions</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold text-white">Latest Inscriptions</h1>
+        <button
+          onClick={fetchLatestInscriptions}
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
+        >
+          Refresh
+        </button>
+      </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-64">

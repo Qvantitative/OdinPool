@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff, FileText } from 'lucide-react';
+import { ImageOff, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
@@ -27,6 +27,8 @@ const Ord = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedInscription, setSelectedInscription] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const ITEMS_PER_PAGE = 16;
 
   const parseInscriptionsFromHTML = (htmlString) => {
     const parser = new DOMParser();
@@ -103,9 +105,6 @@ const Ord = () => {
   };
 
   const handleInscriptionClick = async (inscriptionId, inscriptionData) => {
-    console.log('Inscription ID:', inscriptionId);
-    console.log('Inscription Data:', inscriptionData);
-
     try {
       const response = await axiosInstance.get(`/inscription/${inscriptionId}`, {
         headers: {
@@ -113,11 +112,10 @@ const Ord = () => {
           'Content-Type': 'application/json',
         },
       });
-      console.log('API Response:', response.data);
 
       setSelectedInscription({
         ...response.data,
-        inscriptionData, // This contains the image or content data
+        inscriptionData,
       });
     } catch (error) {
       console.error('Error fetching inscription data:', error);
@@ -137,8 +135,6 @@ const Ord = () => {
     const renderValue = (key, value) => {
       const isAddress = key === 'address' || key.toLowerCase().includes('address');
 
-      console.log('Key:', key, 'Value:', value, 'Is Address:', isAddress);
-
       if (isAddress && value && typeof value === 'string') {
         const cleanAddress = value.split(':')[0];
         return (
@@ -146,7 +142,6 @@ const Ord = () => {
             className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
             onClick={(e) => {
               e.stopPropagation();
-              // Handle address click if needed
             }}
           >
             {cleanAddress}
@@ -226,6 +221,12 @@ const Ord = () => {
     };
   }, []);
 
+  const totalPages = Math.ceil(inscriptionsList.length / ITEMS_PER_PAGE);
+  const paginatedInscriptions = inscriptionsList.slice(
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE
+  );
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
@@ -251,48 +252,72 @@ const Ord = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {inscriptionsList.map((inscription) => (
-            <div
-              key={inscription.id}
-              className="relative group cursor-pointer"
-              onClick={() => handleInscriptionClick(inscription.id, inscription)}
-            >
-              <div className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
-                {inscription.type === 'image' ? (
-                  <img
-                    src={inscription.url}
-                    alt={`Inscription ${inscription.id}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : inscription.type === 'text' ? (
-                  <div className="flex items-center justify-center h-full p-4 text-gray-400">
-                    <div className="text-center">
-                      <FileText className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Text content</p>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {paginatedInscriptions.map((inscription) => (
+              <div
+                key={inscription.id}
+                className="relative group cursor-pointer"
+                onClick={() => handleInscriptionClick(inscription.id, inscription)}
+              >
+                <div className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
+                  {inscription.type === 'image' ? (
+                    <img
+                      src={inscription.url}
+                      alt={`Inscription ${inscription.id}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : inscription.type === 'text' ? (
+                    <div className="flex items-center justify-center h-full p-4 text-gray-400">
+                      <div className="text-center">
+                        <FileText className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm">Text content</p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full p-4 text-gray-400">
-                    <div className="text-center">
-                      <ImageOff className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-sm">Preview not available</p>
+                  ) : (
+                    <div className="flex items-center justify-center h-full p-4 text-gray-400">
+                      <div className="text-center">
+                        <ImageOff className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm">Preview not available</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <div className="text-white text-center p-4">
-                    <p className="text-sm font-medium">
-                      #{inscription.id.slice(0, 8)}...
-                    </p>
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div className="text-white text-center p-4">
+                      <p className="text-sm font-medium">
+                        #{inscription.id.slice(0, 8)}...
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center mt-8 space-x-4">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                disabled={currentPage === 0}
+                className="p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <span className="text-white">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                disabled={currentPage === totalPages - 1}
+                className="p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {renderSelectedInscriptionDetails()}

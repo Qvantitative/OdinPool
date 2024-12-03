@@ -1,20 +1,16 @@
 // app/components/blocks/charts/MempoolTreeMap.js
 
 import React, { useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TreeMap, ResponsiveContainer } from 'recharts';
 
 const MempoolTreeMap = ({ transactions }) => {
-  // Filter and transform transactions for the treemap
   const mempoolData = useMemo(() => {
     if (!transactions) return [];
 
-    // Filter for unconfirmed transactions (have mempool_time but no confirmation_duration)
     const unconfirmedTxs = transactions.filter(tx =>
       tx.mempool_time && !tx.confirmation_duration
     );
 
-    // Transform data for treemap visualization
     return [{
       name: 'Mempool',
       children: unconfirmedTxs.map(tx => ({
@@ -28,7 +24,6 @@ const MempoolTreeMap = ({ transactions }) => {
     }];
   }, [transactions]);
 
-  // Custom content renderer for treemap boxes
   const CustomContent = ({ root, depth, x, y, width, height, name, fullTxid, mempoolTime, fee, value }) => {
     if (depth === 1 && width > 50 && height > 50) {
       return (
@@ -78,24 +73,17 @@ const MempoolTreeMap = ({ transactions }) => {
 
   if (!mempoolData[0]?.children?.length) {
     return (
-      <Card className="w-full h-96">
-        <CardHeader>
-          <CardTitle>Mempool Transactions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center h-64">
-          <p className="text-gray-500">No unconfirmed transactions found</p>
-        </CardContent>
-      </Card>
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-gray-500">No unconfirmed transactions found</p>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full h-96">
-      <CardHeader>
-        <CardTitle>Mempool Transactions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+    <div className="w-full h-full">
+      <h2 className="text-xl font-semibold text-white mb-4">Mempool Transactions</h2>
+      <div className="h-[calc(100%-2rem)]">
+        <ResponsiveContainer width="100%" height="100%">
           <TreeMap
             data={mempoolData}
             dataKey="size"
@@ -104,8 +92,8 @@ const MempoolTreeMap = ({ transactions }) => {
           >
           </TreeMap>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

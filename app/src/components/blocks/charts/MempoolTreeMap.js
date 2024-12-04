@@ -84,12 +84,6 @@ const MempoolTreeMap = () => {
 
   // D3 Visualization
   useEffect(() => {
-    //console.log('Visualization effect running with:', {
-      hasData: !!processedData,
-      dimensions,
-      loading,
-      svgRef: !!svgRef.current
-    });
 
     if (!processedData || !dimensions.width || !dimensions.height || loading) {
       //console.log('Skipping visualization due to missing requirements');

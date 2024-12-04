@@ -20,21 +20,6 @@ const MempoolTreeMap = () => {
   const [error, setError] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/mempool');
-      if (!response.ok) throw new Error('Failed to fetch data');
-      const data = await response.json();
-      setTransactions(data);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     const fetchData = async () => {
       try {

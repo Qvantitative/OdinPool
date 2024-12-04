@@ -90,16 +90,18 @@ const MempoolTreeMap = () => {
       return;
     }
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
+    // Clear previous visualization
+    d3.select(svgRef.current).selectAll('*').remove();
+    // Remove any existing tooltips
+    d3.select('body').selectAll('.mempool-tooltip').remove();
 
-    // Set viewBox for better scaling
-    svg
-      .attr('width', '100%')
-      .attr('height', '100%')
-      .attr('viewBox', `0 0 ${dimensions.width} ${dimensions.height}`)
-      .attr('preserveAspectRatio', 'xMidYMid meet');
+    // Create SVG
+    const svg = d3
+      .select(svgRef.current)
+      .attr('width', dimensions.width)
+      .attr('height', dimensions.height);
 
+    // Create hierarchy and treemap layout
     const root = d3
       .hierarchy(processedData)
       .sum((d) => d.size)
@@ -108,31 +110,34 @@ const MempoolTreeMap = () => {
     const treemap = d3
       .treemap()
       .size([dimensions.width, dimensions.height])
-      .paddingOuter(3) // Increased padding
-      .paddingInner(2)
+      .paddingOuter(1)
+      .paddingInner(1)
       .round(true);
 
     treemap(root);
 
+    // Color scale
     const maxFeeRate = d3.max(root.leaves(), (d) => d.data.fee / d.data.size) || 1;
     const colorScale = d3
       .scaleSequential(d3.interpolateBlues)
       .domain([0, maxFeeRate]);
 
-    // Enhanced tooltip
-    const tooltip = d3
-      .select(tooltipRef.current)
+    // Create tooltip
+    const tooltip = d3.select('body')
+      .append('div')
+      .attr('class', 'mempool-tooltip')
       .style('position', 'absolute')
-      .style('opacity', 0)
-      .style('pointer-events', 'none')
-      .style('background', 'rgba(255, 255, 255, 0.95)')
+      .style('visibility', 'hidden')
+      .style('background', 'rgba(0, 0, 0, 0.9)')
+      .style('color', 'white')
       .style('padding', '8px')
       .style('border-radius', '4px')
-      .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
       .style('font-size', '12px')
-      .style('color', 'black') // Explicitly set text color to black
-      .style('max-width', '300px');
+      .style('max-width', '300px')
+      .style('pointer-events', 'none')
+      .style('z-index', '1000');
 
+    // Draw rectangles
     const cells = svg
       .selectAll('g')
       .data(root.leaves())
@@ -144,15 +149,15 @@ const MempoolTreeMap = () => {
       .attr('width', (d) => Math.max(0, d.x1 - d.x0))
       .attr('height', (d) => Math.max(0, d.y1 - d.y0))
       .attr('fill', (d) => colorScale(d.data.fee / d.data.size))
-      .attr('opacity', 0.9)
+      .attr('opacity', 0.8)
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
       .on('mouseover', function (event, d) {
         d3.select(this).attr('opacity', 1).attr('stroke-width', 2);
         tooltip
-          .style('opacity', 1)
+          .style('visibility', 'visible')
           .html(
-            `<div style="color: black;">
+            `<div>
               <strong>Txid:</strong> ${d.data.fullTxid}<br/>
               <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
               <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sats<br/>
@@ -161,41 +166,14 @@ const MempoolTreeMap = () => {
             </div>`
           );
       })
-  // ... previous imports and initial code remains the same ...
-
-    // Inside the D3 Visualization effect:
-    cells
-      .append('rect')
-      // ... other attributes remain the same ...
-      .on('mousemove', function (event) {
-        const tooltipWidth = tooltipRef.current.offsetWidth;
-        const tooltipHeight = tooltipRef.current.offsetHeight;
-        const offset = 10;
-
-        // Use pageX/pageY to account for scroll position
-        const mouseX = event.pageX;
-        const mouseY = event.pageY;
-
-        // Calculate position
-        let left = mouseX - (tooltipWidth / 2); // Center horizontally
-        let top = mouseY - tooltipHeight - offset; // Position above cursor
-
-        // Adjust if tooltip would go outside viewport
-        if (left < 0) left = 0;
-        if (left + tooltipWidth > window.innerWidth) {
-          left = window.innerWidth - tooltipWidth;
-        }
-
-        // If tooltip would go above viewport, show below cursor instead
-        if (top < window.scrollY) {
-          top = mouseY + offset;
-        }
-
+      .on('mousemove', function(event) {
         tooltip
-          .style('left', `${left}px`)
-          .style('top', `${top}px`)
-          .style('position', 'fixed') // Change to fixed positioning
-          .style('transform', 'none'); // Remove any transforms
+          .style('top', (event.pageY - 10) + 'px')
+          .style('left', (event.pageX + 10) + 'px');
+      })
+      .on('mouseout', function() {
+        tooltip.style('visibility', 'hidden');
+        d3.select(this).attr('opacity', 0.8).attr('stroke-width', 1);
       });
 
     // Add labels for larger rectangles
@@ -207,6 +185,11 @@ const MempoolTreeMap = () => {
       .text(d => d.data.name)
       .attr('fill', 'white')
       .attr('font-size', '10px');
+
+    // Cleanup
+    return () => {
+      d3.select('body').selectAll('.mempool-tooltip').remove();
+    };
   }, [processedData, dimensions, loading]);
 
   return (
@@ -229,7 +212,6 @@ const MempoolTreeMap = () => {
         </div>
       )}
       <svg ref={svgRef} className="w-full h-full" />
-      <div ref={tooltipRef} />
     </div>
   );
 };

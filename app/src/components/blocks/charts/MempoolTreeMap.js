@@ -9,14 +9,14 @@ const formatBytes = (bytes, decimals = 2) => {
 
   const sizes = [
     'B',    // Byte
-    'KiB',  // Kilobyte
-    'MiB',  // Megabyte
-    'GiB',  // Gigabyte
-    'TiB',  // Terabyte
-    'PiB',  // Petabyte
-    'EiB',  // Exabyte
-    'ZiB',  // Zettabyte
-    'YiB'   // Yottabyte
+    'KB',  // Kilobyte
+    'MB',  // Megabyte
+    'GB',  // Gigabyte
+    'TB',  // Terabyte
+    'PB',  // Petabyte
+    'EB',  // Exabyte
+    'ZB',  // Zettabyte
+    'YB'   // Yottabyte
   ];
 
   // Calculate the appropriate unit

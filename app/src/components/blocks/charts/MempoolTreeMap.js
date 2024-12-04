@@ -162,24 +162,25 @@ const MempoolTreeMap = () => {
           );
       })
       .on('mousemove', function (event) {
-        // Remove padding completely to position tooltip right at cursor
-        let left = event.pageX;
-        let top = event.pageY;
-
-        // Only adjust position if it would overflow window
         const tooltipWidth = tooltipRef.current.offsetWidth;
         const tooltipHeight = tooltipRef.current.offsetHeight;
 
+        // Always position tooltip above cursor with a small offset
+        const offset = 10;
+        let left = event.clientX - (tooltipWidth / 2); // Center horizontally relative to cursor
+        let top = event.clientY - tooltipHeight - offset; // Always above cursor
+
+        // Adjust if tooltip would go outside viewport
+        if (left < 0) left = 0;
         if (left + tooltipWidth > window.innerWidth) {
-          left = event.pageX - tooltipWidth;
+          left = window.innerWidth - tooltipWidth;
         }
-        if (top + tooltipHeight > window.innerHeight) {
-          top = event.pageY - tooltipHeight;
-        }
+        if (top < 0) top = event.clientY + offset; // Only show below cursor if it would go above viewport
 
         tooltip
           .style('left', `${left}px`)
-          .style('top', `${top}px`);
+          .style('top', `${top}px`)
+          .style('transform', 'none');
       });
 
     // Add labels for larger rectangles

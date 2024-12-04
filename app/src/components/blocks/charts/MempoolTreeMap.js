@@ -83,6 +83,11 @@ const MempoolTreeMap = () => {
     };
   }, [transactions]);
 
+  // Helper function to format txid
+  const formatTxid = (txid) => {
+    return `${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}`;
+  };
+
   // D3 Visualization
   useEffect(() => {
     if (!processedData || dimensions.width <= 0 || dimensions.height <= 0 || loading) {
@@ -159,7 +164,7 @@ const MempoolTreeMap = () => {
           .style('visibility', 'visible')
           .html(
             `<div>
-              <strong>Txid:</strong> ${d.data.fullTxid}<br/>
+              <strong>Transaction:</strong> ${formatTxid(d.data.fullTxid)}<br/>
               <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
               <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sats<br/>
               <strong>Fee Rate:</strong> ${(d.data.fee / d.data.size).toFixed(2)} sats/byte<br/>

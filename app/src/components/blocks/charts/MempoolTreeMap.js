@@ -1,7 +1,5 @@
 // app/components/blocks/charts/MempoolTreeMap.js
 
-// app/components/blocks/charts/MempoolTreeMap.js
-
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 

@@ -43,7 +43,7 @@ const MempoolTreeMap = () => {
           width: containerRef.current.clientWidth,
           height: containerRef.current.clientHeight
         };
-        console.log('Container dimensions:', newDimensions);
+        //console.log('Container dimensions:', newDimensions);
         setDimensions(newDimensions);
       }
     };
@@ -60,7 +60,7 @@ const MempoolTreeMap = () => {
   // Process data for D3
   const processedData = useMemo(() => {
     if (!transactions.length) {
-      console.log('No transactions to process');
+      //console.log('No transactions to process');
       return null;
     }
 
@@ -84,7 +84,7 @@ const MempoolTreeMap = () => {
 
   // D3 Visualization
   useEffect(() => {
-    console.log('Visualization effect running with:', {
+    //console.log('Visualization effect running with:', {
       hasData: !!processedData,
       dimensions,
       loading,
@@ -92,19 +92,19 @@ const MempoolTreeMap = () => {
     });
 
     if (!processedData || !dimensions.width || !dimensions.height || loading) {
-      console.log('Skipping visualization due to missing requirements');
+      //console.log('Skipping visualization due to missing requirements');
       return;
     }
 
     // Clear previous visualization
     d3.select(svgRef.current).selectAll('*').remove();
-    console.log('Cleared previous visualization');
+    //console.log('Cleared previous visualization');
 
     // Create SVG
     const svg = d3.select(svgRef.current)
       .attr('width', dimensions.width)
       .attr('height', dimensions.height);
-    console.log('Created SVG with dimensions:', dimensions);
+    //console.log('Created SVG with dimensions:', dimensions);
 
     // Create hierarchy
     const root = d3.hierarchy(processedData)
@@ -132,7 +132,7 @@ const MempoolTreeMap = () => {
       .data(root.leaves())
       .join('g')
       .attr('transform', d => `translate(${d.x0},${d.y0})`);
-    console.log('Created cell groups:', cells.size());
+    //console.log('Created cell groups:', cells.size());
 
     cells.append('rect')
       .attr('width', d => Math.max(0, d.x1 - d.x0))
@@ -142,7 +142,7 @@ const MempoolTreeMap = () => {
       .attr('stroke', 'white')
       .attr('stroke-width', 1);
 
-    console.log('Added rectangles to cells');
+    //console.log('Added rectangles to cells');
 
   }, [processedData, dimensions, loading]);
 

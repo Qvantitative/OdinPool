@@ -1,6 +1,5 @@
 // app/components/blocks/charts/MempoolTreeMap.js
 
-// MempoolTreeMap.js
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 
@@ -20,6 +19,21 @@ const MempoolTreeMap = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/mempool');
+      if (!response.ok) throw new Error('Failed to fetch data');
+      const data = await response.json();
+      setTransactions(data);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -200,26 +214,37 @@ const MempoolTreeMap = () => {
   }, [processedData, dimensions, loading]);
 
   return (
-    <div className="w-full h-full bg-gray-900">
-      <h2 className="text-xl font-bold text-white">
-        Latest Unconfirmed Transactions
-      </h2>
+    <div className="h-full flex flex-col bg-gray-900">
+      <div className="flex justify-between items-center p-4 border-b border-gray-800">
+        <h1 className="text-xl font-bold text-white">Latest Unconfirmed Transactions</h1>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
+        >
+          Refresh
+        </button>
+      </div>
+
       <div
         ref={containerRef}
-        className="w-full relative rounded-lg"
-        style={{
-          minHeight: '300px',
-          height: '100%'
-        }}
+        className="flex-1 relative rounded-lg"
       >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-white">Loading...</div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
           </div>
         )}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-red-400">Error: {error}</div>
+            <div className="text-center">
+              <p className="text-red-500 mb-4">{error}</p>
+              <button
+                onClick={fetchData}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         )}
         <svg

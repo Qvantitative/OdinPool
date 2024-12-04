@@ -122,9 +122,10 @@ const MempoolTreeMap = () => {
     treemap(root);
 
     const maxTimeInMempool = d3.max(root.leaves(), (d) => d.data.timeInMempool) || 1;
+    // Reverse the color scale by swapping the domain values
     const colorScale = d3
       .scaleSequential(d3.interpolateViridis)
-      .domain([0, maxTimeInMempool]);
+      .domain([maxTimeInMempool, 0]);
 
     // Enhanced tooltip
     const tooltip = d3.select('body')

@@ -205,7 +205,7 @@ const MempoolTreeMap = () => {
 
   return (
     <div className="w-full h-full bg-gray-900 p-4">
-      <h2 className="text-xl font-bold text-white mb-4">
+      <h2 className="text-2xl font-bold text-white">
         Latest Unconfirmed Transactions
       </h2>
       <div

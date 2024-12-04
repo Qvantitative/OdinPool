@@ -164,22 +164,31 @@ const MempoolTreeMap = () => {
       .on('mousemove', function (event) {
         const tooltipWidth = tooltipRef.current.offsetWidth;
         const tooltipHeight = tooltipRef.current.offsetHeight;
-
-        // Always position tooltip above cursor with a small offset
         const offset = 10;
-        let left = event.clientX - (tooltipWidth / 2); // Center horizontally relative to cursor
-        let top = event.clientY - tooltipHeight - offset; // Always above cursor
+
+        // Use pageX/pageY to account for scroll position
+        const mouseX = event.pageX;
+        const mouseY = event.pageY;
+
+        // Calculate position
+        let left = mouseX - (tooltipWidth / 2); // Center horizontally
+        let top = mouseY - tooltipHeight - offset; // Position above cursor
 
         // Adjust if tooltip would go outside viewport
         if (left < 0) left = 0;
         if (left + tooltipWidth > window.innerWidth) {
           left = window.innerWidth - tooltipWidth;
         }
-        if (top < 0) top = event.clientY + offset; // Only show below cursor if it would go above viewport
+
+        // If tooltip would go above viewport, show below cursor instead
+        if (top < window.scrollY) {
+          top = mouseY + offset;
+        }
 
         tooltip
           .style('left', `${left}px`)
           .style('top', `${top}px`)
+          .style('position', 'fixed') // Change to fixed positioning
           .style('transform', 'none');
       });
 

@@ -162,29 +162,24 @@ const MempoolTreeMap = () => {
           );
       })
       .on('mousemove', function (event) {
-        const padding = 5; // Reduced padding to position tooltip closer to cursor
+        // Remove padding completely to position tooltip right at cursor
+        let left = event.pageX;
+        let top = event.pageY;
 
-        let left = event.pageX + padding;
-        let top = event.pageY + padding;
-
-        // Adjust position if tooltip would overflow window
+        // Only adjust position if it would overflow window
         const tooltipWidth = tooltipRef.current.offsetWidth;
         const tooltipHeight = tooltipRef.current.offsetHeight;
 
         if (left + tooltipWidth > window.innerWidth) {
-          left = event.pageX - tooltipWidth - padding;
+          left = event.pageX - tooltipWidth;
         }
         if (top + tooltipHeight > window.innerHeight) {
-          top = event.pageY - tooltipHeight - padding;
+          top = event.pageY - tooltipHeight;
         }
 
         tooltip
           .style('left', `${left}px`)
           .style('top', `${top}px`);
-      })
-      .on('mouseout', function () {
-        d3.select(this).attr('opacity', 0.9).attr('stroke-width', 1);
-        tooltip.style('opacity', 0);
       });
 
     // Add labels for larger rectangles

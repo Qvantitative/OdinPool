@@ -751,6 +751,24 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
+app.get('/api/mempool', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT t.*, tt.confirmation_duration, tt.mempool_time
+       FROM transactions t
+       LEFT JOIN transaction_timing tt ON t.txid = tt.txid
+       WHERE t.block_height IS NULL
+       AND tt.mempool_time IS NOT NULL
+       ORDER BY tt.mempool_time DESC
+       LIMIT 100`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching mempool transactions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/transaction-timing', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;  // Default limit of 10 entries

@@ -5,7 +5,7 @@ import * as d3 from 'd3';
 
 // Helper function to format bytes into human readable format
 const formatBytes = (bytes, decimals = 2) => {
-  if (!bytes || bytes === 0) return '0 B';
+  if (!bytes || bytes === 0) return '0 vB';
 
   const sizes = [
     'vB',    // Byte

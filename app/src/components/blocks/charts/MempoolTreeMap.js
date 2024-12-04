@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 
-const D3MempoolTreeMap = () => {
+const MempoolTreeMap = () => {
   const svgRef = useRef(null);
   const tooltipRef = useRef(null);
   const [transactions, setTransactions] = React.useState([]);
@@ -192,4 +192,4 @@ const D3MempoolTreeMap = () => {
   );
 };
 
-export default D3MempoolTreeMap;
+export default MempoolTreeMap;

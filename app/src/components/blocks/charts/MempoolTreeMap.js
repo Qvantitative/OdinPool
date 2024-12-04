@@ -1,5 +1,7 @@
 // app/components/blocks/charts/MempoolTreeMap.js
 
+// app/components/blocks/charts/MempoolTreeMap.js
+
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 
@@ -41,9 +43,8 @@ const MempoolTreeMap = () => {
       if (containerRef.current) {
         const newDimensions = {
           width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight
+          height: containerRef.current.clientHeight,
         };
-        //console.log('Container dimensions:', newDimensions);
         setDimensions(newDimensions);
       }
     };
@@ -60,88 +61,117 @@ const MempoolTreeMap = () => {
   // Process data for D3
   const processedData = useMemo(() => {
     if (!transactions.length) {
-      //console.log('No transactions to process');
       return null;
     }
 
     const data = {
       name: 'Mempool',
       children: transactions
-        .filter(tx => tx && tx.size > 0)
-        .map(tx => ({
+        .filter((tx) => tx && tx.size > 0)
+        .map((tx) => ({
           name: tx.txid.substring(0, 8) + '...',
           size: tx.size,
           value: tx.total_input_value || 0,
           fee: tx.fee || 0,
-          timeInMempool: tx.mempool_time ?
-            Math.round((Date.now() - new Date(tx.mempool_time).getTime()) / 1000) : 0,
-          fullTxid: tx.txid
-        }))
+          timeInMempool: tx.mempool_time
+            ? Math.round((Date.now() - new Date(tx.mempool_time).getTime()) / 1000)
+            : 0,
+          fullTxid: tx.txid,
+        })),
     };
-    //console.log('Processed data:', data);
     return data;
   }, [transactions]);
 
   // D3 Visualization
   useEffect(() => {
-
     if (!processedData || !dimensions.width || !dimensions.height || loading) {
-      //console.log('Skipping visualization due to missing requirements');
       return;
     }
 
     // Clear previous visualization
     d3.select(svgRef.current).selectAll('*').remove();
-    //console.log('Cleared previous visualization');
 
     // Create SVG
-    const svg = d3.select(svgRef.current)
+    const svg = d3
+      .select(svgRef.current)
       .attr('width', dimensions.width)
       .attr('height', dimensions.height);
-    //console.log('Created SVG with dimensions:', dimensions);
 
     // Create hierarchy
-    const root = d3.hierarchy(processedData)
-      .sum(d => d.size)
+    const root = d3
+      .hierarchy(processedData)
+      .sum((d) => d.size)
       .sort((a, b) => b.value - a.value);
-    //console.log('Created hierarchy:', root);
 
-    const treemap = d3.treemap()
+    const treemap = d3
+      .treemap()
       .size([dimensions.width, dimensions.height])
       .paddingOuter(1)
       .paddingInner(1)
       .round(true);
 
     treemap(root);
-    //console.log('Applied treemap layout:', root.leaves());
 
     // Color scale
-    const maxFeeRate = d3.max(root.leaves(), d => d.data.fee / d.data.size) || 1;
-    //console.log('Max fee rate:', maxFeeRate);
-    const colorScale = d3.scaleSequential(d3.interpolateBlues)
+    const maxFeeRate =
+      d3.max(root.leaves(), (d) => d.data.fee / d.data.size) || 1;
+    const colorScale = d3
+      .scaleSequential(d3.interpolateBlues)
       .domain([0, maxFeeRate]);
 
+    // Prepare tooltip
+    const tooltip = d3
+      .select(tooltipRef.current)
+      .style('position', 'absolute')
+      .style('opacity', 0)
+      .style('pointer-events', 'none')
+      .style('background', 'white')
+      .style('padding', '5px')
+      .style('border', '1px solid black');
+
     // Draw rectangles
-    const cells = svg.selectAll('g')
+    const cells = svg
+      .selectAll('g')
       .data(root.leaves())
       .join('g')
-      .attr('transform', d => `translate(${d.x0},${d.y0})`);
-    //console.log('Created cell groups:', cells.size());
+      .attr('transform', (d) => `translate(${d.x0},${d.y0})`);
 
-    cells.append('rect')
-      .attr('width', d => Math.max(0, d.x1 - d.x0))
-      .attr('height', d => Math.max(0, d.y1 - d.y0))
-      .attr('fill', d => colorScale(d.data.fee / d.data.size))
+    cells
+      .append('rect')
+      .attr('width', (d) => Math.max(0, d.x1 - d.x0))
+      .attr('height', (d) => Math.max(0, d.y1 - d.y0))
+      .attr('fill', (d) => colorScale(d.data.fee / d.data.size))
       .attr('opacity', 0.8)
       .attr('stroke', 'white')
-      .attr('stroke-width', 1);
-
-    //console.log('Added rectangles to cells');
-
+      .attr('stroke-width', 1)
+      .on('mouseover', function (event, d) {
+        tooltip
+          .style('opacity', 1)
+          .html(
+            `<div>
+              <strong>Txid:</strong> ${d.data.fullTxid}<br/>
+              <strong>Size:</strong> ${d.data.size}<br/>
+              <strong>Fee:</strong> ${d.data.fee}<br/>
+              <strong>Time in Mempool:</strong> ${d.data.timeInMempool} seconds
+            </div>`
+          );
+      })
+      .on('mousemove', function (event, d) {
+        tooltip
+          .style('left', event.pageX + 10 + 'px')
+          .style('top', event.pageY + 10 + 'px');
+      })
+      .on('mouseout', function () {
+        tooltip.style('opacity', 0);
+      });
   }, [processedData, dimensions, loading]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: '500px' }}>
+    <div
+      ref={containerRef}
+      className="w-full h-full relative"
+      style={{ minHeight: '500px' }}
+    >
       <svg ref={svgRef} className="w-full h-full" />
       <div ref={tooltipRef} />
     </div>

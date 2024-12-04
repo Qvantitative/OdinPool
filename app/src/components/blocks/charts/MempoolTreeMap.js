@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { TreeMap, ResponsiveContainer } from 'recharts';
-import { Card } from '@/components/ui/card';
 
 const MempoolTreeMap = () => {
   const [transactionData, setTransactionData] = useState([]);
@@ -116,30 +115,30 @@ const MempoolTreeMap = () => {
 
   if (isLoading) {
     return (
-      <Card className="w-full h-full flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center">
         <div className="text-gray-500">Loading mempool transactions...</div>
-      </Card>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="w-full h-full flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center">
         <div className="text-red-500">Error: {error}</div>
-      </Card>
+      </div>
     );
   }
 
   if (!mempoolData[0]?.children?.length) {
     return (
-      <Card className="w-full h-full flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center">
         <div className="text-gray-500">No unconfirmed transactions found</div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full h-full p-4">
+    <div className="w-full h-full p-4">
       <div className="flex flex-col h-full">
         <h2 className="text-xl font-semibold mb-4">Mempool Transactions</h2>
         <div className="flex-1 min-h-0">
@@ -155,7 +154,7 @@ const MempoolTreeMap = () => {
           </ResponsiveContainer>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

@@ -164,32 +164,39 @@ const MempoolTreeMap = () => {
       .on('mousemove', function (event) {
         const tooltipWidth = tooltipRef.current.offsetWidth;
         const tooltipHeight = tooltipRef.current.offsetHeight;
+        const containerRect = svgRef.current.getBoundingClientRect();
         const offset = 10;
 
-        // Use pageX/pageY to account for scroll position
-        const mouseX = event.pageX;
-        const mouseY = event.pageY;
+        // Get mouse position relative to viewport
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
 
-        // Calculate position
-        let left = mouseX - (tooltipWidth / 2); // Center horizontally
-        let top = mouseY - tooltipHeight - offset; // Position above cursor
+        // Calculate position relative to viewport
+        let left = mouseX - (tooltipWidth / 2);
+        let top = mouseY - tooltipHeight - offset;
 
-        // Adjust if tooltip would go outside viewport
-        if (left < 0) left = 0;
-        if (left + tooltipWidth > window.innerWidth) {
-          left = window.innerWidth - tooltipWidth;
+        // Add scroll position to get page coordinates
+        left += window.scrollX;
+        top += window.scrollY;
+
+        // Boundary checks
+        if (left < containerRect.left) {
+          left = containerRect.left;
         }
-
-        // If tooltip would go above viewport, show below cursor instead
-        if (top < window.scrollY) {
-          top = mouseY + offset;
+        if (left + tooltipWidth > containerRect.right) {
+          left = containerRect.right - tooltipWidth;
+        }
+        if (top < containerRect.top) {
+          top = mouseY + offset + window.scrollY; // Show below cursor if would go above container
         }
 
         tooltip
+          .style('position', 'absolute')
           .style('left', `${left}px`)
           .style('top', `${top}px`)
-          .style('position', 'fixed') // Change to fixed positioning
-          .style('transform', 'none');
+          .style('transform', 'none')
+          .style('pointer-events', 'none')
+          .style('z-index', '1000'); // Ensure tooltip stays on top
       });
 
     // Add labels for larger rectangles

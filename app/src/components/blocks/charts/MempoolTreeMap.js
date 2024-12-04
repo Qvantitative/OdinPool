@@ -122,36 +122,16 @@ const MempoolTreeMap = () => {
     const tooltip = d3.select('body')
       .append('div')
       .attr('class', 'mempool-tooltip')
-      .style('position', 'fixed')
+      .style('position', 'absolute')
       .style('visibility', 'hidden')
-      .style('background', 'rgba(0, 0, 0, 0.9)')
+      .style('background-color', 'rgba(0, 0, 0, 0.9)')
       .style('color', 'white')
-      .style('padding', '12px')
-      .style('border-radius', '6px')
+      .style('padding', '8px')
+      .style('border-radius', '4px')
       .style('font-size', '12px')
-      .style('max-width', '90vw')
+      .style('max-width', '300px')
       .style('pointer-events', 'none')
-      .style('z-index', '1000')
-      .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
-      .style('word-wrap', 'break-word');
-
-    const handleTooltipPosition = (event) => {
-      const tooltipWidth = 250;
-      const tooltipHeight = 150;
-      const padding = 10;
-
-      let left = event.pageX + padding;
-      let top = event.pageY + padding;
-
-      if (left + tooltipWidth > window.innerWidth) {
-        left = window.innerWidth - tooltipWidth - padding;
-      }
-      if (top + tooltipHeight > window.innerHeight) {
-        top = window.innerHeight - tooltipHeight - padding;
-      }
-
-      return { left, top };
-    };
+      .style('z-index', '1000');
 
     const cells = svg
       .selectAll('g')
@@ -164,16 +144,9 @@ const MempoolTreeMap = () => {
       .attr('width', (d) => Math.max(1, d.x1 - d.x0))
       .attr('height', (d) => Math.max(1, d.y1 - d.y0))
       .attr('fill', (d) => colorScale(d.data.timeInMempool))
-      .attr('opacity', 1)
       .attr('stroke', 'white')
-      .attr('stroke-width', 1)
-      .on('touchstart mouseover', function (event, d) {
-        d3.select(this)
-          .transition()
-          .duration(200)
-          .attr('stroke-width', 2)
-          .attr('opacity', 0.8);
-
+      .attr('stroke-width', '1px')
+      .on('mouseover', (event, d) => {
         tooltip
           .style('visibility', 'visible')
           .html(
@@ -186,18 +159,24 @@ const MempoolTreeMap = () => {
             </div>`
           );
 
-        const { left, top } = handleTooltipPosition(event);
-        tooltip
-          .style('left', `${left}px`)
-          .style('top', `${top}px`);
-      })
-      .on('touchend mouseout', function() {
-        tooltip.style('visibility', 'hidden');
-        d3.select(this)
+        d3.select(event.currentTarget)
           .transition()
           .duration(200)
-          .attr('stroke-width', 1)
-          .attr('opacity', 1);
+          .style('stroke-width', '2px')
+          .style('opacity', 0.8);
+      })
+      .on('mousemove', (event) => {
+        tooltip
+          .style('top', `${event.pageY - 10}px`)
+          .style('left', `${event.pageX + 10}px`);
+      })
+      .on('mouseout', (event) => {
+        tooltip.style('visibility', 'hidden');
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style('stroke-width', '1px')
+          .style('opacity', 1);
       });
 
     cells

@@ -474,9 +474,9 @@ const AnalyticsPage = () => {
             />
           </section>
         ) : selectedView === 'mempool' ? (
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: "600px" }}>
             {/* Left Column: MempoolTreeMap */}
-            <div className="bg-gray-800 rounded-lg p-4 h-full" style={{ height: "600px" }}>
+            <div className="bg-gray-800 rounded-lg p-4 h-full">
               <MempoolTreeMap transactionData={blockData.flatMap(block => block.transactions || [])} />
             </div>
 

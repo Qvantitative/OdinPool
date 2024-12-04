@@ -5,12 +5,11 @@ import * as d3 from 'd3';
 
 const MempoolTreeMap = () => {
   const svgRef = useRef(null);
-  const tooltipRef = useRef(null);
+  const containerRef = useRef(null);
   const [transactions, setTransactions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
-  const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
-  const containerRef = useRef(null);
+  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
 
   // Fetch data
   useEffect(() => {
@@ -38,25 +37,29 @@ const MempoolTreeMap = () => {
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        // Account for padding (8px * 2 = 16px total padding)
         setDimensions({
-          width: Math.max(width, 100),
-          height: Math.max(height, 100)
+          width: containerRect.width - 16,
+          height: containerRect.height - 16
         });
       }
     };
 
+    // Initial update
     updateDimensions();
-    const observer = new ResizeObserver(updateDimensions);
+
+    // Setup ResizeObserver
+    const observer = new ResizeObserver(() => {
+      window.requestAnimationFrame(updateDimensions);
+    });
+
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
 
-    window.addEventListener('resize', updateDimensions);
-
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', updateDimensions);
     };
   }, []);
 
@@ -82,20 +85,19 @@ const MempoolTreeMap = () => {
 
   // D3 Visualization
   useEffect(() => {
-    if (!processedData || !dimensions.width || !dimensions.height || loading) {
+    if (!processedData || dimensions.width <= 0 || dimensions.height <= 0 || loading) {
       return;
     }
 
     // Clear previous visualization
     d3.select(svgRef.current).selectAll('*').remove();
-    // Remove any existing tooltips
     d3.select('body').selectAll('.mempool-tooltip').remove();
 
-    // Create SVG
     const svg = d3
       .select(svgRef.current)
       .attr('width', dimensions.width)
-      .attr('height', dimensions.height);
+      .attr('height', dimensions.height)
+      .attr('viewBox', [0, 0, dimensions.width, dimensions.height]);
 
     // Create hierarchy and treemap layout
     const root = d3
@@ -106,13 +108,12 @@ const MempoolTreeMap = () => {
     const treemap = d3
       .treemap()
       .size([dimensions.width, dimensions.height])
-      .paddingOuter(1)
+      .paddingOuter(3)
       .paddingInner(1)
       .round(true);
 
     treemap(root);
 
-    // Color scale - Updated to use Viridis
     const maxTimeInMempool = d3.max(root.leaves(), (d) => d.data.timeInMempool) || 1;
     const colorScale = d3
       .scaleSequential(d3.interpolateViridis)
@@ -142,8 +143,8 @@ const MempoolTreeMap = () => {
 
     cells
       .append('rect')
-      .attr('width', (d) => Math.max(0, d.x1 - d.x0))
-      .attr('height', (d) => Math.max(0, d.y1 - d.y0))
+      .attr('width', (d) => Math.max(1, d.x1 - d.x0))
+      .attr('height', (d) => Math.max(1, d.y1 - d.y0))
       .attr('fill', (d) => colorScale(d.data.timeInMempool))
       .attr('opacity', 1)
       .attr('stroke', 'white')
@@ -166,10 +167,10 @@ const MempoolTreeMap = () => {
             </div>`
           );
       })
-      .on('mousemove', function(event) {
+      .on('mousemove', (event) => {
         tooltip
-          .style('top', (event.pageY - 10) + 'px')
-          .style('left', (event.pageX + 10) + 'px');
+          .style('top', `${event.pageY - 10}px`)
+          .style('left', `${event.pageX + 10}px`);
       })
       .on('mouseout', function() {
         tooltip.style('visibility', 'hidden');
@@ -190,7 +191,6 @@ const MempoolTreeMap = () => {
       .attr('fill', 'white')
       .attr('font-size', '10px');
 
-    // Cleanup
     return () => {
       d3.select('body').selectAll('.mempool-tooltip').remove();
     };
@@ -202,7 +202,9 @@ const MempoolTreeMap = () => {
       className="w-full h-full relative bg-gray-900 rounded-lg p-4"
       style={{
         minHeight: '500px',
-        minWidth: '300px'
+        minWidth: '300px',
+        height: '100%',
+        width: '100%'
       }}
     >
       {loading && (
@@ -215,7 +217,11 @@ const MempoolTreeMap = () => {
           <div className="text-red-400">Error: {error}</div>
         </div>
       )}
-      <svg ref={svgRef} className="w-full h-full" />
+      <svg
+        ref={svgRef}
+        className="w-full h-full"
+        style={{ display: 'block' }}
+      />
     </div>
   );
 };

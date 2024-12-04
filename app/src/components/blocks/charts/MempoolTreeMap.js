@@ -142,13 +142,6 @@ const MempoolTreeMap = () => {
 
   return (
     <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: '500px' }}>
-      <pre className="absolute top-0 left-0 text-xs">
-        Debug Info:
-        Dimensions: {JSON.stringify(dimensions)}
-        Loading: {loading.toString()}
-        Error: {error || 'none'}
-        Transactions: {transactions.length}
-      </pre>
       <svg ref={svgRef} className="w-full h-full" />
       <div ref={tooltipRef} />
     </div>

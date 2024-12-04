@@ -196,33 +196,16 @@ const MempoolTreeMap = () => {
     <div className="h-full flex flex-col bg-gray-900">
       <div className="flex justify-between items-center p-4 border-b border-gray-800">
         <h1 className="text-xl font-bold text-white">Latest Unconfirmed Transactions</h1>
-        <button
-          onClick={fetchData}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
-        >
-          Refresh
-        </button>
       </div>
 
       <div
         ref={containerRef}
         className="flex-1 relative rounded-lg"
       >
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
-          </div>
-        )}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
             <div className="text-center">
               <p className="text-red-500 mb-4">{error}</p>
-              <button
-                onClick={fetchData}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
-              >
-                Try Again
-              </button>
             </div>
           </div>
         )}

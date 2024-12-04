@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import https from 'https';
-import { ImageOff, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ImageOff, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
@@ -23,7 +23,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
 };
 
 const Ord = () => {
-  const [view, setView] = useState('inscriptions'); // 'inscriptions' or 'runes'
+  const [view, setView] = useState('inscriptions');
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [runesList, setRunesList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +128,6 @@ const Ord = () => {
     if (!selectedInscription) return null;
 
     const { inscriptionData, ...details } = selectedInscription;
-
     const formattedDetails = {
       address: details.address || details.output_address || details.satpoint?.split(':')[0] || '',
       ...details,
@@ -140,19 +139,14 @@ const Ord = () => {
       if (isAddress && value && typeof value === 'string') {
         const cleanAddress = value.split(':')[0];
         return (
-          <span
-            className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
+          <span className="text-blue-400 hover:text-blue-300 cursor-pointer underline">
             {cleanAddress}
           </span>
         );
       }
 
       return (
-        <span className="text-gray-200 break-all">
+        <span className="text-gray-200 break-all text-sm">
           {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
         </span>
       );
@@ -165,41 +159,43 @@ const Ord = () => {
     });
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-gray-800 rounded-2xl p-6 max-w-7xl w-full max-h-[95vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-semibold text-gray-200">Inscription Details</h3>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 z-50">
+        <div className="bg-gray-800 rounded-xl w-full max-w-xl md:max-w-4xl max-h-[95vh] overflow-y-auto">
+          <div className="sticky top-0 bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
+            <h3 className="text-xl font-semibold text-gray-200">Inscription Details</h3>
             <button
               onClick={() => setSelectedInscription(null)}
-              className="text-gray-400 hover:text-gray-200 text-2xl"
+              className="p-1 hover:bg-gray-700 rounded-full"
             >
-              ×
+              <X className="w-6 h-6 text-gray-400" />
             </button>
           </div>
-          <div className="flex">
-            <div className="w-2/3 pr-6 border-r border-gray-700">
+
+          <div className="flex flex-col md:flex-row p-4">
+            <div className="w-full md:w-2/3 md:pr-4 mb-4 md:mb-0">
               {inscriptionData.type === 'image' ? (
                 <img
                   src={inscriptionData.url}
                   alt={`Inscription ${formattedDetails.id}`}
-                  className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-md"
+                  className="w-full h-auto max-h-[50vh] md:max-h-[70vh] object-contain rounded-xl"
                 />
               ) : inscriptionData.type === 'text' ? (
-                <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl shadow-md">
-                  <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
+                <div className="bg-gray-700 rounded-xl p-4 max-h-[50vh] md:max-h-[70vh] overflow-auto">
+                  <pre className="text-sm text-gray-200 whitespace-pre-wrap">
                     {inscriptionData.content}
                   </pre>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-sm bg-gray-700 text-gray-300 rounded-2xl">
+                <div className="flex items-center justify-center h-48 bg-gray-700 rounded-xl text-gray-300">
                   Unsupported content type
                 </div>
               )}
             </div>
-            <div className="w-1/3 pl-6 space-y-4">
+
+            <div className="w-full md:w-1/3 md:pl-4 md:border-l border-gray-700 space-y-3 max-h-[30vh] md:max-h-[70vh] overflow-y-auto">
               {orderedEntries.map(([key, value]) => (
                 <div key={key} className="flex flex-col">
-                  <span className="text-gray-400 text-sm font-medium">{key}</span>
+                  <span className="text-gray-400 text-xs font-medium uppercase">{key}</span>
                   {renderValue(key, value)}
                 </div>
               ))}
@@ -244,12 +240,12 @@ const Ord = () => {
   }
 
   return (
-    <div className="bg-gray-900 p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-white">Latest Inscriptions</h1>
+    <div className="bg-gray-900 p-2 sm:p-4">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Latest Inscriptions</h1>
         <button
           onClick={fetchLatestInscriptions}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
+          className="w-full sm:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
         >
           Refresh
         </button>
@@ -261,7 +257,7 @@ const Ord = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
             {paginatedInscriptions.map((inscription) => (
               <div
                 key={inscription.id}
@@ -279,22 +275,22 @@ const Ord = () => {
                   ) : inscription.type === 'text' ? (
                     <div className="flex items-center justify-center h-full p-4 text-gray-400">
                       <div className="text-center">
-                        <FileText className="w-8 h-8 mx-auto mb-2" />
-                        <p className="text-sm">Text content</p>
+                        <FileText className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
+                        <p className="text-xs sm:text-sm">Text content</p>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full p-4 text-gray-400">
                       <div className="text-center">
-                        <ImageOff className="w-8 h-8 mx-auto mb-2" />
-                        <p className="text-sm">Preview not available</p>
+                        <ImageOff className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
+                        <p className="text-xs sm:text-sm">Preview not available</p>
                       </div>
                     </div>
                   )}
 
                   <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <div className="text-white text-center p-4">
-                      <p className="text-sm font-medium">
+                    <div className="text-white text-center p-2 sm:p-4">
+                      <p className="text-xs sm:text-sm font-medium">
                         #{inscription.id.slice(0, 8)}...
                       </p>
                     </div>
@@ -305,23 +301,23 @@ const Ord = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center items-center mt-4 space-x-4">
+            <div className="flex justify-center items-center mt-4 space-x-2 sm:space-x-4">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
                 disabled={currentPage === 0}
-                className="p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+                className="p-1 sm:p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-              <span className="text-white">
+              <span className="text-sm sm:text-base text-white">
                 Page {currentPage + 1} of {totalPages}
               </span>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
                 disabled={currentPage === totalPages - 1}
-                className="p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+                className="p-1 sm:p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
               >
-                <ChevronRight className="w-6 h-6" />
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           )}

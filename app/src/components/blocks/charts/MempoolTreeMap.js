@@ -8,7 +8,7 @@ const formatBytes = (bytes, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 B';
 
   const sizes = [
-    'B',    // Byte
+    'vB',    // Byte
     'KvB',  // Kilobyte
     'MvB',  // Megabyte
     'GvB',  // Gigabyte

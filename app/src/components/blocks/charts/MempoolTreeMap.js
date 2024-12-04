@@ -4,11 +4,38 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 
 // Helper function to format bytes into human readable format
-const formatBytes = (bytes) => {
-  if (bytes === 0) return '0 B';
-  const sizes = ['B', 'KiB', 'MiB', 'GiB'];
+const formatBytes = (bytes, decimals = 2) => {
+  if (!bytes || bytes === 0) return '0 B';
+
+  const sizes = [
+    'B',    // Byte
+    'KiB',  // Kilobyte
+    'MiB',  // Megabyte
+    'GiB',  // Gigabyte
+    'TiB',  // Terabyte
+    'PiB',  // Petabyte
+    'EiB',  // Exabyte
+    'ZiB',  // Zettabyte
+    'YiB'   // Yottabyte
+  ];
+
+  // Calculate the appropriate unit
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+
+  // Handle overflow for extremely large numbers
+  if (i >= sizes.length) {
+    return 'Value too large';
+  }
+
+  // Convert to the appropriate unit and format
+  const value = bytes / Math.pow(1024, i);
+
+  // Handle special case for bytes (no decimal places needed)
+  if (i === 0) {
+    return `${Math.round(value)} ${sizes[i]}`;
+  }
+
+  return `${value.toFixed(decimals)} ${sizes[i]}`;
 };
 
 const MempoolTreeMap = () => {

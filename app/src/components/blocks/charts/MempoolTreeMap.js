@@ -3,14 +3,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 
-// Helper function to format bytes into human readable format
-const formatBytes = (bytes) => {
-  if (bytes === 0) return '0 B';
-  const sizes = ['B', 'KiB', 'MiB', 'GiB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
-};
-
 const MempoolTreeMap = () => {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
@@ -46,15 +38,18 @@ const MempoolTreeMap = () => {
     const updateDimensions = () => {
       if (containerRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect();
+        // Account for padding (8px * 2 = 16px total padding)
         setDimensions({
-          width: containerRect.width - 32,
-          height: containerRect.height - 60 // Account for header height
+          width: containerRect.width - 16,
+          height: containerRect.height - 16
         });
       }
     };
 
+    // Initial update
     updateDimensions();
 
+    // Setup ResizeObserver
     const observer = new ResizeObserver(() => {
       window.requestAnimationFrame(updateDimensions);
     });
@@ -63,7 +58,9 @@ const MempoolTreeMap = () => {
       observer.observe(containerRef.current);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   // Process data for D3
@@ -107,6 +104,7 @@ const MempoolTreeMap = () => {
       .attr('height', dimensions.height)
       .attr('viewBox', [0, 0, dimensions.width, dimensions.height]);
 
+    // Create hierarchy and treemap layout
     const root = d3
       .hierarchy(processedData)
       .sum((d) => d.size)
@@ -126,7 +124,7 @@ const MempoolTreeMap = () => {
       .scaleSequential(d3.interpolateViridis)
       .domain([0, maxTimeInMempool]);
 
-    // Enhanced tooltip
+    // Create tooltip
     const tooltip = d3.select('body')
       .append('div')
       .attr('class', 'mempool-tooltip')
@@ -134,14 +132,14 @@ const MempoolTreeMap = () => {
       .style('visibility', 'hidden')
       .style('background', 'rgba(0, 0, 0, 0.9)')
       .style('color', 'white')
-      .style('padding', '12px')
-      .style('border-radius', '6px')
+      .style('padding', '8px')
+      .style('border-radius', '4px')
       .style('font-size', '12px')
       .style('max-width', '300px')
       .style('pointer-events', 'none')
-      .style('z-index', '1000')
-      .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)');
+      .style('z-index', '1000');
 
+    // Draw rectangles
     const cells = svg
       .selectAll('g')
       .data(root.leaves())
@@ -167,9 +165,9 @@ const MempoolTreeMap = () => {
           .html(
             `<div>
               <strong>Transaction:</strong> ${formatTxid(d.data.fullTxid)}<br/>
-              <strong>Size:</strong> ${formatBytes(d.data.size)}<br/>
+              <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
               <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sats<br/>
-              <strong>Fee Rate:</strong> ${(d.data.fee / d.data.size).toFixed(2)} sats/B<br/>
+              <strong>Fee Rate:</strong> ${(d.data.fee / d.data.size).toFixed(2)} sats/byte<br/>
               <strong>Time in Mempool:</strong> ${d.data.timeInMempool} seconds
             </div>`
           );
@@ -204,36 +202,31 @@ const MempoolTreeMap = () => {
   }, [processedData, dimensions, loading]);
 
   return (
-    <div className="w-full h-full bg-gray-900 p-4">
-      <h2 className="text-xl font-bold text-white mb-4">
-        Latest Unconfirmed Transactions
-      </h2>
-      <div
-        ref={containerRef}
-        className="w-full h-full relative rounded-lg"
-        style={{
-          minHeight: '500px',
-          minWidth: '300px',
-          height: 'calc(100% - 2rem)',
-          width: '100%'
-        }}
-      >
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-white">Loading...</div>
-          </div>
-        )}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-red-400">Error: {error}</div>
-          </div>
-        )}
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          style={{ display: 'block' }}
-        />
-      </div>
+    <div
+      ref={containerRef}
+      className="w-full h-full relative bg-gray-900 rounded-lg p-4"
+      style={{
+        minHeight: '500px',
+        minWidth: '300px',
+        height: '100%',
+        width: '100%'
+      }}
+    >
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="text-white">Loading...</div>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="text-red-400">Error: {error}</div>
+        </div>
+      )}
+      <svg
+        ref={svgRef}
+        className="w-full h-full"
+        style={{ display: 'block' }}
+      />
     </div>
   );
 };

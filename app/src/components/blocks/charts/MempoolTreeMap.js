@@ -191,7 +191,7 @@ const MempoolTreeMap = () => {
       .append('text')
       .attr('x', 4)
       .attr('y', 14)
-      .text(d => d.data.name)
+      .text(d => d.data.size)
       .attr('fill', 'white')
       .attr('font-size', window.innerWidth < 768 ? '8px' : '10px');
 

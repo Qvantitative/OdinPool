@@ -1,5 +1,6 @@
 // app/components/blocks/charts/MempoolTreeMap.js
 
+// MempoolTreeMap.js
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 
@@ -34,6 +35,13 @@ const MempoolTreeMap = () => {
       setLoading(false);
     }
   };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const updateDimensions = () => {

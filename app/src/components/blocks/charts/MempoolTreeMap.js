@@ -1,9 +1,9 @@
 // app/components/blocks/charts/MempoolTreeMap.js
 
+// MempoolTreeMap.js
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 
-// Helper function to format bytes into human readable format
 const formatBytes = (bytes, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 vB';
   const sizes = ['vB', 'KvB', 'MvB', 'GvB', 'TvB', 'PvB', 'EvB', 'ZB', 'YvB'];
@@ -21,7 +21,6 @@ const MempoolTreeMap = () => {
   const [error, setError] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -43,22 +42,19 @@ const MempoolTreeMap = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Update dimensions on resize
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect();
-        // Set a minimum height for mobile
         const minHeight = 300;
-        // Calculate aspect ratio based on screen width
         const aspectRatio = window.innerWidth < 768 ? 1 : 1.5;
         const calculatedHeight = Math.max(
           minHeight,
-          Math.min(containerRect.width / aspectRatio, window.innerHeight * 0.7)
+          Math.min(containerRect.width / aspectRatio, window.innerHeight * 0.6)
         );
 
         setDimensions({
-          width: containerRect.width - 32,
+          width: containerRect.width - 16,
           height: calculatedHeight
         });
       }
@@ -66,14 +62,11 @@ const MempoolTreeMap = () => {
 
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
-
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Format txid
   const formatTxid = (txid) => `${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}`;
 
-  // Process data for D3
   const processedData = useMemo(() => {
     if (!transactions.length) return null;
     return {
@@ -93,13 +86,11 @@ const MempoolTreeMap = () => {
     };
   }, [transactions]);
 
-  // D3 Visualization
   useEffect(() => {
     if (!processedData || dimensions.width <= 0 || dimensions.height <= 0 || loading) {
       return;
     }
 
-    // Clear previous visualization
     d3.select(svgRef.current).selectAll('*').remove();
     d3.select('body').selectAll('.mempool-tooltip').remove();
 
@@ -128,38 +119,30 @@ const MempoolTreeMap = () => {
       .scaleSequential(d3.interpolateViridis)
       .domain([maxTimeInMempool, 0]);
 
-    // Mobile-friendly tooltip
     const tooltip = d3.select('body')
       .append('div')
       .attr('class', 'mempool-tooltip')
-      .style('position', 'fixed') // Changed from absolute to fixed
+      .style('position', 'fixed')
       .style('visibility', 'hidden')
       .style('background', 'rgba(0, 0, 0, 0.9)')
       .style('color', 'white')
       .style('padding', '12px')
       .style('border-radius', '6px')
       .style('font-size', '12px')
-      .style('max-width', '90vw') // Limited by viewport width
+      .style('max-width', '90vw')
       .style('pointer-events', 'none')
       .style('z-index', '1000')
       .style('box-shadow', '0 4px 6px rgba(0, 0, 0, 0.1)')
-      .style('word-wrap', 'break-word'); // Allow text wrapping
-
-    const cells = svg
-      .selectAll('g')
-      .data(root.leaves())
-      .join('g')
-      .attr('transform', (d) => `translate(${d.x0},${d.y0})`);
+      .style('word-wrap', 'break-word');
 
     const handleTooltipPosition = (event) => {
-      const tooltipWidth = 250; // Approximate tooltip width
-      const tooltipHeight = 150; // Approximate tooltip height
+      const tooltipWidth = 250;
+      const tooltipHeight = 150;
       const padding = 10;
 
       let left = event.pageX + padding;
       let top = event.pageY + padding;
 
-      // Adjust position if tooltip would overflow viewport
       if (left + tooltipWidth > window.innerWidth) {
         left = window.innerWidth - tooltipWidth - padding;
       }
@@ -169,6 +152,12 @@ const MempoolTreeMap = () => {
 
       return { left, top };
     };
+
+    const cells = svg
+      .selectAll('g')
+      .data(root.leaves())
+      .join('g')
+      .attr('transform', (d) => `translate(${d.x0},${d.y0})`);
 
     cells
       .append('rect')
@@ -211,12 +200,10 @@ const MempoolTreeMap = () => {
           .attr('opacity', 1);
       });
 
-    // Add labels only for rectangles that are large enough
     cells
       .filter(d => {
         const width = d.x1 - d.x0;
         const height = d.y1 - d.y0;
-        // Adjust minimum sizes based on screen width
         const minWidth = window.innerWidth < 768 ? 30 : 40;
         const minHeight = window.innerWidth < 768 ? 15 : 20;
         return width > minWidth && height > minHeight;
@@ -234,8 +221,8 @@ const MempoolTreeMap = () => {
   }, [processedData, dimensions, loading]);
 
   return (
-    <div className="w-full h-full bg-gray-900 p-4">
-      <h2 className="text-2xl font-bold text-white mb-4">
+    <div className="w-full h-full bg-gray-900 p-2">
+      <h2 className="text-xl font-bold text-white mb-2">
         Latest Unconfirmed Transactions
       </h2>
       <div

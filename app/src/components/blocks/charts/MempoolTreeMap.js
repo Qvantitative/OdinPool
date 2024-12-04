@@ -9,7 +9,7 @@ const MempoolTreeMap = () => {
   const [transactions, setTransactions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
-  const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 }); // Set default dimensions
+  const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 });
   const containerRef = useRef(null);
 
   // Fetch data
@@ -40,22 +40,18 @@ const MempoolTreeMap = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
         setDimensions({
-          width: Math.max(width, 100), // Ensure minimum width
-          height: Math.max(height, 100) // Ensure minimum height
+          width: Math.max(width, 100),
+          height: Math.max(height, 100)
         });
       }
     };
 
-    // Initial update
     updateDimensions();
-
-    // Add resize observer
     const observer = new ResizeObserver(updateDimensions);
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
 
-    // Add window resize listener as backup
     window.addEventListener('resize', updateDimensions);
 
     return () => {
@@ -116,11 +112,11 @@ const MempoolTreeMap = () => {
 
     treemap(root);
 
-    // Color scale
-    const maxFeeRate = d3.max(root.leaves(), (d) => d.data.fee / d.data.size) || 1;
+    // Color scale - Updated to use Viridis
+    const maxTimeInMempool = d3.max(root.leaves(), (d) => d.data.timeInMempool) || 1;
     const colorScale = d3
-      .scaleSequential(d3.interpolateBlues)
-      .domain([0, maxFeeRate]);
+      .scaleSequential(d3.interpolateViridis)
+      .domain([0, maxTimeInMempool]);
 
     // Create tooltip
     const tooltip = d3.select('body')
@@ -148,12 +144,16 @@ const MempoolTreeMap = () => {
       .append('rect')
       .attr('width', (d) => Math.max(0, d.x1 - d.x0))
       .attr('height', (d) => Math.max(0, d.y1 - d.y0))
-      .attr('fill', (d) => colorScale(d.data.fee / d.data.size))
-      .attr('opacity', 0.8)
+      .attr('fill', (d) => colorScale(d.data.timeInMempool))
+      .attr('opacity', 1)
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
       .on('mouseover', function (event, d) {
-        d3.select(this).attr('opacity', 1).attr('stroke-width', 2);
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('stroke-width', 2)
+          .attr('opacity', 0.8);
         tooltip
           .style('visibility', 'visible')
           .html(
@@ -173,7 +173,11 @@ const MempoolTreeMap = () => {
       })
       .on('mouseout', function() {
         tooltip.style('visibility', 'hidden');
-        d3.select(this).attr('opacity', 0.8).attr('stroke-width', 1);
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('stroke-width', 1)
+          .attr('opacity', 1);
       });
 
     // Add labels for larger rectangles
@@ -195,20 +199,20 @@ const MempoolTreeMap = () => {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative bg-slate-100 rounded-lg p-4"
+      className="w-full h-full relative bg-gray-900 rounded-lg p-4"
       style={{
         minHeight: '500px',
         minWidth: '300px'
       }}
     >
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
-          <div className="text-gray-600">Loading...</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="text-white">Loading...</div>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
-          <div className="text-red-600">Error: {error}</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="text-red-400">Error: {error}</div>
         </div>
       )}
       <svg ref={svgRef} className="w-full h-full" />

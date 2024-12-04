@@ -6,6 +6,11 @@ import * as d3 from 'd3';
 const TransactionsTreeMap = ({ transactionData }) => {
   const svgRef = useRef(null);
 
+  // Helper function to format txid
+  const formatTxid = (txid) => {
+    return `${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}`;
+  };
+
   useEffect(() => {
     console.log('Raw transaction data:', transactionData);
 
@@ -116,13 +121,12 @@ const TransactionsTreeMap = ({ transactionData }) => {
         tooltip.style("visibility", "visible")
           .html(`
             <div>
-              <strong>Transaction ID:</strong><br/>
-              <span style="font-size: 10px;">${d.data.txid}</span><br/>
+              <strong>Transaction:</strong> ${formatTxid(d.data.txid)}<br/>
               <strong>Block Height:</strong> ${d.data.block_height}<br/>
-              <strong>Size:</strong> ${d.data.size} bytes<br/>
-              <strong>Fee:</strong> ${d.data.fee} sat/vB<br/>
-              <strong>Input:</strong> ${d.data.total_input_value} BTC<br/>
-              <strong>Output:</strong> ${d.data.total_output_value} BTC<br/>
+              <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
+              <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sat/vB<br/>
+              <strong>Input:</strong> ${Number(d.data.total_input_value).toLocaleString()} BTC<br/>
+              <strong>Output:</strong> ${Number(d.data.total_output_value).toLocaleString()} BTC<br/>
               <strong>Confirmation Time:</strong> ${d.data.confirmation_time}
             </div>
           `);
@@ -134,8 +138,8 @@ const TransactionsTreeMap = ({ transactionData }) => {
       })
       .on("mousemove", (event) => {
         tooltip
-          .style("top", (event.pageY - 10) + "px")
-          .style("left", (event.pageX + 10) + "px");
+          .style("top", `${event.pageY - 10}px`)
+          .style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", (event) => {
         tooltip.style("visibility", "hidden");

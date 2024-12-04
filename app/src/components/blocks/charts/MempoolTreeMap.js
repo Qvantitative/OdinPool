@@ -78,7 +78,7 @@ const MempoolTreeMap = () => {
           fullTxid: tx.txid
         }))
     };
-    console.log('Processed data:', data);
+    //console.log('Processed data:', data);
     return data;
   }, [transactions]);
 
@@ -104,7 +104,7 @@ const MempoolTreeMap = () => {
     const root = d3.hierarchy(processedData)
       .sum(d => d.size)
       .sort((a, b) => b.value - a.value);
-    console.log('Created hierarchy:', root);
+    //console.log('Created hierarchy:', root);
 
     const treemap = d3.treemap()
       .size([dimensions.width, dimensions.height])
@@ -113,11 +113,11 @@ const MempoolTreeMap = () => {
       .round(true);
 
     treemap(root);
-    console.log('Applied treemap layout:', root.leaves());
+    //console.log('Applied treemap layout:', root.leaves());
 
     // Color scale
     const maxFeeRate = d3.max(root.leaves(), d => d.data.fee / d.data.size) || 1;
-    console.log('Max fee rate:', maxFeeRate);
+    //console.log('Max fee rate:', maxFeeRate);
     const colorScale = d3.scaleSequential(d3.interpolateBlues)
       .domain([0, maxFeeRate]);
 

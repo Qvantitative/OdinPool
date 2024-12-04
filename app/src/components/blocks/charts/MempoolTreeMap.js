@@ -12,9 +12,9 @@ const MempoolTreeMap = () => {
     const fetchTransactions = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/transactions?block_height=null');
+        const response = await fetch('/api/mempool');
         if (!response.ok) {
-          throw new Error('Failed to fetch transactions');
+          throw new Error('Failed to fetch mempool transactions');
         }
         const data = await response.json();
         setTransactionData(data);

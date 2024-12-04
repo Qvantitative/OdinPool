@@ -240,88 +240,104 @@ const Ord = () => {
   }
 
   return (
-    <div className="bg-gray-900 p-2 sm:p-4">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mb-4">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">Latest Inscriptions</h1>
+    <div className="h-full flex flex-col bg-gray-900">
+      <div className="flex justify-between items-center p-4 border-b border-gray-800">
+        <h1 className="text-xl font-bold text-white">Latest Inscriptions</h1>
         <button
           onClick={fetchLatestInscriptions}
-          className="w-full sm:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
         >
           Refresh
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
+        <div className="flex-1 flex justify-center items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500"></div>
         </div>
+      ) : error ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={fetchLatestInscriptions}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md text-white transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       ) : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
-            {paginatedInscriptions.map((inscription) => (
-              <div
-                key={inscription.id}
-                className="relative group cursor-pointer"
-                onClick={() => handleInscriptionClick(inscription.id, inscription)}
-              >
-                <div className="aspect-square rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
-                  {inscription.type === 'image' ? (
-                    <img
-                      src={inscription.url}
-                      alt={`Inscription ${inscription.id}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : inscription.type === 'text' ? (
-                    <div className="flex items-center justify-center h-full p-4 text-gray-400">
-                      <div className="text-center">
-                        <FileText className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
-                        <p className="text-xs sm:text-sm">Text content</p>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-fr">
+              {paginatedInscriptions.map((inscription) => (
+                <div
+                  key={inscription.id}
+                  className="relative group cursor-pointer aspect-square"
+                  onClick={() => handleInscriptionClick(inscription.id, inscription)}
+                >
+                  <div className="absolute inset-0 rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
+                    {inscription.type === 'image' ? (
+                      <div className="w-full h-full">
+                        <img
+                          src={inscription.url}
+                          alt={`Inscription ${inscription.id}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-full p-4 text-gray-400">
-                      <div className="text-center">
-                        <ImageOff className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2" />
-                        <p className="text-xs sm:text-sm">Preview not available</p>
+                    ) : inscription.type === 'text' ? (
+                      <div className="flex items-center justify-center h-full p-4 text-gray-400">
+                        <div className="text-center">
+                          <FileText className="w-8 h-8 mx-auto mb-2" />
+                          <p className="text-sm">Text content</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center justify-center h-full p-4 text-gray-400">
+                        <div className="text-center">
+                          <ImageOff className="w-8 h-8 mx-auto mb-2" />
+                          <p className="text-sm">Preview not available</p>
+                        </div>
+                      </div>
+                    )}
 
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <div className="text-white text-center p-2 sm:p-4">
-                      <p className="text-xs sm:text-sm font-medium">
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <p className="text-sm font-medium text-white">
                         #{inscription.id.slice(0, 8)}...
                       </p>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center items-center mt-4 space-x-2 sm:space-x-4">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-                disabled={currentPage === 0}
-                className="p-1 sm:p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
-              >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-              <span className="text-sm sm:text-base text-white">
-                Page {currentPage + 1} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
-                disabled={currentPage === totalPages - 1}
-                className="p-1 sm:p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
-              >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
+            <div className="p-4 border-t border-gray-800">
+              <div className="flex justify-center items-center space-x-4">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                  disabled={currentPage === 0}
+                  className="p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <span className="text-white">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                  disabled={currentPage === totalPages - 1}
+                  className="p-2 rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {renderSelectedInscriptionDetails()}

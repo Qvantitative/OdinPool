@@ -3,12 +3,9 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 
-const MempoolTreeMap = () => {
+const MempoolTreeMap = ({ transactionData = [] }) => {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const formatBytes = (bytes, decimals = 2) => {
@@ -21,27 +18,6 @@ const MempoolTreeMap = () => {
   };
 
   const formatTxid = (txid) => `${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}`;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/mempool');
-        if (!response.ok) throw new Error('Failed to fetch data');
-        const data = await response.json();
-        setTransactions(data);
-      } catch (err) {
-        console.error('Fetch error:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -71,10 +47,10 @@ const MempoolTreeMap = () => {
   }, []);
 
   const processedData = useMemo(() => {
-    if (!transactions.length) return null;
+    if (!transactionData.length) return null;
     return {
-      name: 'Mempool',
-      children: transactions
+      name: 'Transactions',
+      children: transactionData
         .filter((tx) => tx && tx.size > 0)
         .map((tx) => ({
           name: tx.txid.substring(0, 8) + '...',
@@ -87,10 +63,10 @@ const MempoolTreeMap = () => {
           fullTxid: tx.txid,
         })),
     };
-  }, [transactions]);
+  }, [transactionData]);
 
   useEffect(() => {
-    if (!processedData || dimensions.width <= 0 || dimensions.height <= 0 || loading) {
+    if (!processedData || dimensions.width <= 0 || dimensions.height <= 0) {
       return;
     }
 
@@ -153,7 +129,6 @@ const MempoolTreeMap = () => {
       let left = event.pageX + padding;
       let top = event.pageY + padding;
 
-      // Adjust position if tooltip would overflow viewport
       if (left + tooltipWidth > window.innerWidth) {
         left = window.innerWidth - tooltipWidth - padding;
       }
@@ -181,14 +156,12 @@ const MempoolTreeMap = () => {
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
       .on('touchstart mouseover', function (event, d) {
-        // Highlight cell
         d3.select(this)
           .transition()
           .duration(200)
           .attr('stroke-width', 2)
           .attr('opacity', 0.8);
 
-        // Show tooltip
         tooltip
           .style('visibility', 'visible')
           .html(
@@ -201,7 +174,6 @@ const MempoolTreeMap = () => {
             </div>`
           );
 
-        // Position tooltip
         const { left, top } = handleTooltipPosition(event);
         tooltip
           .style('left', `${left}px`)
@@ -235,25 +207,20 @@ const MempoolTreeMap = () => {
     return () => {
       d3.select('body').selectAll('.mempool-tooltip').remove();
     };
-  }, [processedData, dimensions, loading]);
+  }, [processedData, dimensions]);
 
   return (
     <div className="w-full h-full bg-gray-900 p-4">
       <h2 className="text-xl font-bold text-white mb-4">
-        Latest Unconfirmed Transactions
+        Block Transactions
       </h2>
       <div
         ref={containerRef}
         className="relative rounded-lg overflow-hidden"
       >
-        {loading && (
+        {!transactionData.length && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-white">Loading...</div>
-          </div>
-        )}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="text-red-400">Error: {error}</div>
+            <div className="text-white">No transaction data available</div>
           </div>
         )}
         <svg

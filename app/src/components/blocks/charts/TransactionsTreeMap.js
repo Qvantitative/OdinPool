@@ -1,15 +1,10 @@
 // app/components/blocks/charts/TransactionTreeMap.js
 
 import React, { useEffect, useRef } from 'react';
-import * as d3 from 'd3';
+import * * as d3 from 'd3';
 
 const TransactionsTreeMap = ({ transactionData }) => {
   const svgRef = useRef(null);
-
-  // Helper function to format txid
-  const formatTxid = (txid) => {
-    return `${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}`;
-  };
 
   useEffect(() => {
     console.log('Raw transaction data:', transactionData);
@@ -23,21 +18,27 @@ const TransactionsTreeMap = ({ transactionData }) => {
     d3.select(svgRef.current).selectAll("*").remove();
 
     // Process and filter valid transactions with corrected confirmation_duration access
-    const validTransactions = transactionData.map(tx => ({
-      txid: tx.txid,
-      size: tx.size || 0,
-      duration: tx.confirmation_duration?.seconds ||
-                (tx.confirmation_duration?.minutes * 60) ||
-                (tx.confirmation_duration?.hours * 3600) || 0,
-      value: tx.size || 0,
-      block_height: tx.block_height,
-      total_input_value: tx.total_input_value,
-      total_output_value: tx.total_output_value,
-      fee: tx.fee,
-      confirmation_time: tx.confirmation_duration ?
-        `${tx.confirmation_duration.hours || 0}h ${tx.confirmation_duration.minutes || 0}m ${tx.confirmation_duration.seconds || 0}s` :
-        'Pending'
-    })).filter(tx => tx.size > 0);
+    const validTransactions = transactionData.map(tx => {
+      const fullTxid = tx.txid;
+      const truncatedTxid = `${fullTxid.substring(0, 8)}...${fullTxid.substring(fullTxid.length - 8)}`;
+
+      return {
+        txid: truncatedTxid, // Store truncated version
+        fullTxid: fullTxid,  // Keep full version if needed
+        size: tx.size || 0,
+        duration: tx.confirmation_duration?.seconds ||
+                 (tx.confirmation_duration?.minutes * 60) ||
+                 (tx.confirmation_duration?.hours * 3600) || 0,
+        value: tx.size || 0,
+        block_height: tx.block_height,
+        total_input_value: tx.total_input_value,
+        total_output_value: tx.total_output_value,
+        fee: tx.fee,
+        confirmation_time: tx.confirmation_duration ?
+          `${tx.confirmation_duration.hours || 0}h ${tx.confirmation_duration.minutes || 0}m ${tx.confirmation_duration.seconds || 0}s` :
+          'Pending'
+      };
+    }).filter(tx => tx.size > 0);
 
     console.log('Processed transactions:', validTransactions);
 
@@ -121,7 +122,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
         tooltip.style("visibility", "visible")
           .html(`
             <div>
-              <strong>Transaction:</strong> ${formatTxid(d.data.txid)}<br/>
+              <strong>Transaction:</strong> ${d.data.txid}<br/>
               <strong>Block Height:</strong> ${d.data.block_height}<br/>
               <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
               <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sat/vB<br/>

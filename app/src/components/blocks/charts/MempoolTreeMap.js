@@ -9,7 +9,7 @@ const MempoolTreeMap = () => {
   const [transactions, setTransactions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
-  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+  const [dimensions, setDimensions] = React.useState({ width: 800, height: 600 }); // Set default dimensions
   const containerRef = useRef(null);
 
   // Fetch data
@@ -20,7 +20,6 @@ const MempoolTreeMap = () => {
         const response = await fetch('/api/mempool');
         if (!response.ok) throw new Error('Failed to fetch data');
         const data = await response.json();
-        console.log('Fetched transactions:', data);
         setTransactions(data);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -39,30 +38,36 @@ const MempoolTreeMap = () => {
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const newDimensions = {
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        };
-        setDimensions(newDimensions);
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: Math.max(width, 100), // Ensure minimum width
+          height: Math.max(height, 100) // Ensure minimum height
+        });
       }
     };
 
+    // Initial update
     updateDimensions();
+
+    // Add resize observer
     const observer = new ResizeObserver(updateDimensions);
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
 
-    return () => observer.disconnect();
+    // Add window resize listener as backup
+    window.addEventListener('resize', updateDimensions);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, []);
 
   // Process data for D3
   const processedData = useMemo(() => {
-    if (!transactions.length) {
-      return null;
-    }
-
-    const data = {
+    if (!transactions.length) return null;
+    return {
       name: 'Mempool',
       children: transactions
         .filter((tx) => tx && tx.size > 0)
@@ -77,7 +82,6 @@ const MempoolTreeMap = () => {
           fullTxid: tx.txid,
         })),
     };
-    return data;
   }, [transactions]);
 
   // D3 Visualization
@@ -86,16 +90,16 @@ const MempoolTreeMap = () => {
       return;
     }
 
-    // Clear previous visualization
-    d3.select(svgRef.current).selectAll('*').remove();
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('*').remove();
 
-    // Create SVG
-    const svg = d3
-      .select(svgRef.current)
-      .attr('width', dimensions.width)
-      .attr('height', dimensions.height);
+    // Set viewBox for better scaling
+    svg
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', `0 0 ${dimensions.width} ${dimensions.height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
 
-    // Create hierarchy
     const root = d3
       .hierarchy(processedData)
       .sum((d) => d.size)
@@ -104,30 +108,30 @@ const MempoolTreeMap = () => {
     const treemap = d3
       .treemap()
       .size([dimensions.width, dimensions.height])
-      .paddingOuter(1)
-      .paddingInner(1)
+      .paddingOuter(3) // Increased padding
+      .paddingInner(2)
       .round(true);
 
     treemap(root);
 
-    // Color scale
-    const maxFeeRate =
-      d3.max(root.leaves(), (d) => d.data.fee / d.data.size) || 1;
+    const maxFeeRate = d3.max(root.leaves(), (d) => d.data.fee / d.data.size) || 1;
     const colorScale = d3
       .scaleSequential(d3.interpolateBlues)
       .domain([0, maxFeeRate]);
 
-    // Prepare tooltip
+    // Enhanced tooltip
     const tooltip = d3
       .select(tooltipRef.current)
       .style('position', 'absolute')
       .style('opacity', 0)
       .style('pointer-events', 'none')
-      .style('background', 'white')
-      .style('padding', '5px')
-      .style('border', '1px solid black');
+      .style('background', 'rgba(255, 255, 255, 0.95)')
+      .style('padding', '8px')
+      .style('border-radius', '4px')
+      .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
+      .style('font-size', '12px')
+      .style('max-width', '300px');
 
-    // Draw rectangles
     const cells = svg
       .selectAll('g')
       .data(root.leaves())
@@ -139,37 +143,78 @@ const MempoolTreeMap = () => {
       .attr('width', (d) => Math.max(0, d.x1 - d.x0))
       .attr('height', (d) => Math.max(0, d.y1 - d.y0))
       .attr('fill', (d) => colorScale(d.data.fee / d.data.size))
-      .attr('opacity', 0.8)
+      .attr('opacity', 0.9)
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
       .on('mouseover', function (event, d) {
+        d3.select(this).attr('opacity', 1).attr('stroke-width', 2);
         tooltip
           .style('opacity', 1)
           .html(
             `<div>
               <strong>Txid:</strong> ${d.data.fullTxid}<br/>
-              <strong>Size:</strong> ${d.data.size}<br/>
-              <strong>Fee:</strong> ${d.data.fee}<br/>
+              <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
+              <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sats<br/>
+              <strong>Fee Rate:</strong> ${(d.data.fee / d.data.size).toFixed(2)} sats/byte<br/>
               <strong>Time in Mempool:</strong> ${d.data.timeInMempool} seconds
             </div>`
           );
       })
-      .on('mousemove', function (event, d) {
+      .on('mousemove', function (event) {
+        const tooltipWidth = tooltipRef.current.offsetWidth;
+        const tooltipHeight = tooltipRef.current.offsetHeight;
+        const padding = 10;
+
+        let left = event.pageX + padding;
+        let top = event.pageY + padding;
+
+        // Adjust position if tooltip would overflow window
+        if (left + tooltipWidth > window.innerWidth) {
+          left = event.pageX - tooltipWidth - padding;
+        }
+        if (top + tooltipHeight > window.innerHeight) {
+          top = event.pageY - tooltipHeight - padding;
+        }
+
         tooltip
-          .style('left', event.pageX + 10 + 'px')
-          .style('top', event.pageY + 10 + 'px');
+          .style('left', `${left}px`)
+          .style('top', `${top}px`);
       })
       .on('mouseout', function () {
+        d3.select(this).attr('opacity', 0.9).attr('stroke-width', 1);
         tooltip.style('opacity', 0);
       });
+
+    // Add labels for larger rectangles
+    cells
+      .filter(d => (d.x1 - d.x0) > 40 && (d.y1 - d.y0) > 20)
+      .append('text')
+      .attr('x', 4)
+      .attr('y', 14)
+      .text(d => d.data.name)
+      .attr('fill', 'white')
+      .attr('font-size', '10px');
   }, [processedData, dimensions, loading]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative"
-      style={{ minHeight: '500px' }}
+      className="w-full h-full relative bg-slate-100 rounded-lg p-4"
+      style={{
+        minHeight: '500px',
+        minWidth: '300px'
+      }}
     >
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
+          <div className="text-gray-600">Loading...</div>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
+          <div className="text-red-600">Error: {error}</div>
+        </div>
+      )}
       <svg ref={svgRef} className="w-full h-full" />
       <div ref={tooltipRef} />
     </div>

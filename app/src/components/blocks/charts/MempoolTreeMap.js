@@ -130,6 +130,7 @@ const MempoolTreeMap = () => {
       .style('border-radius', '4px')
       .style('box-shadow', '0 2px 4px rgba(0,0,0,0.2)')
       .style('font-size', '12px')
+      .style('color', 'black') // Explicitly set text color to black
       .style('max-width', '300px');
 
     const cells = svg
@@ -151,7 +152,7 @@ const MempoolTreeMap = () => {
         tooltip
           .style('opacity', 1)
           .html(
-            `<div>
+            `<div style="color: black;">
               <strong>Txid:</strong> ${d.data.fullTxid}<br/>
               <strong>Size:</strong> ${d.data.size.toLocaleString()} bytes<br/>
               <strong>Fee:</strong> ${d.data.fee.toLocaleString()} sats<br/>
@@ -161,14 +162,15 @@ const MempoolTreeMap = () => {
           );
       })
       .on('mousemove', function (event) {
-        const tooltipWidth = tooltipRef.current.offsetWidth;
-        const tooltipHeight = tooltipRef.current.offsetHeight;
-        const padding = 10;
+        const padding = 5; // Reduced padding to position tooltip closer to cursor
 
         let left = event.pageX + padding;
         let top = event.pageY + padding;
 
         // Adjust position if tooltip would overflow window
+        const tooltipWidth = tooltipRef.current.offsetWidth;
+        const tooltipHeight = tooltipRef.current.offsetHeight;
+
         if (left + tooltipWidth > window.innerWidth) {
           left = event.pageX - tooltipWidth - padding;
         }

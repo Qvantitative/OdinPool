@@ -1,4 +1,4 @@
-// BlockDataTable.js
+// app/components/blocks/BlockDataTable.js
 
 import React, { useState, useEffect } from 'react';
 import Inscriptions from './Inscriptions';

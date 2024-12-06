@@ -103,12 +103,14 @@ const Ord = ({ onAddressClick = () => {} }) => {
       // Handle HTML or SVG content
       if (contentType.includes('text/html')) {
         const htmlContent = initialResponse.data;
+
+        // First, check if there is an inline SVG
         const svgContent = extractSVGFromHTML(htmlContent);
         if (svgContent) {
-          // We have found an inline SVG, now process its images
+          // Process and inline images in the SVG
           const inlinedSVG = await inlineSVGImages(svgContent);
 
-          // Convert the final inlined SVG to a Blob URL
+          // Convert the inlined SVG to a Blob URL
           const svgBlob = new Blob([inlinedSVG], { type: 'image/svg+xml' });
           const svgUrl = URL.createObjectURL(svgBlob);
 
@@ -120,7 +122,23 @@ const Ord = ({ onAddressClick = () => {} }) => {
           };
         }
 
-        // If no SVG found, just return the raw HTML as content
+        // If no SVG found, try to extract a single <img> from the HTML
+        const imageSource = extractImageSourceFromHTML(htmlContent);
+        if (imageSource) {
+          // We found a simple <img> source
+          const imageResponse = await fetchWithRetry(imageSource, { responseType: 'blob' });
+          const blob = new Blob([imageResponse.data]);
+          const imageUrl = URL.createObjectURL(blob);
+
+          return {
+            url: imageUrl,
+            type: 'image',
+            blob: blob,
+            originalHtml: htmlContent
+          };
+        }
+
+        // If neither SVG nor <img> found, just return the raw HTML as content
         return {
           content: htmlContent,
           type: 'html',
@@ -144,7 +162,7 @@ const Ord = ({ onAddressClick = () => {} }) => {
         }
       }
 
-      // Handle text files
+      // Handle text files (non-HTML)
       if (contentType.startsWith('text/')) {
         return {
           content: initialResponse.data,

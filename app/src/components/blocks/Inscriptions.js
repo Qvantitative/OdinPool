@@ -5,19 +5,178 @@ import axios from 'axios';
 import https from 'https';
 import { ImageOff } from 'lucide-react';
 
+// ------------------------
+// Helper Functions
+// ------------------------
+
 const axiosInstanceWithSSL = axios.create({
-  baseURL: process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : '/ord',
+  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const axiosInstanceWithoutSSL = axios.create({
-  baseURL: process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : '/ord',
+  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
   httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
+
+const fetchWithRetry = async (url, options = {}, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await axiosInstanceWithoutSSL.get(url, options);
+      return response;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+};
+
+// Extract the first <img src="..."> from HTML content
+const extractImageSourceFromHTML = (htmlContent) => {
+  const imgMatch = htmlContent.match(/<img[^>]+src="([^"]+)"/);
+  return imgMatch ? imgMatch[1] : null;
+};
+
+// Extract the first <svg>...</svg> block from HTML
+const extractSVGFromHTML = (htmlContent) => {
+  const svgMatch = htmlContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
+  return svgMatch ? svgMatch[0] : null;
+};
+
+// Convert binary data to a data URL
+const convertToDataURL = (buffer, contentType) => {
+  const base64String = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  return `data:${contentType};base64,${base64String}`;
+};
+
+// Inline SVG images that reference /content/... inside the SVG
+const inlineSVGImages = async (svgContent) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+  const images = doc.querySelectorAll('image[href^="/content/"]');
+
+  for (let img of images) {
+    const href = img.getAttribute('href');
+    if (href.startsWith('/content/')) {
+      try {
+        const imageResponse = await fetchWithRetry(href, { responseType: 'arraybuffer' });
+        const contentType = imageResponse.headers['content-type'];
+        const imageBuffer = imageResponse.data;
+        const dataUrl = convertToDataURL(imageBuffer, contentType);
+        img.setAttribute('href', dataUrl);
+      } catch (error) {
+        console.error(`Failed to fetch image at ${href}`, error);
+      }
+    }
+  }
+
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(doc.documentElement);
+};
+
+// Inline <script src="/content/..."> references directly into the HTML
+const inlineScriptContent = async (htmlContent) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  const scripts = doc.querySelectorAll('script[src^="/content/"]');
+
+  for (let script of scripts) {
+    const src = script.getAttribute('src');
+    if (src.startsWith('/content/')) {
+      try {
+        const scriptResponse = await fetchWithRetry(src, { responseType: 'text' });
+        const scriptContent = scriptResponse.data;
+        script.removeAttribute('src');
+        script.textContent = scriptContent;
+      } catch (error) {
+        console.error(`Failed to fetch script at ${src}`, error);
+      }
+    }
+  }
+
+  return doc.documentElement.outerHTML;
+};
+
+// Inline dynamically generated scripts that append another <script> element
+const inlineDynamicGeneratedScript = async (htmlContent) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+  const scripts = doc.querySelectorAll('script');
+
+  for (let script of scripts) {
+    let scriptCode = script.textContent || '';
+
+    // Look for pattern: createElement('script'), set script.src and onload, then appendChild
+    const createScriptMatch = scriptCode.match(/const script = document\.createElement\('script'\);([\s\S]*?)document\.head\.appendChild\(script\);/);
+    if (createScriptMatch) {
+      const scriptBlock = createScriptMatch[0];
+      const srcMatch = scriptBlock.match(/script\.src\s*=\s*['"]([^'"]+)['"]/);
+      if (srcMatch) {
+        const externalScriptUrl = srcMatch[1];
+        try {
+          const externalScriptResponse = await fetchWithRetry(externalScriptUrl, { responseType: 'text' });
+          const externalScriptContent = externalScriptResponse.data;
+
+          const onloadMatch = scriptBlock.match(/script\.onload\s*=\s*\(\)\s*=>\s*\{([\s\S]*?)\};/);
+          let onloadBody = '';
+          if (onloadMatch) {
+            onloadBody = onloadMatch[1].trim();
+          }
+
+          const replacement = `
+            // Inlined external script from ${externalScriptUrl}:
+            ${externalScriptContent}
+
+            // Onload logic inlined:
+            ${onloadBody}
+          `;
+
+          scriptCode = scriptCode.replace(scriptBlock, replacement);
+          script.textContent = scriptCode;
+        } catch (error) {
+          console.error('Error inlining external script referenced by dynamically created <script>:', error);
+        }
+      }
+    }
+  }
+
+  return doc.documentElement.outerHTML;
+};
+
+// A helper to fully process HTML content inscriptions
+const processHTMLContent = async (htmlContent) => {
+  // Check for inline SVG scenario
+  const svgContent = extractSVGFromHTML(htmlContent);
+  if (svgContent) {
+    const inlinedSVG = await inlineSVGImages(svgContent);
+    // Return as image
+    const svgBlob = new Blob([inlinedSVG], { type: 'image/svg+xml' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    return { type: 'image', url: svgUrl, originalHtml: htmlContent };
+  }
+
+  // Check for a simple <img> tag
+  const imageSource = extractImageSourceFromHTML(htmlContent);
+  if (imageSource) {
+    // Fetch the image
+    const imageResponse = await fetchWithRetry(imageSource, { responseType: 'blob' });
+    const blob = new Blob([imageResponse.data]);
+    const imageUrl = URL.createObjectURL(blob);
+    return { type: 'image', url: imageUrl, originalHtml: htmlContent };
+  }
+
+  // Inline scripts
+  let finalHTML = await inlineScriptContent(htmlContent);
+  finalHTML = await inlineDynamicGeneratedScript(finalHTML);
+
+  // Return final HTML as text
+  return { type: 'html', content: finalHTML };
+};
+
+// ------------------------
+// Main Logic for Inscriptions Component
+// ------------------------
 
 const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, setLoading) => {
   if (!inscriptionsList || inscriptionsList.length === 0) {
@@ -30,65 +189,59 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
   await Promise.all(
     inscriptionsList.map(async (inscriptionId) => {
       try {
-        // Add retry logic for network errors
-        const fetchWithRetry = async (url, options, retries = 3) => {
-          for (let i = 0; i < retries; i++) {
-            try {
-              const response = await axiosInstanceWithoutSSL.get(url, options);
-              return response;
-            } catch (err) {
-              if (i === retries - 1) throw err;
-              // Wait before retrying (exponential backoff)
-              await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-            }
-          }
-        };
-
-        // Fetch details with retry
         const detailsResponse = await fetchWithRetry(`/inscription/${inscriptionId}`);
         const details = detailsResponse.data;
 
-        // Only try to fetch content if we successfully got the details
         if (details) {
+          // Fetch the content as text first to inspect
           try {
-            // Fetch the content and determine content type
-            const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, {
-              responseType: 'blob',
-            });
-
+            const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, { responseType: 'text' });
             const contentType = contentResponse.headers['content-type'];
+            const rawData = contentResponse.data;
 
-            // Handle image or SVG
-            if (contentType.startsWith('image/')) {
-              let imageUrl;
-              if (contentType === 'image/svg+xml') {
-                // If SVG, handle as text and create a Blob for the SVG content
-                const svgText = await contentResponse.data.text();
-                const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-                imageUrl = URL.createObjectURL(svgBlob);
-              } else {
-                // For other images, handle as blob directly
-                const blob = new Blob([contentResponse.data]);
-                imageUrl = URL.createObjectURL(blob);
-              }
-
+            if (contentType.includes('text/html')) {
+              // Process complex HTML scenario
+              const processed = await processHTMLContent(rawData);
               images[inscriptionId] = {
-                url: imageUrl,
-                type: 'image',
+                ...processed,
                 rune: details.rune,
                 details: details,
               };
+            } else if (contentType.startsWith('image/')) {
+              // If it's an image
+              if (contentType === 'image/svg+xml') {
+                // Already have SVG text
+                const svgText = rawData;
+                const inlinedSVG = await inlineSVGImages(svgText);
+                const svgBlob = new Blob([inlinedSVG], { type: 'image/svg+xml' });
+                const imageUrl = URL.createObjectURL(svgBlob);
+                images[inscriptionId] = {
+                  type: 'image',
+                  url: imageUrl,
+                  rune: details.rune,
+                  details: details,
+                };
+              } else {
+                // For other images, we need to refetch as blob
+                const blobResponse = await fetchWithRetry(`/content/${inscriptionId}`, { responseType: 'blob' });
+                const blob = new Blob([blobResponse.data]);
+                const imageUrl = URL.createObjectURL(blob);
+                images[inscriptionId] = {
+                  type: 'image',
+                  url: imageUrl,
+                  rune: details.rune,
+                  details: details,
+                };
+              }
             } else if (contentType.startsWith('text/')) {
-              // Handle text content
-              const textContent = await contentResponse.data.text();
+              // Handle plain text (non-html)
               images[inscriptionId] = {
-                content: textContent,
-                type: 'text',
+                type: contentType.includes('html') ? 'html' : 'text',
+                content: rawData,
                 rune: details.rune,
                 details: details,
               };
             } else {
-              // Handle unsupported content
               images[inscriptionId] = {
                 type: 'unsupported',
                 rune: details.rune,
@@ -97,7 +250,6 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
             }
           } catch (contentErr) {
             console.error(`Error fetching content for inscription ${inscriptionId}:`, contentErr);
-            // Still store the details even if content fetch failed
             images[inscriptionId] = {
               type: 'error',
               error: 'Content unavailable',
@@ -121,11 +273,8 @@ const fetchInscriptionImages = async (inscriptionsList, setInscriptionImages, se
 };
 
 const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelectedInscription) => {
-  // Log all available data
   console.log('Inscription ID:', inscriptionId);
   console.log('Inscription Data:', inscriptionData);
-
-  // Make the API call and log the response
   try {
     const response = await axiosInstanceWithoutSSL.get(`/inscription/${inscriptionId}`, {
       headers: {
@@ -134,10 +283,9 @@ const handleInscriptionClick = async (inscriptionId, inscriptionData, setSelecte
       },
     });
     console.log('API Response:', response.data);
-    // Include the image data in the selectedInscription state
     setSelectedInscription({
       ...response.data,
-      inscriptionData, // This contains the image or content data
+      inscriptionData,
     });
   } catch (error) {
     console.error('Error fetching inscription data:', error);
@@ -177,9 +325,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
       <div
         key={index}
         className="flex flex-col items-center"
-        onClick={() =>
-          handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)
-        }
+        onClick={() => handleInscriptionClick(inscriptionId, inscriptionData, setSelectedInscription)}
       >
         <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gray-800">
           {inscriptionData ? (
@@ -197,7 +343,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-            ) : inscriptionData.type === 'text' ? (
+            ) : inscriptionData.type === 'text' || inscriptionData.type === 'html' ? (
               <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl">
                 <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
                   {inscriptionData.content}
@@ -231,28 +377,22 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
     if (!selectedInscription) return null;
 
     const { inscriptionData, ...details } = selectedInscription;
-
-    // Format the details to ensure consistent key names and include top-level address field
     const formattedDetails = {
-      address: details.address || details.output_address || details.satpoint?.split(':')[0] || '',  // Add satpoint parsing
+      address: details.address || details.output_address || details.satpoint?.split(':')[0] || '',
       ...details,
     };
 
     const renderValue = (key, value) => {
-      // Check if the key is exactly "address" or contains "address" (case-insensitive)
       const isAddress = key === 'address' || key.toLowerCase().includes('address');
-
-      // Add more debug logging
       console.log('Key:', key, 'Value:', value, 'Is Address:', isAddress);
 
       if (isAddress && onAddressClick && value && typeof value === 'string') {
-        // Clean up the address if it's part of a satpoint
         const cleanAddress = value.split(':')[0];
         return (
           <span
             className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
             onClick={(e) => {
-              e.stopPropagation(); // Prevent event bubbling
+              e.stopPropagation();
               onAddressClick(cleanAddress);
             }}
           >
@@ -261,7 +401,6 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
         );
       }
 
-      // For non-address values, render normally
       return (
         <span className="text-gray-200 break-all">
           {typeof value === 'object' ? JSON.stringify(value, null, 2) : value}
@@ -269,7 +408,6 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
       );
     };
 
-    // Move the address field to the top of the details list
     const orderedEntries = Object.entries(formattedDetails).sort(([keyA], [keyB]) => {
       if (keyA === 'address') return -1;
       if (keyB === 'address') return 1;
@@ -296,7 +434,7 @@ const Inscriptions = ({ blockDetails, onAddressClick }) => {
                   alt={`Inscription ${formattedDetails.id}`}
                   className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-md"
                 />
-              ) : inscriptionData.type === 'text' ? (
+              ) : inscriptionData.type === 'text' || inscriptionData.type === 'html' ? (
                 <div className="flex items-center justify-center h-full p-4 bg-gray-700 text-gray-200 rounded-2xl shadow-md">
                   <pre className="text-sm overflow-auto max-h-full max-w-full text-center">
                     {inscriptionData.content}

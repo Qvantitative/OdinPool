@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ImageOff, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
@@ -88,8 +87,7 @@ const Ord = ({ onAddressClick = () => {} }) => {
           imageUrl = URL.createObjectURL(blob);
         }
         return { url: imageUrl, type: 'image', blob: contentType === 'image/svg+xml' ? initialResponse.data : null };
-      }
-      else if (contentType.startsWith('text/')) {
+      } else if (contentType.startsWith('text/')) {
         return {
           content: initialResponse.data,
           type: contentType.includes('html') ? 'html' : 'text',

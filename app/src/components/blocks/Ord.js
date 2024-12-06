@@ -100,6 +100,60 @@ const inlineScriptContent = async (htmlContent) => {
   return doc.documentElement.outerHTML;
 };
 
+const inlineDynamicGeneratedScript = async (htmlContent) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+
+  // Find the script tag that contains the async IIFE
+  const scripts = doc.querySelectorAll('script');
+  for (let script of scripts) {
+    const scriptCode = script.textContent || '';
+    // Check if the script matches the known pattern
+    // This pattern is very specific to your given code.
+    // We look for `fetch('/r/sat/45039645507/at/-1')` and `const generator = `/content/${id}`
+    if (scriptCode.includes("fetch('/r/sat/45039645507/at/-1')") &&
+        scriptCode.includes('const generator = `/content/${id}`')) {
+
+      try {
+        // 1. Fetch the JSON from /r/sat/45039645507/at/-1
+        const response = await fetchWithRetry('/r/sat/45039645507/at/-1', { responseType: 'json' });
+        const data = response.data; // Assuming data = { id: "someID" }
+
+        if (data && data.id) {
+          const generatorSrc = `/content/${data.id}`;
+          // 2. Fetch the generator script
+          const generatorResponse = await fetchWithRetry(generatorSrc, { responseType: 'text' });
+          const generatorScriptContent = generatorResponse.data;
+
+          // 3. Replace the original code in the script with the inlined script content
+          // Instead of dynamically appending a script, we just inline its code directly.
+          const newScriptContent = `
+            (async () => {
+              // Original logic replaced by directly inlined script content:
+              // const response = await fetch('/r/sat/45039645507/at/-1');
+              // const data = await response.json();
+              // const id = data.id;
+              // const generator = \`/content/\${id}\`;
+
+              // Inline the fetched generator script directly:
+              ${generatorScriptContent}
+            })();`;
+
+          // Update the script’s text content
+          script.textContent = newScriptContent;
+
+          // Remove any src attributes if present (not in this case, but just to be safe)
+          script.removeAttribute('src');
+        }
+      } catch (error) {
+        console.error('Error inlining dynamic generated script:', error);
+      }
+    }
+  }
+
+  return doc.documentElement.outerHTML;
+};
+
 const Ord = ({ onAddressClick = () => {} }) => {
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,11 +180,10 @@ const Ord = ({ onAddressClick = () => {} }) => {
       const initialResponse = await fetchWithRetry(path, { responseType: 'text' });
       const contentType = initialResponse.headers['content-type'];
 
-      // Handle HTML or SVG content
       if (contentType.includes('text/html')) {
         const htmlContent = initialResponse.data;
 
-        // 1. Check for inline SVG scenario
+        // Check for inline SVG scenario first
         const svgContent = extractSVGFromHTML(htmlContent);
         if (svgContent) {
           const inlinedSVG = await inlineSVGImages(svgContent);
@@ -145,7 +198,7 @@ const Ord = ({ onAddressClick = () => {} }) => {
           };
         }
 
-        // 2. Check for <img> in HTML
+        // Check for a simple <img> tag
         const imageSource = extractImageSourceFromHTML(htmlContent);
         if (imageSource) {
           const imageResponse = await fetchWithRetry(imageSource, { responseType: 'blob' });
@@ -160,19 +213,19 @@ const Ord = ({ onAddressClick = () => {} }) => {
           };
         }
 
-        // 3. Check for <script src="/content/..."> references and inline them
-        const inlinedScriptsHTML = await inlineScriptContent(htmlContent);
+        // Inline script content referenced by <script src="/content/...">
+        const inlinedScriptHTML = await inlineScriptContent(htmlContent);
 
-        // If scripts were inlined or not, we now have a final HTML
-        // Return the HTML as content type since no SVG or IMG was found
+        // Now handle the dynamic script scenario where the script fetches /r/sat/45039645507/at/-1
+        const finalHTML = await inlineDynamicGeneratedScript(inlinedScriptHTML);
+
         return {
-          content: inlinedScriptsHTML,
+          content: finalHTML,
           type: 'html',
-          blob: new Blob([inlinedScriptsHTML])
+          blob: new Blob([finalHTML])
         };
       }
 
-      // Handle direct image types
       if (contentType.startsWith('image/')) {
         if (contentType === 'image/svg+xml') {
           const svgText = initialResponse.data;
@@ -188,7 +241,6 @@ const Ord = ({ onAddressClick = () => {} }) => {
         }
       }
 
-      // Handle text files
       if (contentType.startsWith('text/')) {
         return {
           content: initialResponse.data,

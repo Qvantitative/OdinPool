@@ -26,9 +26,52 @@ const extractImageSourceFromHTML = (htmlContent) => {
 };
 
 const extractSVGFromHTML = (htmlContent) => {
-  // This regex attempts to find the first <svg ...> ... </svg> block
   const svgMatch = htmlContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
   return svgMatch ? svgMatch[0] : null;
+};
+
+const fetchBinaryData = async (url) => {
+  const response = await fetchWithRetry(url, { responseType: 'arraybuffer' });
+  return response.data;
+};
+
+const convertToDataURL = (buffer, contentType) => {
+  const base64String = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  return `data:${contentType};base64,${base64String}`;
+};
+
+const inlineSVGImages = async (svgContent) => {
+  // Create a temporary DOM to manipulate the SVG
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+
+  const images = doc.querySelectorAll('image[href^="/content/"]');
+
+  // Fetch each image referenced inside the SVG
+  for (let img of images) {
+    const href = img.getAttribute('href');
+    if (href.startsWith('/content/')) {
+      try {
+        // Fetch image content
+        const imageResponse = await fetchWithRetry(href, { responseType: 'arraybuffer' });
+
+        const contentType = imageResponse.headers['content-type'];
+        const imageBuffer = imageResponse.data;
+
+        // Convert binary data to a data URL
+        const dataUrl = convertToDataURL(imageBuffer, contentType);
+
+        // Update the image href to the inline data URL
+        img.setAttribute('href', dataUrl);
+      } catch (error) {
+        console.error(`Failed to fetch image at ${href}`, error);
+      }
+    }
+  }
+
+  // Serialize the updated SVG back to text
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(doc.documentElement);
 };
 
 const Ord = ({ onAddressClick = () => {} }) => {
@@ -54,37 +97,19 @@ const Ord = ({ onAddressClick = () => {} }) => {
   const fetchInscriptionContent = async (inscriptionId, contentPath = null) => {
     try {
       const path = contentPath || `/content/${inscriptionId}`;
-      const initialResponse = await fetchWithRetry(path, {
-        responseType: 'text'
-      });
-
+      const initialResponse = await fetchWithRetry(path, { responseType: 'text' });
       const contentType = initialResponse.headers['content-type'];
 
+      // Handle HTML or SVG content
       if (contentType.includes('text/html')) {
         const htmlContent = initialResponse.data;
-
-        // 1. Try to extract an <img> if present
-        const imageSource = extractImageSourceFromHTML(htmlContent);
-        if (imageSource) {
-          const imageResponse = await fetchWithRetry(imageSource, {
-            responseType: 'blob'
-          });
-
-          const blob = new Blob([imageResponse.data]);
-          const imageUrl = URL.createObjectURL(blob);
-
-          return {
-            url: imageUrl,
-            type: 'image',
-            blob: imageResponse.data,
-            originalHtml: htmlContent
-          };
-        }
-
-        // 2. If no <img> found, try to extract an inline SVG
         const svgContent = extractSVGFromHTML(htmlContent);
         if (svgContent) {
-          const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+          // We have found an inline SVG, now process its images
+          const inlinedSVG = await inlineSVGImages(svgContent);
+
+          // Convert the final inlined SVG to a Blob URL
+          const svgBlob = new Blob([inlinedSVG], { type: 'image/svg+xml' });
           const svgUrl = URL.createObjectURL(svgBlob);
 
           return {
@@ -95,7 +120,7 @@ const Ord = ({ onAddressClick = () => {} }) => {
           };
         }
 
-        // 3. If no images or svg found, just return the HTML as text
+        // If no SVG found, just return the raw HTML as content
         return {
           content: htmlContent,
           type: 'html',
@@ -103,20 +128,24 @@ const Ord = ({ onAddressClick = () => {} }) => {
         };
       }
 
+      // Handle direct image types
       if (contentType.startsWith('image/')) {
-        let imageUrl;
         if (contentType === 'image/svg+xml') {
           const svgText = initialResponse.data;
-          const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
-          imageUrl = URL.createObjectURL(svgBlob);
-          return { url: imageUrl, type: 'image', blob: svgText };
+          const inlinedSVG = await inlineSVGImages(svgText);
+          const svgBlob = new Blob([inlinedSVG], { type: 'image/svg+xml' });
+          const imageUrl = URL.createObjectURL(svgBlob);
+          return { url: imageUrl, type: 'image', blob: svgBlob };
         } else {
           const blobResponse = await fetchWithRetry(path, { responseType: 'blob' });
           const blob = new Blob([blobResponse.data]);
-          imageUrl = URL.createObjectURL(blob);
+          const imageUrl = URL.createObjectURL(blob);
           return { url: imageUrl, type: 'image', blob };
         }
-      } else if (contentType.startsWith('text/')) {
+      }
+
+      // Handle text files
+      if (contentType.startsWith('text/')) {
         return {
           content: initialResponse.data,
           type: contentType.includes('html') ? 'html' : 'text',

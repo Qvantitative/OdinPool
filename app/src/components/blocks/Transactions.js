@@ -2,6 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 
+import React, { useState, useEffect } from 'react';
+
+const formatBytes = (bytes, decimals = 2) => {
+  if (!bytes || bytes === 0) return '0 vB';
+  const sizes = ['vB', 'KvB', 'MvB', 'GvB', 'TvB', 'PvB', 'EvB', 'ZB', 'YvB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  if (i >= sizes.length) return 'Value too large';
+  const value = bytes / Math.pow(1024, i);
+  return i === 0 ? `${Math.round(value)} ${sizes[i]}` : `${value.toFixed(decimals)} ${sizes[i]}`;
+};
+
 // Loading Circle Component
 const LoadingCircle = () => (
   <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -228,7 +239,7 @@ const Transactions = ({ transactionData, handleTransactionClick }) => {
           <div>{formatBTC(currentTransaction.total_input_value)} BTC</div>
           <div className="flex flex-col items-center text-sm space-y-1">
             <div className="flex items-center space-x-2">
-              <span className="text-gray-400">{currentTransaction.size} bytes</span>
+              <span className="text-gray-400">{formatBytes(currentTransaction.size)}</span>
               <span className="text-gray-400">|</span>
               <span>{currentTransaction.fee} sat/vB</span>
               {confirmationDuration && (

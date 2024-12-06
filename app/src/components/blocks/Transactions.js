@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 
-import React, { useState, useEffect } from 'react';
-
 const formatBytes = (bytes, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 vB';
   const sizes = ['vB', 'KvB', 'MvB', 'GvB', 'TvB', 'PvB', 'EvB', 'ZB', 'YvB'];

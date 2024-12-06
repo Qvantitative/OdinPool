@@ -93,30 +93,6 @@ const Ord = ({ onAddressClick }) => {
     }
   };
 
-  const handleInscriptionClick = async (inscriptionId, inscriptionData) => {
-    try {
-      const response = await axiosInstance.get(`/inscription/${inscriptionId}`, {
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // If the content path is different in the details, fetch the content again
-      if (response.data.content && (!inscriptionData.content || !inscriptionData.url)) {
-        const newContent = await fetchInscriptionContent(inscriptionId, response.data.content);
-        inscriptionData = { ...inscriptionData, ...newContent };
-      }
-
-      setSelectedInscription({
-        ...response.data,
-        inscriptionData,
-      });
-    } catch (error) {
-      console.error('Error fetching inscription data:', error);
-    }
-  };
-
   const fetchLatestInscriptions = async () => {
     try {
       setLoading(true);
@@ -156,6 +132,12 @@ const Ord = ({ onAddressClick }) => {
           'Content-Type': 'application/json',
         },
       });
+
+      // If the content path is different in the details, fetch the content again
+      if (response.data.content && (!inscriptionData.content || !inscriptionData.url)) {
+        const newContent = await fetchInscriptionContent(inscriptionId, response.data.content);
+        inscriptionData = { ...inscriptionData, ...newContent };
+      }
 
       setSelectedInscription({
         ...response.data,

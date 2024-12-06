@@ -482,7 +482,7 @@ const AnalyticsPage = () => {
 
             {/* Right Column: Ord */}
             <div className="bg-gray-800 rounded-lg p-4 h-full" style={{ height: "600px" }}>
-              <Ord />
+              <Ord onAddressClick={handleAddressClick} />
             </div>
           </section>
         ) : selectedView === 'transactions' ? (

@@ -22,7 +22,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
   }
 };
 
-const Ord = () => {
+const Ord = ({ onAddressClick }) => {
   const [view, setView] = useState('inscriptions');
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [runesList, setRunesList] = useState([]);
@@ -139,7 +139,10 @@ const Ord = () => {
       if (isAddress && value && typeof value === 'string') {
         const cleanAddress = value.split(':')[0];
         return (
-          <span className="text-blue-400 hover:text-blue-300 cursor-pointer underline">
+          <span
+            onClick={() => onAddressClick?.(cleanAddress)}
+            className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
+          >
             {cleanAddress}
           </span>
         );

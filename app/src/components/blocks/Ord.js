@@ -44,9 +44,27 @@ const Ord = ({ onAddressClick }) => {
     });
   };
 
-  const fetchInscriptionContent = async (inscriptionId) => {
+  const fetchInscriptionContent = async (inscriptionId, contentPath = null) => {
     try {
-      const contentResponse = await fetchWithRetry(`/content/${inscriptionId}`, {
+      // First try to get the inscription details to check for content path
+      if (!contentPath) {
+        const detailsResponse = await axiosInstance.get(`/inscription/${inscriptionId}`, {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+
+        // Check if there's a content field in the response that contains a different path
+        if (detailsResponse.data.content) {
+          contentPath = detailsResponse.data.content;
+        }
+      }
+
+      // Use the content path if available, otherwise fall back to default path
+      const path = contentPath || `/content/${inscriptionId}`;
+
+      const contentResponse = await fetchWithRetry(path, {
         responseType: 'blob',
       });
 
@@ -72,6 +90,30 @@ const Ord = ({ onAddressClick }) => {
     } catch (error) {
       console.error(`Error fetching content for inscription ${inscriptionId}:`, error);
       return null;
+    }
+  };
+
+  const handleInscriptionClick = async (inscriptionId, inscriptionData) => {
+    try {
+      const response = await axiosInstance.get(`/inscription/${inscriptionId}`, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // If the content path is different in the details, fetch the content again
+      if (response.data.content && (!inscriptionData.content || !inscriptionData.url)) {
+        const newContent = await fetchInscriptionContent(inscriptionId, response.data.content);
+        inscriptionData = { ...inscriptionData, ...newContent };
+      }
+
+      setSelectedInscription({
+        ...response.data,
+        inscriptionData,
+      });
+    } catch (error) {
+      console.error('Error fetching inscription data:', error);
     }
   };
 

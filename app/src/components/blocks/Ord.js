@@ -25,6 +25,12 @@ const extractImageSourceFromHTML = (htmlContent) => {
   return imgMatch ? imgMatch[1] : null;
 };
 
+const extractSVGFromHTML = (htmlContent) => {
+  // This regex attempts to find the first <svg ...> ... </svg> block
+  const svgMatch = htmlContent.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
+  return svgMatch ? svgMatch[0] : null;
+};
+
 const Ord = ({ onAddressClick = () => {} }) => {
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,8 +62,9 @@ const Ord = ({ onAddressClick = () => {} }) => {
 
       if (contentType.includes('text/html')) {
         const htmlContent = initialResponse.data;
-        const imageSource = extractImageSourceFromHTML(htmlContent);
 
+        // 1. Try to extract an <img> if present
+        const imageSource = extractImageSourceFromHTML(htmlContent);
         if (imageSource) {
           const imageResponse = await fetchWithRetry(imageSource, {
             responseType: 'blob'
@@ -73,6 +80,27 @@ const Ord = ({ onAddressClick = () => {} }) => {
             originalHtml: htmlContent
           };
         }
+
+        // 2. If no <img> found, try to extract an inline SVG
+        const svgContent = extractSVGFromHTML(htmlContent);
+        if (svgContent) {
+          const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+          const svgUrl = URL.createObjectURL(svgBlob);
+
+          return {
+            url: svgUrl,
+            type: 'image',
+            blob: svgBlob,
+            originalHtml: htmlContent
+          };
+        }
+
+        // 3. If no images or svg found, just return the HTML as text
+        return {
+          content: htmlContent,
+          type: 'html',
+          blob: new Blob([htmlContent])
+        };
       }
 
       if (contentType.startsWith('image/')) {
@@ -81,12 +109,13 @@ const Ord = ({ onAddressClick = () => {} }) => {
           const svgText = initialResponse.data;
           const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
           imageUrl = URL.createObjectURL(svgBlob);
+          return { url: imageUrl, type: 'image', blob: svgText };
         } else {
           const blobResponse = await fetchWithRetry(path, { responseType: 'blob' });
           const blob = new Blob([blobResponse.data]);
           imageUrl = URL.createObjectURL(blob);
+          return { url: imageUrl, type: 'image', blob };
         }
-        return { url: imageUrl, type: 'image', blob: contentType === 'image/svg+xml' ? initialResponse.data : null };
       } else if (contentType.startsWith('text/')) {
         return {
           content: initialResponse.data,

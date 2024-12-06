@@ -74,6 +74,32 @@ const inlineSVGImages = async (svgContent) => {
   return serializer.serializeToString(doc.documentElement);
 };
 
+const inlineScriptContent = async (htmlContent) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlContent, 'text/html');
+
+  const scripts = doc.querySelectorAll('script[src^="/content/"]');
+
+  for (let script of scripts) {
+    const src = script.getAttribute('src');
+    if (src.startsWith('/content/')) {
+      try {
+        // Fetch the script content as text
+        const scriptResponse = await fetchWithRetry(src, { responseType: 'text' });
+        const scriptContent = scriptResponse.data;
+
+        // Remove the src attribute and insert inline code
+        script.removeAttribute('src');
+        script.textContent = scriptContent;
+      } catch (error) {
+        console.error(`Failed to fetch script at ${src}`, error);
+      }
+    }
+  }
+
+  return doc.documentElement.outerHTML;
+};
+
 const Ord = ({ onAddressClick = () => {} }) => {
   const [inscriptionsList, setInscriptionsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,13 +130,10 @@ const Ord = ({ onAddressClick = () => {} }) => {
       if (contentType.includes('text/html')) {
         const htmlContent = initialResponse.data;
 
-        // First, check if there is an inline SVG
+        // 1. Check for inline SVG scenario
         const svgContent = extractSVGFromHTML(htmlContent);
         if (svgContent) {
-          // Process and inline images in the SVG
           const inlinedSVG = await inlineSVGImages(svgContent);
-
-          // Convert the inlined SVG to a Blob URL
           const svgBlob = new Blob([inlinedSVG], { type: 'image/svg+xml' });
           const svgUrl = URL.createObjectURL(svgBlob);
 
@@ -122,10 +145,9 @@ const Ord = ({ onAddressClick = () => {} }) => {
           };
         }
 
-        // If no SVG found, try to extract a single <img> from the HTML
+        // 2. Check for <img> in HTML
         const imageSource = extractImageSourceFromHTML(htmlContent);
         if (imageSource) {
-          // We found a simple <img> source
           const imageResponse = await fetchWithRetry(imageSource, { responseType: 'blob' });
           const blob = new Blob([imageResponse.data]);
           const imageUrl = URL.createObjectURL(blob);
@@ -138,11 +160,15 @@ const Ord = ({ onAddressClick = () => {} }) => {
           };
         }
 
-        // If neither SVG nor <img> found, just return the raw HTML as content
+        // 3. Check for <script src="/content/..."> references and inline them
+        const inlinedScriptsHTML = await inlineScriptContent(htmlContent);
+
+        // If scripts were inlined or not, we now have a final HTML
+        // Return the HTML as content type since no SVG or IMG was found
         return {
-          content: htmlContent,
+          content: inlinedScriptsHTML,
           type: 'html',
-          blob: new Blob([htmlContent])
+          blob: new Blob([inlinedScriptsHTML])
         };
       }
 
@@ -162,7 +188,7 @@ const Ord = ({ onAddressClick = () => {} }) => {
         }
       }
 
-      // Handle text files (non-HTML)
+      // Handle text files
       if (contentType.startsWith('text/')) {
         return {
           content: initialResponse.data,

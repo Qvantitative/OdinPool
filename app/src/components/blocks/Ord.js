@@ -1,4 +1,4 @@
-// app/components/blocks/Ord
+// app/components/blocks/Ord.js
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -140,8 +140,8 @@ const Ord = ({ onAddressClick }) => {
         const cleanAddress = value.split(':')[0];
         return (
           <span
-            onClick={() => onAddressClick?.(cleanAddress)}
             className="text-blue-400 hover:text-blue-300 cursor-pointer underline"
+            onClick={() => onAddressClick(cleanAddress)}
           >
             {cleanAddress}
           </span>
@@ -282,14 +282,12 @@ const Ord = ({ onAddressClick }) => {
                 >
                   <div className="absolute inset-0 rounded-lg overflow-hidden bg-gray-800 hover:shadow-lg transition-all duration-300">
                     {inscription.type === 'image' ? (
-                      <div className="w-full h-full">
-                        <img
-                          src={inscription.url}
-                          alt={`Inscription ${inscription.id}`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
+                      <img
+                        src={inscription.url}
+                        alt={`Inscription ${inscription.id}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     ) : inscription.type === 'text' ? (
                       <div className="flex items-center justify-center h-full p-4 text-gray-400">
                         <div className="text-center">
@@ -305,7 +303,6 @@ const Ord = ({ onAddressClick }) => {
                         </div>
                       </div>
                     )}
-
                     <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                       <p className="text-sm font-medium text-white">
                         #{inscription.id.slice(0, 8)}...

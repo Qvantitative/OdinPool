@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import https from 'https';
 import { ImageOff, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const axiosInstance = axios.create({
   baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '/ord',
-  httpsAgent: new https.Agent({ rejectUnauthorized: false }),
 });
 
 const fetchWithRetry = async (url, options = {}, retries = 3) => {
@@ -22,10 +21,13 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
   }
 };
 
-const Ord = ({ onAddressClick }) => {
-  const [view, setView] = useState('inscriptions');
+const extractImageSourceFromHTML = (htmlContent) => {
+  const imgMatch = htmlContent.match(/<img[^>]+src="([^"]+)"/);
+  return imgMatch ? imgMatch[1] : null;
+};
+
+const Ord = ({ onAddressClick = () => {} }) => {
   const [inscriptionsList, setInscriptionsList] = useState([]);
-  const [runesList, setRunesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedInscription, setSelectedInscription] = useState(null);
@@ -46,47 +48,56 @@ const Ord = ({ onAddressClick }) => {
 
   const fetchInscriptionContent = async (inscriptionId, contentPath = null) => {
     try {
-      // First try to get the inscription details to check for content path
-      if (!contentPath) {
-        const detailsResponse = await axiosInstance.get(`/inscription/${inscriptionId}`, {
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-        });
-
-        // Check if there's a content field in the response that contains a different path
-        if (detailsResponse.data.content) {
-          contentPath = detailsResponse.data.content;
-        }
-      }
-
-      // Use the content path if available, otherwise fall back to default path
       const path = contentPath || `/content/${inscriptionId}`;
-
-      const contentResponse = await fetchWithRetry(path, {
-        responseType: 'blob',
+      const initialResponse = await fetchWithRetry(path, {
+        responseType: 'text'
       });
 
-      const contentType = contentResponse.headers['content-type'];
+      const contentType = initialResponse.headers['content-type'];
+
+      if (contentType.includes('text/html')) {
+        const htmlContent = initialResponse.data;
+        const imageSource = extractImageSourceFromHTML(htmlContent);
+
+        if (imageSource) {
+          const imageResponse = await fetchWithRetry(imageSource, {
+            responseType: 'blob'
+          });
+
+          const blob = new Blob([imageResponse.data]);
+          const imageUrl = URL.createObjectURL(blob);
+
+          return {
+            url: imageUrl,
+            type: 'image',
+            blob: imageResponse.data,
+            originalHtml: htmlContent
+          };
+        }
+      }
 
       if (contentType.startsWith('image/')) {
         let imageUrl;
         if (contentType === 'image/svg+xml') {
-          const svgText = await contentResponse.data.text();
+          const svgText = initialResponse.data;
           const svgBlob = new Blob([svgText], { type: 'image/svg+xml' });
           imageUrl = URL.createObjectURL(svgBlob);
         } else {
-          const blob = new Blob([contentResponse.data]);
+          const blobResponse = await fetchWithRetry(path, { responseType: 'blob' });
+          const blob = new Blob([blobResponse.data]);
           imageUrl = URL.createObjectURL(blob);
         }
-        return { url: imageUrl, type: 'image', blob: contentResponse.data };
-      } else if (contentType.startsWith('text/')) {
-        const textContent = await contentResponse.data.text();
-        return { content: textContent, type: 'text', blob: contentResponse.data };
+        return { url: imageUrl, type: 'image', blob: contentType === 'image/svg+xml' ? initialResponse.data : null };
+      }
+      else if (contentType.startsWith('text/')) {
+        return {
+          content: initialResponse.data,
+          type: contentType.includes('html') ? 'html' : 'text',
+          blob: new Blob([initialResponse.data])
+        };
       }
 
-      return { type: 'unsupported', blob: contentResponse.data };
+      return { type: 'unsupported', blob: null };
     } catch (error) {
       console.error(`Error fetching content for inscription ${inscriptionId}:`, error);
       return null;
@@ -116,6 +127,7 @@ const Ord = ({ onAddressClick }) => {
       );
 
       setInscriptionsList(inscriptionsWithContent);
+      setError(null);
     } catch (err) {
       console.error('Error fetching latest inscriptions:', err);
       setError('Failed to load latest inscriptions');
@@ -133,15 +145,16 @@ const Ord = ({ onAddressClick }) => {
         },
       });
 
-      // If the content path is different in the details, fetch the content again
-      if (response.data.content && (!inscriptionData.content || !inscriptionData.url)) {
+      // Re-fetch content if needed (for HTML embedded images)
+      let finalInscriptionData = inscriptionData;
+      if (response.data.content && (!inscriptionData.url || inscriptionData.type === 'html')) {
         const newContent = await fetchInscriptionContent(inscriptionId, response.data.content);
-        inscriptionData = { ...inscriptionData, ...newContent };
+        finalInscriptionData = { ...inscriptionData, ...newContent };
       }
 
       setSelectedInscription({
         ...response.data,
-        inscriptionData,
+        inscriptionData: finalInscriptionData,
       });
     } catch (error) {
       console.error('Error fetching inscription data:', error);
@@ -206,7 +219,7 @@ const Ord = ({ onAddressClick }) => {
                   alt={`Inscription ${formattedDetails.id}`}
                   className="w-full h-auto max-h-[50vh] md:max-h-[70vh] object-contain rounded-xl"
                 />
-              ) : inscriptionData.type === 'text' ? (
+              ) : inscriptionData.type === 'text' || inscriptionData.type === 'html' ? (
                 <div className="bg-gray-700 rounded-xl p-4 max-h-[50vh] md:max-h-[70vh] overflow-auto">
                   <pre className="text-sm text-gray-200 whitespace-pre-wrap">
                     {inscriptionData.content}
@@ -219,7 +232,7 @@ const Ord = ({ onAddressClick }) => {
               )}
             </div>
 
-            <div className="w-full md:w-1/3 md:pl-4 md:border-l border-gray-700 space-y-3 max-h-[30vh] md:max-h-[70vh] overflow-y-auto">
+            <div className="w-full md:w-1/3 md:pl-4 md:border-l border-gray-700 space-y-3">
               {orderedEntries.map(([key, value]) => (
                 <div key={key} className="flex flex-col">
                   <span className="text-gray-400 text-xs font-medium uppercase">{key}</span>
@@ -249,22 +262,6 @@ const Ord = ({ onAddressClick }) => {
     currentPage * ITEMS_PER_PAGE,
     (currentPage + 1) * ITEMS_PER_PAGE
   );
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-white">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={fetchLatestInscriptions}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
@@ -312,7 +309,7 @@ const Ord = ({ onAddressClick }) => {
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
-                    ) : inscription.type === 'text' ? (
+                    ) : inscription.type === 'text' || inscription.type === 'html' ? (
                       <div className="flex items-center justify-center h-full p-4 text-gray-400">
                         <div className="text-center">
                           <FileText className="w-8 h-8 mx-auto mb-2" />

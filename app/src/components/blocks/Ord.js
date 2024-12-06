@@ -104,49 +104,61 @@ const inlineDynamicGeneratedScript = async (htmlContent) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
 
-  // Find the script tag that contains the async IIFE
+  // Find script tags
   const scripts = doc.querySelectorAll('script');
+
   for (let script of scripts) {
-    const scriptCode = script.textContent || '';
-    // Check if the script matches the known pattern
-    // This pattern is very specific to your given code.
-    // We look for `fetch('/r/sat/45039645507/at/-1')` and `const generator = `/content/${id}`
-    if (scriptCode.includes("fetch('/r/sat/45039645507/at/-1')") &&
-        scriptCode.includes('const generator = `/content/${id}`')) {
+    let scriptCode = script.textContent || '';
 
-      try {
-        // 1. Fetch the JSON from /r/sat/45039645507/at/-1
-        const response = await fetchWithRetry('/r/sat/45039645507/at/-1', { responseType: 'json' });
-        const data = response.data; // Assuming data = { id: "someID" }
+    // Check for the known pattern of fetching the generator (from previous logic)
+    // If needed, handle that logic first, as previously done.
+    // (If your code already handles that, you can skip re-checking the /r/sat endpoint.)
 
-        if (data && data.id) {
-          const generatorSrc = `/content/${data.id}`;
-          // 2. Fetch the generator script
-          const generatorResponse = await fetchWithRetry(generatorSrc, { responseType: 'text' });
-          const generatorScriptContent = generatorResponse.data;
+    // Now handle the dynamically appended script scenario
+    // Look for the pattern:
+    // const script = document.createElement('script');
+    // script.src = '/content/...';
+    // script.onload = () => { ... };
+    // document.head.appendChild(script);
 
-          // 3. Replace the original code in the script with the inlined script content
-          // Instead of dynamically appending a script, we just inline its code directly.
-          const newScriptContent = `
-            (async () => {
-              // Original logic replaced by directly inlined script content:
-              // const response = await fetch('/r/sat/45039645507/at/-1');
-              // const data = await response.json();
-              // const id = data.id;
-              // const generator = \`/content/\${id}\`;
+    const createScriptMatch = scriptCode.match(/const script = document\.createElement\('script'\);([\s\S]*?)document\.head\.appendChild\(script\);/);
+    if (createScriptMatch) {
+      const scriptBlock = createScriptMatch[0];
 
-              // Inline the fetched generator script directly:
-              ${generatorScriptContent}
-            })();`;
+      // Extract the src from this block
+      const srcMatch = scriptBlock.match(/script\.src\s*=\s*['"]([^'"]+)['"]/);
+      if (srcMatch) {
+        const externalScriptUrl = srcMatch[1];  // e.g. /content/c192f63c1990ee1377...
+        try {
+          // Fetch the external script
+          const externalScriptResponse = await fetchWithRetry(externalScriptUrl, { responseType: 'text' });
+          const externalScriptContent = externalScriptResponse.data;
 
-          // Update the script’s text content
-          script.textContent = newScriptContent;
+          // Extract the onload function body if it exists
+          const onloadMatch = scriptBlock.match(/script\.onload\s*=\s*\(\)\s*=>\s*\{([\s\S]*?)\};/);
+          let onloadBody = '';
+          if (onloadMatch) {
+            onloadBody = onloadMatch[1].trim();
+          }
 
-          // Remove any src attributes if present (not in this case, but just to be safe)
-          script.removeAttribute('src');
+          // Now we replace the entire script creation block with the external script content + onload logic
+          // Essentially, we simulate that the external script is loaded and executed immediately.
+          const replacement = `
+            // Inlined external script from ${externalScriptUrl}:
+            ${externalScriptContent}
+
+            // Onload logic inlined:
+            ${onloadBody}
+          `;
+
+          // Replace the original block in scriptCode
+          scriptCode = scriptCode.replace(scriptBlock, replacement);
+
+          // Update the script's text content
+          script.textContent = scriptCode;
+        } catch (error) {
+          console.error('Error inlining external script referenced by dynamically created <script>:', error);
         }
-      } catch (error) {
-        console.error('Error inlining dynamic generated script:', error);
       }
     }
   }

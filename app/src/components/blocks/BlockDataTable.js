@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Inscriptions from './Inscriptions';
 import Runes from './Runes';
 import Transactions from './Transactions';
+import TransactionsDetails from './TransactionsDetails';
 import TransactionsTreeMap from './charts/TransactionsTreeMap';
 
 const TreeMapLoadingPlaceholder = () => (
@@ -37,7 +38,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
   const [activeSection, setActiveSection] = useState('transactions'); // Changed initial state to 'transactions'
   const [showTreeMap, setShowTreeMap] = useState(false);
   const [isTreeMapLoading, setIsTreeMapLoading] = useState(true); // Set initial loading state to true
-
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const { block_height } = block || {};
 
   useEffect(() => {
@@ -92,8 +93,26 @@ const BlockDataTable = ({ block, onAddressClick }) => {
     setActiveSection(section);
   };
 
+  const handleTransactionClick = (txId) => {
+    setSelectedTransaction(txId);
+  };
+
   const renderTransactionsSection = () => {
     if (!transactionData.length) return null;
+
+    if (selectedTransaction) {
+      return (
+        <div className="space-y-6">
+          <button
+            onClick={() => setSelectedTransaction(null)}
+            className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Back to Transactions
+          </button>
+          <TransactionsDetails transactionId={selectedTransaction} />
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6">
@@ -105,7 +124,10 @@ const BlockDataTable = ({ block, onAddressClick }) => {
           </div>
         )}
         <div className="mt-6">
-          <Transactions transactionData={transactionData} />
+          <Transactions
+            transactionData={transactionData}
+            handleTransactionClick={handleTransactionClick}
+          />
         </div>
       </div>
     );

@@ -120,7 +120,7 @@ const BlockDataTable = ({ block, onAddressClick }) => {
           <TreeMapLoadingPlaceholder />
         ) : (
           <div className={`transition-opacity duration-500 ${showTreeMap ? 'opacity-100' : 'opacity-0'}`}>
-            {showTreeMap && <TransactionsTreeMap transactionData={transactionData} />}
+            {showTreeMap && <TransactionsTreeMap transactionData={transactionData} handleTransactionClick={handleTransactionClick} />}
           </div>
         )}
         <div className="mt-6">

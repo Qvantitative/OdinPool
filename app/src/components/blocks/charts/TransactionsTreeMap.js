@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
-const TransactionsTreeMap = ({ transactionData }) => {
+const TransactionsTreeMap = ({ transactionData, handleTransactionClick  }) => {
   const svgRef = useRef(null);
 
   useEffect(() => {
@@ -112,12 +112,16 @@ const TransactionsTreeMap = ({ transactionData }) => {
       .enter().append("g")
       .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
-    cell.append("rect")
+  cell.append("rect")
       .attr("width", d => Math.max(0, d.x1 - d.x0))
       .attr("height", d => Math.max(0, d.y1 - d.y0))
       .style("fill", d => colorScale(d.data.duration))
       .style("stroke", "#fff")
       .style("stroke-width", "1px")
+      .style("cursor", "pointer") // Add cursor pointer
+      .on("click", (event, d) => {
+        handleTransactionClick(d.data.fullTxid); // Use the full txid for navigation
+      })
       .on("mouseover", (event, d) => {
         tooltip.style("visibility", "visible")
           .html(`
@@ -167,7 +171,7 @@ const TransactionsTreeMap = ({ transactionData }) => {
     return () => {
       tooltip.remove();
     };
-  }, [transactionData]);
+  }, [transactionData, handleTransactionClick]);
 
   return (
     <div className="bg-gray-900 p-4 rounded-lg">

@@ -30,6 +30,7 @@
     "react-dom": "^18",
     "react-gauge-chart": "^0.5.1",
     "react-plotly.js": "^2.6.0",
+    "react-router-dom": "^7.0.2",
     "recharts": "^2.12.7",
     "sats-connect": "2.8.x",
     "socket.io-client": "^4.7.5",

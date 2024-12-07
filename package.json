@@ -60,6 +60,7 @@
     "react-gauge-chart": "^0.5.1",
     "react-native-bitcoinjs-lib": "^2.3.9",
     "react-plotly.js": "^2.6.0",
+    "react-router-dom": "^7.0.2",
     "readable-stream": "^1.0.33",
     "recharts": "^2.12.7",
     "sats-connect": "2.8.x",

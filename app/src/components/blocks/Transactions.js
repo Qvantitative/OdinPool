@@ -1,7 +1,6 @@
 // app/components/blocks/Transactions.js
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Add this import
 
 const formatBytes = (bytes, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 vB';
@@ -12,6 +11,7 @@ const formatBytes = (bytes, decimals = 2) => {
   return i === 0 ? `${Math.round(value)} ${sizes[i]}` : `${value.toFixed(decimals)} ${sizes[i]}`;
 };
 
+// Loading Circle Component
 const LoadingCircle = () => (
   <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -23,9 +23,7 @@ const LoadingCircle = () => (
   </svg>
 );
 
-const Transactions = ({ transactionData }) => {
-  const navigate = useNavigate(); // Use the navigate hook
-
+const Transactions = ({ transactionData, handleTransactionClick }) => {
   const [detailedData, setDetailedData] = useState({});
   const [inscriptionData, setInscriptionData] = useState({});
   const [runeData, setRuneData] = useState({});
@@ -41,7 +39,10 @@ const Transactions = ({ transactionData }) => {
   // Calculate pagination values
   const indexOfLastTransaction = currentPage * transactionsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
-  const currentTransactions = transactionData.slice(indexOfFirstTransaction, indexOfLastTransaction);
+  const currentTransactions = transactionData.slice(
+    indexOfFirstTransaction,
+    indexOfLastTransaction
+  );
   const totalPages = Math.ceil(transactionData.length / transactionsPerPage);
 
   useEffect(() => {
@@ -52,13 +53,18 @@ const Transactions = ({ transactionData }) => {
 
   useEffect(() => {
     const fetchAllDetails = async (transaction) => {
-      const transactionId = transaction.txid;
+      const transactionId = transaction.txid; // Get txid from transaction object
       try {
         setLoading(prev => ({ ...prev, [transactionId]: true }));
+
+        // Single API call to get transaction details
         const response = await fetch(`/api/transactions/${transactionId}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
+
+        // Set the detailed data
         setDetailedData(prev => ({ ...prev, [transactionId]: data }));
+
       } catch (error) {
         console.error(`Error fetching details for ${transactionId}:`, error);
         setErrors(prev => ({ ...prev, [transactionId]: error.message }));
@@ -102,6 +108,7 @@ const Transactions = ({ transactionData }) => {
   const formatBTC = (value) => parseFloat(value).toFixed(8);
 
   const Pagination = () => {
+    const pageNumbers = [];
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -143,7 +150,9 @@ const Transactions = ({ transactionData }) => {
           <button
             key={number}
             onClick={() => setCurrentPage(number)}
-            className={`px-3 py-1 rounded ${currentPage === number ? 'bg-blue-500' : 'bg-gray-700'} text-white`}
+            className={`px-3 py-1 rounded ${
+              currentPage === number ? 'bg-blue-500' : 'bg-gray-700'
+            } text-white`}
           >
             {number}
           </button>
@@ -154,7 +163,9 @@ const Transactions = ({ transactionData }) => {
             {endPage < totalPages - 1 && <span className="px-2">...</span>}
             <button
               onClick={() => setCurrentPage(totalPages)}
-              className={`px-3 py-1 rounded ${currentPage === totalPages ? 'bg-blue-500' : 'bg-gray-700'}`}
+              className={`px-3 py-1 rounded ${
+                currentPage === totalPages ? 'bg-blue-500' : 'bg-gray-700'
+              }`}
             >
               {totalPages}
             </button>
@@ -177,11 +188,6 @@ const Transactions = ({ transactionData }) => {
         </button>
       </div>
     );
-  };
-
-  const handleTransactionClick = (transactionId) => {
-    // Navigate to the TransactionDetails page
-    navigate(`/transactions/${transactionId}`);
   };
 
   const renderTransaction = (transaction) => {
@@ -274,7 +280,11 @@ const Transactions = ({ transactionData }) => {
                   <li key={index}>
                     <div className="flex justify-between items-center">
                       <span
-                        className={`truncate mr-2 ${isOpReturn ? 'text-yellow-300 animate-pulse cursor-pointer' : 'text-blue-400'}`}
+                        className={`truncate mr-2 ${
+                          isOpReturn
+                            ? 'text-yellow-300 animate-pulse cursor-pointer'
+                            : 'text-blue-400'
+                        }`}
                         style={{
                           maxWidth: '70%',
                           boxShadow: isOpReturn ? '0 0 10px #FCD34D' : 'none'
@@ -347,7 +357,8 @@ const Transactions = ({ transactionData }) => {
       </div>
       <Pagination />
       <div className="text-center text-sm text-gray-400 mt-2">
-        Page {currentPage} of {totalPages} | Showing transactions {indexOfFirstTransaction + 1}-
+        Page {currentPage} of {totalPages} |
+        Showing transactions {indexOfFirstTransaction + 1}-
         {Math.min(indexOfLastTransaction, transactionData.length)} of {transactionData.length}
       </div>
     </div>

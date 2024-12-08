@@ -36,7 +36,7 @@ async function fetchRuneTickersFromAPI() {
       headers,
       params: {
         sort_by: 'rune_number',
-        order: 'ASC',
+        order: 'asc',     // Changed from 'ASC' to 'asc'
         offset: 0,
         count: 100
       }

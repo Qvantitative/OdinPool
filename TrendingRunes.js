@@ -37,8 +37,8 @@ async function fetchRuneTickersFromAPI() {
     const response = await axios.get(url, {
       headers,
       params: {
-        sort_by: 'rune_number',
-        order: 'desc',
+        sort_by: 'rune_id',
+        order: 'asc',
         offset: 0,
         count: 100
       }

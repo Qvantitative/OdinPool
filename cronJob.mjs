@@ -5,6 +5,7 @@ import { updateAllData } from './updateBlockchainData.mjs';
 import { updateRawTransactionData } from './updateRawTransaction.mjs';
 import { fetchAndStoreTrendingData } from './trending.js';
 import { updateRuneHolders } from './runes.js';
+import { updateTrendingRunes } from './TrendingRunes.js';  // Add this import
 import {
   fetchInscriptionsFromAPI,
   insertInscriptionsToDB,
@@ -16,6 +17,7 @@ import {
 let isWalletTrackingRunning = false;
 let isInscriptionFetchRunning = false;
 let isRunesFetchRunning = false;
+let isTrendingRunesRunning = false;  // Add this flag
 
 // Timeout configurations
 const TIMEOUTS = {
@@ -24,7 +26,8 @@ const TIMEOUTS = {
   WALLET_TRACKING: 3600000,       // 1 hour
   BLOCKCHAIN_UPDATE: 45000,       // 45 seconds
   RUNES_UPDATE: 1800000,          // 30 minutes for rune operations
-  BACKFILL: 3600000               // 1 hour
+  TRENDING_RUNES_UPDATE: 600000,  // 10 minutes for trending runes
+  BACKFILL: 3600000              // 1 hour
 };
 
 // Helper function for timeout wrapping
@@ -164,6 +167,32 @@ async function fetchAndPostRunes() {
   }
 }
 
+// Function for trending runes update
+async function updateTrendingRunesData() {
+  if (isTrendingRunesRunning) {
+    console.log(`[${new Date().toISOString()}] Trending runes update already running. Skipping.`);
+    return;
+  }
+
+  isTrendingRunesRunning = true;
+  console.log(`[${new Date().toISOString()}] Starting trending runes update`);
+
+  try {
+    await withTimeout(
+      updateTrendingRunes(),
+      TIMEOUTS.TRENDING_RUNES_UPDATE,
+      'Trending runes update'
+    );
+
+    console.log(`[${new Date().toISOString()}] Completed trending runes update`);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in trending runes update:`, error);
+    await handleTimeout(error);
+  } finally {
+    isTrendingRunesRunning = false;
+  }
+}
+
 // Start cron jobs
 function startCronJobs() {
   console.log(`[${new Date().toISOString()}] Starting cron jobs`);
@@ -195,6 +224,12 @@ function startCronJobs() {
     }
   });
 
+  // Trending runes update every 3 minutes
+  cron.schedule('*/3 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running trending runes update`);
+    await updateTrendingRunesData();
+  });
+
   // Fetch trending data every 10 minutes
   cron.schedule('*/10 * * * *', async () => {
     console.log(`[${new Date().toISOString()}] Running fetchAndStoreTrendingData job`);
@@ -218,6 +253,8 @@ function startCronJobs() {
       await updateInscriptionWallets();
       // Initial runes fetch
       await fetchAndPostRunes();
+      // Initial trending runes update
+      await updateTrendingRunesData();
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
     }

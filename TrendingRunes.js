@@ -10,7 +10,7 @@ const pool = new pg.Pool({
   max: 20,
 });
 
-const limit = pLimit(10); // Limit concurrent API calls
+const limit = pLimit(10);
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -28,7 +28,7 @@ async function fetchRuneTickersFromAPI() {
     const response = await axios.get(url, {
       headers,
       params: {
-        sort_by: 'total_volume_30d',  // Changed from total_volume to total_volume_30d based on API docs
+        sort_by: 'event_count',  // Changed to a valid sort parameter from API docs
         order: 'desc',
         count: 100
       }
@@ -91,7 +91,7 @@ async function insertRuneTickersToDB(tickers) {
         ticker.rune_number,
         ticker.rune_name,
         ticker.holder_count,
-        ticker.total_sale_info?.vol_30d || 0,  // Changed to vol_30d to match the sort parameter
+        ticker.total_sale_info?.vol_total || 0,
         ticker.avg_unit_price_in_sats,
         ticker.marketcap,
         ticker.event_count,

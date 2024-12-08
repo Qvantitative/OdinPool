@@ -28,9 +28,9 @@ async function fetchRuneTickersFromAPI() {
     const response = await axios.get(url, {
       headers,
       params: {
-        sort_by: 'total_volume',
+        sort_by: 'total_volume_30d',  // Changed from total_volume to total_volume_30d based on API docs
         order: 'desc',
-        count: 100  // Maximum allowed by API
+        count: 100
       }
     });
 
@@ -42,6 +42,9 @@ async function fetchRuneTickersFromAPI() {
     }
   } catch (error) {
     console.error('Error fetching rune tickers data:', error);
+    if (error.response?.data) {
+      console.error('API Error details:', error.response.data);
+    }
     return [];
   }
 }
@@ -88,7 +91,7 @@ async function insertRuneTickersToDB(tickers) {
         ticker.rune_number,
         ticker.rune_name,
         ticker.holder_count,
-        ticker.total_sale_info?.vol_total || 0,
+        ticker.total_sale_info?.vol_30d || 0,  // Changed to vol_30d to match the sort parameter
         ticker.avg_unit_price_in_sats,
         ticker.marketcap,
         ticker.event_count,

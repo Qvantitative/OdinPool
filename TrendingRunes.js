@@ -1,5 +1,7 @@
 // TrendingRunes.js
 
+// TrendingRunes.js
+
 import pg from 'pg';
 import axios from 'axios';
 import pLimit from 'p-limit';
@@ -16,6 +18,13 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Helper function to parse numeric values safely
+function parseNumericValue(value) {
+  if (value === null || value === undefined) return null;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? null : parsed;
+}
+
 async function fetchRuneTickersFromAPI() {
   const url = "https://api.bestinslot.xyz/v3/runes/tickers";
   const headers = {
@@ -30,7 +39,7 @@ async function fetchRuneTickersFromAPI() {
       params: {
         sort_by: 'rune_number',
         order: 'desc',
-        offset: 0,  // Added required offset parameter
+        offset: 0,
         count: 100
       }
     });
@@ -87,18 +96,24 @@ async function insertRuneTickersToDB(tickers) {
     `;
 
     for (const ticker of tickers) {
-      await client.query(insertQuery, [
+      // Parse and validate all numeric values
+      const values = [
         ticker.rune_id,
         ticker.rune_number,
         ticker.rune_name,
-        ticker.holder_count,
-        ticker.total_sale_info?.vol_total || 0,
-        ticker.avg_unit_price_in_sats,
-        ticker.marketcap,
-        ticker.event_count,
-        ticker.circulating_supply,
-        ticker.mint_progress
-      ]);
+        parseInt(ticker.holder_count) || 0,
+        parseNumericValue(ticker.total_sale_info?.vol_total) || 0,
+        parseNumericValue(ticker.avg_unit_price_in_sats) || 0,
+        parseNumericValue(ticker.marketcap) || 0,
+        parseInt(ticker.event_count) || 0,
+        parseNumericValue(ticker.circulating_supply) || 0,
+        parseNumericValue(ticker.mint_progress) || 0
+      ];
+
+      // Log the values for debugging
+      console.log('Inserting values:', values);
+
+      await client.query(insertQuery, values);
     }
 
     await client.query('COMMIT');
@@ -106,6 +121,9 @@ async function insertRuneTickersToDB(tickers) {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error inserting trending runes data:', error);
+    if (error.response?.data) {
+      console.error('API Error details:', error.response.data);
+    }
     throw error;
   } finally {
     client.release();

@@ -1,7 +1,5 @@
 // TrendingRunes.js
 
-// TrendingRunes.js
-
 import pg from 'pg';
 import axios from 'axios';
 import pLimit from 'p-limit';
@@ -37,8 +35,8 @@ async function fetchRuneTickersFromAPI() {
     const response = await axios.get(url, {
       headers,
       params: {
-        sort_by: 'marketcap',
-        order: 'DESC',
+        sort_by: 'rune_number',
+        order: 'ASC',
         offset: 0,
         count: 100
       }

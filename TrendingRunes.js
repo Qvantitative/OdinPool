@@ -28,8 +28,9 @@ async function fetchRuneTickersFromAPI() {
     const response = await axios.get(url, {
       headers,
       params: {
-        sort_by: 'event_count',  // Changed to a valid sort parameter from API docs
+        sort_by: 'rune_number',
         order: 'desc',
+        offset: 0,  // Added required offset parameter
         count: 100
       }
     });

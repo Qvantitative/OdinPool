@@ -49,10 +49,10 @@ const Navbar = ({
 
   const navItems = [
     {
-      label: 'Mempool',
+      label: 'Latest',
       icon: <Database className="w-5 h-5" />,
       onClick: onShowMempool,
-      active: selectedView === 'mempool',
+      active: selectedView === 'Latest',
     },
     {
       label: 'Trending',

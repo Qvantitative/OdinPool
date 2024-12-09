@@ -974,20 +974,25 @@ app.get('/api/trending-runes', async (req, res) => {
     const { limit = 100, offset = 0 } = req.query;
 
     const query = `
-      SELECT
-        id,
-        rune_id,
-        rune_number,
-        rune_name,
-        holder_count,
-        total_volume,
-        avg_price_sats,
-        marketcap,
-        event_count,
-        circulating_supply,
-        mint_progress,
-        created_at
-      FROM trending_runes
+      WITH latest_runes AS (
+        SELECT DISTINCT ON (rune_name)
+          id,
+          rune_id,
+          rune_number,
+          rune_name,
+          holder_count,
+          total_volume,
+          avg_price_sats,
+          marketcap,
+          event_count,
+          circulating_supply,
+          mint_progress,
+          created_at
+        FROM trending_runes
+        ORDER BY rune_name, created_at DESC
+      )
+      SELECT *
+      FROM latest_runes
       ORDER BY rune_number ASC
       LIMIT $1
       OFFSET $2

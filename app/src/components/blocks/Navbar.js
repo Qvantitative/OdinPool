@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { LineChart, Activity, Database, Search, BarChart2, X, CircleDot } from 'lucide-react';
+import React, { useState } from 'react';
+import { LineChart, Database, Search, BarChart2, X, CircleDot } from 'lucide-react';
 
-// Analytics Logo Component
 const AnalyticsLogo = ({ width = 24, height = 24, className = '' }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -29,11 +28,9 @@ const Navbar = ({
   selectedView,
   onSearch,
 }) => {
-  // Search state
   const [showSearch, setShowSearch] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchType, setSearchType] = useState('Transaction ID');
-  const hoverTimeout = useRef(null);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -85,8 +82,8 @@ const Navbar = ({
           <span className="text-lg font-bold">ODIN</span>
         </div>
 
-        {/* Dropdown Navigation - Show only active, reveal others on hover */}
-        <div className="relative group">
+        {/* Active nav item with dropdown on hover */}
+        <div className="relative group z-[9999]">
           <button
             onClick={activeItem.onClick}
             className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors duration-200 ${
@@ -99,8 +96,10 @@ const Navbar = ({
             <span className="font-medium">{activeItem.label}</span>
           </button>
 
-          {/* Dropdown menu (appears on hover) */}
-          <div className="absolute left-0 mt-2 bg-gray-900 rounded-md shadow-lg hidden group-hover:block z-50 w-48">
+          {/* Dropdown: Positioned directly below the active item */}
+          <div
+            className="absolute left-0 top-full bg-gray-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 w-48 z-[9999]"
+          >
             {navItems
               .filter((item) => item.label !== activeItem.label)
               .map((item) => (

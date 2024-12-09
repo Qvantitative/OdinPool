@@ -969,6 +969,47 @@ app.get('/api/ord/address/:address', async (req, res) => {
   }
 });
 
+app.get('/api/trending-runes', async (req, res) => {
+  try {
+    const { limit = 100, offset = 0 } = req.query;
+
+    const query = `
+      SELECT
+        id,
+        rune_id,
+        rune_number,
+        rune_name,
+        holder_count,
+        total_volume,
+        avg_price_sats,
+        marketcap,
+        event_count,
+        circulating_supply,
+        mint_progress,
+        created_at
+      FROM trending_runes
+      ORDER BY rune_number ASC
+      LIMIT $1
+      OFFSET $2
+    `;
+
+    const result = await pool.query(query, [limit, offset]);
+
+    res.json({
+      success: true,
+      count: result.rowCount,
+      data: result.rows
+    });
+
+  } catch (error) {
+    console.error('Error fetching trending runes:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 app.get('/api/rune/:txid', async (req, res) => {
     const { txid } = req.params;
     console.log(`Fetching raw transaction for txid: ${txid}`);

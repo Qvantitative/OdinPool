@@ -29,6 +29,7 @@ const Navbar = ({
   selectedView,
   onSearch,
 }) => {
+  // Search state
   const [showSearch, setShowSearch] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchType, setSearchType] = useState('Transaction ID');
@@ -84,7 +85,7 @@ const Navbar = ({
           <span className="text-lg font-bold">ODIN</span>
         </div>
 
-        {/* Only show the active nav item by default, show others on hover */}
+        {/* Dropdown Navigation - Show only active, reveal others on hover */}
         <div className="relative group">
           <button
             onClick={activeItem.onClick}
@@ -98,8 +99,8 @@ const Navbar = ({
             <span className="font-medium">{activeItem.label}</span>
           </button>
 
-          {/* Dropdown with other nav items appears on hover */}
-          <div className="absolute left-0 mt-2 bg-gray-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 w-48">
+          {/* Dropdown menu (appears on hover) */}
+          <div className="absolute left-0 mt-2 bg-gray-900 rounded-md shadow-lg hidden group-hover:block z-50 w-48">
             {navItems
               .filter((item) => item.label !== activeItem.label)
               .map((item) => (
@@ -112,7 +113,10 @@ const Navbar = ({
                       : 'hover:bg-gray-800 text-gray-300 hover:text-white'
                   }`}
                 >
-                  {item.icon} <span className="font-medium ml-2">{item.label}</span>
+                  <div className="flex items-center space-x-2">
+                    {item.icon}
+                    <span className="font-medium">{item.label}</span>
+                  </div>
                 </button>
               ))}
           </div>

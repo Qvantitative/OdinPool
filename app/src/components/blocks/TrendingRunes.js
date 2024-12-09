@@ -1,3 +1,5 @@
+// app/components/blocks/TrendingRunes.js
+
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 
 const formatSupply = (value) => {

@@ -30,11 +30,7 @@ const formatMarketCap = (value) => {
   return `$${value.toFixed(2)}`;
 };
 
-const TrendingCollections = ({
-  inscriptionStats = [],
-  statsLoading = false,
-  statsError = null
-}) => {
+const TrendingCollections = () => {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState({});

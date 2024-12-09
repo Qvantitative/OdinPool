@@ -550,13 +550,9 @@ const AnalyticsPage = () => {
               />
             </div>
           </section>
-        ) : selectedView === 'trendingCollections' ? (
+        ) selectedView === 'trendingCollections' ? (
           <section>
-            <TrendingWrapper
-              inscriptionStats={inscriptionStats}
-              statsLoading={statsLoading}
-              statsError={statsError}
-            />
+            <TrendingWrapper />
           </section>
         ) : (
           <section>

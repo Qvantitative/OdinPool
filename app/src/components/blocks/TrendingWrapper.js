@@ -4,8 +4,8 @@ import React, { useState, memo } from 'react';
 import TrendingCollections from './TrendingCollections';
 import TrendingRunes from './TrendingRunes';
 
-const TrendingWrapper = ({ inscriptionStats, statsLoading, statsError }) => {
-  const [activeView, setActiveView] = useState('collections'); // 'collections' or 'runes'
+const TrendingWrapper = () => {  // Remove the props
+  const [activeView, setActiveView] = useState('collections');
 
   return (
     <div className="w-full max-w-[1600px] mx-auto mt-8">
@@ -35,11 +35,7 @@ const TrendingWrapper = ({ inscriptionStats, statsLoading, statsError }) => {
       </div>
 
       {activeView === 'collections' ? (
-        <TrendingCollections
-          inscriptionStats={inscriptionStats}
-          statsLoading={statsLoading}
-          statsError={statsError}
-        />
+        <TrendingCollections />
       ) : (
         <TrendingRunes />
       )}

@@ -29,7 +29,6 @@ const Navbar = ({
   selectedView,
   onSearch,
 }) => {
-  // Search state
   const [showSearch, setShowSearch] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [searchType, setSearchType] = useState('Transaction ID');
@@ -74,6 +73,8 @@ const Navbar = ({
     },
   ];
 
+  const activeItem = navItems.find((item) => item.active) || navItems[0];
+
   return (
     <nav className="bg-gray-900 text-white px-4 py-3 shadow-md flex justify-between items-center fixed top-0 left-0 w-full z-50">
       {/* Left Side - Navigation Items */}
@@ -83,21 +84,38 @@ const Navbar = ({
           <span className="text-lg font-bold">ODIN</span>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={item.onClick}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors duration-200 ${
-                item.active
-                  ? 'bg-blue-600 text-white'
-                  : 'hover:bg-gray-800 text-gray-300 hover:text-white'
-              }`}
-            >
-              {item.icon}
-              <span className="font-medium">{item.label}</span>
-            </button>
-          ))}
+        {/* Only show the active nav item by default, show others on hover */}
+        <div className="relative group">
+          <button
+            onClick={activeItem.onClick}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors duration-200 ${
+              activeItem.active
+                ? 'bg-blue-600 text-white'
+                : 'hover:bg-gray-800 text-gray-300 hover:text-white'
+            }`}
+          >
+            {activeItem.icon}
+            <span className="font-medium">{activeItem.label}</span>
+          </button>
+
+          {/* Dropdown with other nav items appears on hover */}
+          <div className="absolute left-0 mt-2 bg-gray-900 rounded-md shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 w-48">
+            {navItems
+              .filter((item) => item.label !== activeItem.label)
+              .map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.onClick}
+                  className={`block w-full text-left px-4 py-2 rounded-md transition-colors duration-200 ${
+                    item.active
+                      ? 'bg-blue-600 text-white'
+                      : 'hover:bg-gray-800 text-gray-300 hover:text-white'
+                  }`}
+                >
+                  {item.icon} <span className="font-medium ml-2">{item.label}</span>
+                </button>
+              ))}
+          </div>
         </div>
       </div>
 
@@ -111,7 +129,6 @@ const Navbar = ({
               onChange={(e) => setSearchType(e.target.value)}
             >
               <option value="Transaction ID">Transaction ID</option>
-              {/* <option value="Block Height">Block Height</option> */}
               <option value="Wallet Address">Wallet Address</option>
             </select>
             <input

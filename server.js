@@ -970,49 +970,49 @@ app.get('/api/ord/address/:address', async (req, res) => {
 });
 
 app.get('/api/trending-runes', async (req, res) => {
-  try {
-    const { limit = 100, offset = 0 } = req.query;
+ try {
+   const { limit = 100, offset = 0 } = req.query;
 
-    const query = `
-      WITH latest_runes AS (
-        SELECT DISTINCT ON (rune_name)
-          id,
-          rune_id,
-          rune_number,
-          rune_name,
-          holder_count,
-          total_volume,
-          avg_price_sats,
-          marketcap,
-          event_count,
-          circulating_supply,
-          mint_progress,
-          created_at
-        FROM trending_runes
-        ORDER BY rune_name, created_at DESC
-      )
-      SELECT *
-      FROM latest_runes
-      ORDER BY rune_number ASC
-      LIMIT $1
-      OFFSET $2
-    `;
+   const query = `
+     WITH latest_runes AS (
+       SELECT DISTINCT ON (rune_name)
+         id,
+         rune_id,
+         rune_number,
+         rune_name,
+         holder_count,
+         total_volume,
+         avg_price_sats,
+         marketcap,
+         event_count,
+         circulating_supply,
+         mint_progress,
+         created_at
+       FROM trending_runes
+       ORDER BY rune_name, created_at DESC
+     )
+     SELECT *
+     FROM latest_runes
+     ORDER BY CAST(rune_number AS INTEGER) ASC
+     LIMIT $1
+     OFFSET $2
+   `;
 
-    const result = await pool.query(query, [limit, offset]);
+   const result = await pool.query(query, [limit, offset]);
 
-    res.json({
-      success: true,
-      count: result.rowCount,
-      data: result.rows
-    });
+   res.json({
+     success: true,
+     count: result.rowCount,
+     data: result.rows
+   });
 
-  } catch (error) {
-    console.error('Error fetching trending runes:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error'
-    });
-  }
+ } catch (error) {
+   console.error('Error fetching trending runes:', error);
+   res.status(500).json({
+     success: false,
+     error: 'Internal server error'
+   });
+ }
 });
 
 app.get('/api/rune/:txid', async (req, res) => {

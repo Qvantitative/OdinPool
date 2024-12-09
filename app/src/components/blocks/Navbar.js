@@ -55,7 +55,7 @@ const Navbar = ({
       active: selectedView === 'mempool',
     },
     {
-      label: 'Trending Collections',
+      label: 'Trending',
       icon: <BarChart2 className="w-5 h-5" />,
       onClick: onShowTrendingCollections,
       active: selectedView === 'trendingCollections',

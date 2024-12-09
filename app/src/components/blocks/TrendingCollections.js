@@ -32,8 +32,8 @@ const formatMarketCap = (value) => {
 
 const TrendingCollections = ({
   inscriptionStats,
-  statsLoading,
-  statsError
+  statsLoading = false,
+  statsError = null
 }) => {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(false);

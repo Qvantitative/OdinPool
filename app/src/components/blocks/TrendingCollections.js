@@ -31,7 +31,7 @@ const formatMarketCap = (value) => {
 };
 
 const TrendingCollections = ({
-  inscriptionStats,
+  inscriptionStats [],
   statsLoading = false,
   statsError = null
 }) => {

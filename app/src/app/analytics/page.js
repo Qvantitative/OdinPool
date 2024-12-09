@@ -27,7 +27,7 @@ import Ord from '../../components/blocks/Ord';
 import MempoolTreeMap from '../../components/blocks/charts/MempoolTreeMap';
 
 const BubbleMaps = dynamic(() => import('../../components/blocks/BubbleMaps'), { ssr: false });
-const TrendingCollections = dynamic(() => import('../../components/blocks/TrendingCollections'), { ssr: false });
+const TrendingWrapper = dynamic(() => import('../../components/blocks/TrendingWrapper'), { ssr: false });
 
 const AnalyticsPage = () => {
   // State Variables
@@ -552,7 +552,11 @@ const AnalyticsPage = () => {
           </section>
         ) : selectedView === 'trendingCollections' ? (
           <section>
-            <TrendingCollections />
+            <TrendingWrapper
+              inscriptionStats={inscriptionStats}
+              statsLoading={statsLoading}
+              statsError={statsError}
+            />
           </section>
         ) : (
           <section>

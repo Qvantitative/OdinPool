@@ -7,11 +7,44 @@ import pLimit from 'p-limit';
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 20, // Increased pool connections
+  max: 20,
 });
 
 const ORD_SERVER_URL = 'http://68.9.235.71:3000';
-const limit = pLimit(10); // Limit concurrent API calls
+const limit = pLimit(10);
+
+// Add checkpoint table if it doesn't exist
+async function ensureCheckpointTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS process_checkpoints (
+      process_name VARCHAR(255) PRIMARY KEY,
+      last_processed_count INTEGER,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+// Save checkpoint
+async function saveCheckpoint(client, processedCount) {
+  await client.query(`
+    INSERT INTO process_checkpoints (process_name, last_processed_count)
+    VALUES ('wallet_tracking', $1)
+    ON CONFLICT (process_name)
+    DO UPDATE SET
+      last_processed_count = $1,
+      updated_at = CURRENT_TIMESTAMP
+  `, [processedCount]);
+}
+
+// Load checkpoint
+async function loadCheckpoint(client) {
+  const result = await client.query(`
+    SELECT last_processed_count
+    FROM process_checkpoints
+    WHERE process_name = 'wallet_tracking'
+  `);
+  return result.rows[0]?.last_processed_count || 0;
+}
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -134,11 +167,22 @@ async function updateWalletTrackingBatch(client, inscriptions) {
   try {
     await client.query('BEGIN');
 
+    // Add signal handler for this batch
+    const cleanup = async () => {
+      console.log(`[${new Date().toISOString()}] Received SIGINT - completing current batch before shutdown`);
+      // Let the current batch complete
+      await client.query('COMMIT');
+      process.exit(0);
+    };
+
+    process.on('SIGINT', cleanup);
+
     const inscriptionsWithAddresses = await batchGetInscriptionAddresses(inscriptions);
     const validInscriptions = inscriptionsWithAddresses.filter(i => i.address);
 
     if (!validInscriptions.length) {
       await client.query('ROLLBACK');
+      process.removeListener('SIGINT', cleanup);
       return;
     }
 
@@ -207,9 +251,10 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
 
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Batch error:`, error);
-    await client.query('ROLLBACK');
-    throw error;
+      console.error(`[${new Date().toISOString()}] Batch error:`, error);
+      await client.query('ROLLBACK');
+      process.removeListener('SIGINT', cleanup);  // Add this line
+      throw error;
   }
 }
 
@@ -247,8 +292,15 @@ async function updateWalletTracking() {
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
 
+    // Ensure checkpoint table exists
+    await ensureCheckpointTable(client);
+
+    // Load last checkpoint
+    const processedCount = await loadCheckpoint(client);
+    console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions`);
+
     const BATCH_SIZE = 500;
-    let processedCount = 0;
+    let currentCount = processedCount;
 
     while (true) {
       const { rows: inscriptions } = await client.query(`
@@ -256,14 +308,17 @@ async function updateWalletTracking() {
         FROM inscriptions
         ORDER BY id
         OFFSET $1 LIMIT $2
-      `, [processedCount, BATCH_SIZE]);
+      `, [currentCount, BATCH_SIZE]);
 
       if (inscriptions.length === 0) break;
 
       await updateWalletTrackingBatch(client, inscriptions);
-      processedCount += inscriptions.length;
+      currentCount += inscriptions.length;
 
-      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/42997 inscriptions processed`);
+      // Save checkpoint after each batch
+      await saveCheckpoint(client, currentCount);
+      console.log(`[${new Date().toISOString()}] Progress: ${currentCount}/42997 inscriptions processed`);
+      console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${currentCount}`);
     }
 
   } catch (error) {
@@ -292,9 +347,8 @@ async function insertInscriptionsToDB(inscriptions, projectSlug) {
     `;
 
     for (const inscription_id of inscriptions) {
-      console.log('Inserting:', inscription_id, projectSlug);  // Log each inscription ID being inserted
-      console.log('Executing query:', insertQuery, 'with values:', [inscription_id, projectSlug]);  // Log the query and values
-
+      console.log('Inserting:', inscription_id, projectSlug);
+      console.log('Executing query:', insertQuery, 'with values:', [inscription_id, projectSlug]);
       await client.query(insertQuery, [inscription_id, projectSlug]);
     }
 
@@ -314,5 +368,5 @@ export {
   insertInscriptionsToDB,
   updateWalletTracking,
   updateProjectWalletTracking,
-  fixUnknownProjectSlugs  // Added new export
+  fixUnknownProjectSlugs
 };

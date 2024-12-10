@@ -115,36 +115,24 @@ async function batchGetInscriptionAddresses(inscriptions) {
   return Promise.all(addressPromises);
 }
 
+let shouldShutdown = false;
+process.on('SIGINT', () => {
+  console.log('SIGINT received, will shutdown gracefully after current batch...');
+  shouldShutdown = true;
+});
+
 async function updateWalletTrackingBatch(client, inscriptions) {
   if (!inscriptions.length) return;
 
-  // Check current listener count but don't remove ALL listeners
-  if (process.listenerCount('SIGINT') >= 10) {
-    console.warn('Too many SIGINT listeners detected');
-  }
-
-  const cleanup = async () => {
-    console.log(`[${new Date().toISOString()}] Received SIGINT - completing current batch before shutdown`);
-    try {
-      await client.query('COMMIT');
-      process.removeListener('SIGINT', cleanup);
-      process.exit(0);
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-      process.exit(1);
-    }
-  };
-
   try {
     await client.query('BEGIN');
-    process.on('SIGINT', cleanup);
 
+    // No SIGINT handling here; rely on shouldShutdown in the main loop.
     const inscriptionsWithAddresses = await batchGetInscriptionAddresses(inscriptions);
     const validInscriptions = inscriptionsWithAddresses.filter(i => i.address);
 
     if (!validInscriptions.length) {
       await client.query('ROLLBACK');
-      process.removeListener('SIGINT', cleanup);
       return;
     }
 
@@ -159,15 +147,14 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     const inserts = [];
     const updates = [];
 
-    validInscriptions.forEach(insc => {
+    for (const insc of validInscriptions) {
       const existing = existingMap.get(insc.inscription_id);
-
       if (!existing) {
         inserts.push([insc.inscription_id, insc.address, insc.project_slug]);
       } else if (existing.address !== insc.address) {
         updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug]);
       }
-    });
+    }
 
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
@@ -207,13 +194,10 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     `);
 
     await client.query('COMMIT');
-    process.removeListener('SIGINT', cleanup);
     console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
-
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Batch error:`, error);
     await client.query('ROLLBACK');
-    process.removeListener('SIGINT', cleanup);
     throw error;
   }
 }
@@ -221,32 +205,8 @@ async function updateWalletTrackingBatch(client, inscriptions) {
 async function updateProjectWalletTracking(projectSlug) {
   const client = await pool.connect();
 
-  // Check current listener count but don't remove ALL listeners
-  if (process.listenerCount('SIGINT') >= 10) {
-    console.warn('Too many SIGINT listeners detected');
-  }
-
-  const cleanup = async () => {
-    try {
-      console.log(`[${new Date().toISOString()}] Received SIGINT - completing current operation before shutdown`);
-      await client.release();
-
-      // Add a small delay to ensure logs are flushed
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Instead of process.exit, throw an error to handle graceful shutdown
-      throw new Error('SIGINT received - graceful shutdown');
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-      process.removeListener('SIGINT', cleanup);
-      throw error;
-    }
-  };
-
   try {
-    process.on('SIGINT', cleanup);
-
-    console.log(`[${new Date().toISOString()}] Starting wallet tracking update for project ${projectSlug}`);
+    console.log(`Starting wallet tracking update for ${projectSlug}`);
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
@@ -255,45 +215,30 @@ async function updateProjectWalletTracking(projectSlug) {
       [projectSlug]
     );
 
-    console.log(`[${new Date().toISOString()}] Found ${inscriptions.length} inscriptions for project ${projectSlug}`);
-
-    if (inscriptions.length === 0) {
-      console.log(`[${new Date().toISOString()}] No inscriptions found for project ${projectSlug}`);
-      return;
-    }
-
     const { processedCount } = await loadCheckpoint(client, projectSlug);
-    console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${inscriptions.length} inscriptions processed`);
-
     const batchSize = 500;
+
     for (let i = processedCount; i < inscriptions.length; i += batchSize) {
       const batch = inscriptions.slice(i, Math.min(i + batchSize, inscriptions.length));
-      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(inscriptions.length/batchSize)}`);
       await updateWalletTrackingBatch(client, batch);
       await saveCheckpoint(client, projectSlug, i + batch.length, inscriptions.length);
-      console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${i + batch.length}/${inscriptions.length} inscriptions`);
+      console.log(`Checkpoint saved at: ${i + batch.length}/${inscriptions.length}`);
+
+      if (shouldShutdown) {
+        console.log('Shutdown requested, ending gracefully...');
+        break;
+      }
     }
 
-    const verifyQuery = `
-      SELECT COUNT(*)
-      FROM wallets_ord
-      WHERE project_slug = $1 AND is_current = TRUE
-    `;
-    const verifyResult = await client.query(verifyQuery, [projectSlug]);
-    console.log(`[${new Date().toISOString()}] Project ${projectSlug} now has ${verifyResult.rows[0].count} current wallet trackings`);
-
-    process.removeListener('SIGINT', cleanup);
-
+    const verifyResult = await client.query(`
+      SELECT COUNT(*) FROM wallets_ord WHERE project_slug = $1 AND is_current = TRUE
+    `, [projectSlug]);
+    console.log(`Project ${projectSlug} now has ${verifyResult.rows[0].count} current wallet trackings`);
   } catch (error) {
-    if (error.message === 'SIGINT received - graceful shutdown') {
-      console.log(`[${new Date().toISOString()}] Gracefully shutting down...`);
-    } else {
-      console.error(`[${new Date().toISOString()}] Error updating wallet tracking for project ${projectSlug}:`, error);
-    }
-    process.removeListener('SIGINT', cleanup);
-    throw error;
+    console.error(`Error updating wallet tracking for ${projectSlug}:`, error);
   } finally {
     client.release();
+    console.log('Database connection released. Exiting...');
   }
 }
 

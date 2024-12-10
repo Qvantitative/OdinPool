@@ -146,7 +146,7 @@ async function fetchAndPostRunes() {
 
   try {
     // List of runes to track - you can modify this array as needed
-    const runesToTrack = ['CYPHERGENESIS'];
+    const runesToTrack = ['DOGGOTOTHEMOON'];
 
     for (const runeName of runesToTrack) {
       console.log(`[${new Date().toISOString()}] Processing rune: ${runeName}`);

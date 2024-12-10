@@ -95,29 +95,18 @@ async function fetchRuneHoldersBatch(runeName, offset, desiredBatchSize) {
   }
 }
 
+// Global shutdown flag
+let shouldShutdown = false;
+process.on('SIGINT', () => {
+  console.log('SIGINT received, will shutdown gracefully after current batch...');
+  shouldShutdown = true;
+});
+
 async function insertRuneHoldersBatch(client, holders, runeName) {
   if (!holders.length) return;
 
-  if (process.listenerCount('SIGINT') >= 10) {
-    console.warn('Too many SIGINT listeners detected, cleaning up...');
-    process.removeAllListeners('SIGINT');
-  }
-
-  const cleanup = async () => {
-    console.log(`[${new Date().toISOString()}] Received SIGINT - completing current batch before shutdown`);
-    try {
-      await client.query('COMMIT');
-      process.removeListener('SIGINT', cleanup);
-      process.exit(0);
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-      process.exit(1);
-    }
-  };
-
   try {
     await client.query('BEGIN');
-    process.once('SIGINT', cleanup);
 
     if (holders[0]?.rune_id) {
       await client.query(`
@@ -156,13 +145,11 @@ async function insertRuneHoldersBatch(client, holders, runeName) {
     }
 
     await client.query('COMMIT');
-    process.removeListener('SIGINT', cleanup);
     console.log(`[${new Date().toISOString()}] Processed batch: ${holders.length} holders`);
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Batch error:`, error);
     await client.query('ROLLBACK');
-    process.removeListener('SIGINT', cleanup);
     throw error;
   }
 }
@@ -185,7 +172,7 @@ async function updateRuneHolders(runeName) {
 
     while (hasMore) {
       if (offset > processedCount) {
-        // Delay between fetches
+        // Delay between fetches to avoid rate limiting
         await delay(8000);
       }
 
@@ -200,11 +187,19 @@ async function updateRuneHolders(runeName) {
 
       offset = nextOffset;
       totalProcessed += batchHolders.length;
+
+      // Save checkpoint after each batch
       await saveRuneCheckpoint(client, runeName, totalProcessed, totalProcessed);
       console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${totalProcessed} holders`);
 
       if (batchHolders.length < DESIRED_BATCH_SIZE) {
         hasMore = false;
+      }
+
+      // Check if we should shut down after completing this batch
+      if (shouldShutdown) {
+        console.log('Shutdown requested, ending gracefully...');
+        break;
       }
     }
 

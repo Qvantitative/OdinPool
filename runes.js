@@ -12,7 +12,6 @@ const pool = new pg.Pool({
 
 const limit = pLimit(10);
 
-// Add checkpoint table if it doesn't exist
 async function ensureCheckpointTable(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS rune_process_checkpoints (
@@ -24,7 +23,6 @@ async function ensureCheckpointTable(client) {
   `);
 }
 
-// Save checkpoint
 async function saveRuneCheckpoint(client, runeName, processedCount, totalHolders) {
   await client.query(`
     INSERT INTO rune_process_checkpoints (rune_name, last_processed_count, total_holders)
@@ -37,7 +35,6 @@ async function saveRuneCheckpoint(client, runeName, processedCount, totalHolders
   `, [runeName, processedCount, totalHolders]);
 }
 
-// Load checkpoint
 async function loadRuneCheckpoint(client, runeName) {
   const result = await client.query(`
     SELECT last_processed_count, total_holders
@@ -54,51 +51,29 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function fetchRuneHoldersFromAPI(runeName, startOffset = 0) {
+async function fetchRuneHoldersBatch(runeName, offset, batchSize) {
   const urlBase = "https://api.bestinslot.xyz/v3/runes/holders";
   const headers = {
     "x-api-key": process.env.BESTIN_SLOT_API_KEY,
     "Content-Type": "application/json",
   };
-  const holders = [];
-  const batchSize = 500;
-  const delayBetweenRequests = 8000;
 
   try {
-    let hasMore = true;
-    let offset = startOffset;
+    const url = `${urlBase}?rune_name=${runeName}&sort_by=balance&order=desc&count=${batchSize}&offset=${offset}`;
+    console.log(`Fetching from ${url}`);
 
-    while (hasMore) {
-      const url = `${urlBase}?rune_name=${runeName}&sort_by=balance&order=desc&count=${batchSize}&offset=${offset}`;
-      console.log(`Fetching from ${url}`);
+    const response = await axios.get(url, { headers });
 
-      const response = await axios.get(url, { headers });
-
-      if (Array.isArray(response.data.data)) {
-        if (response.data.data.length === 0) {
-          hasMore = false;
-          continue;
-        }
-
-        holders.push(...response.data.data);
-        console.log(`Fetched ${holders.length} holders so far`);
-
-        if (response.data.data.length < batchSize) {
-          hasMore = false;
-        }
-      } else {
-        console.warn(`Unexpected response format at offset ${offset}`);
-        hasMore = false;
-      }
-
-      offset += batchSize;
-      await delay(delayBetweenRequests);
+    if (Array.isArray(response.data.data)) {
+      console.log(`Fetched ${response.data.data.length} holders at offset ${offset}`);
+      return response.data.data;
+    } else {
+      console.warn(`Unexpected response format at offset ${offset}`);
+      return [];
     }
-
-    return holders;
   } catch (error) {
-    console.error('Error fetching rune holders data:', error);
-    throw error; // Propagate error to handle retry logic in caller
+    console.error('Error fetching rune holders batch:', error);
+    throw error;
   }
 }
 
@@ -183,38 +158,43 @@ async function updateRuneHolders(runeName) {
   try {
     console.log(`[${new Date().toISOString()}] Starting rune holders update for ${runeName}`);
 
-    // Ensure checkpoint table exists
     await ensureCheckpointTable(client);
-
-    // Load last checkpoint
-    const { processedCount, totalHolders } = await loadRuneCheckpoint(client, runeName);
+    const { processedCount } = await loadRuneCheckpoint(client, runeName);
     console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} holders processed`);
 
-    // Fetch holders starting from checkpoint
-    let holders = [];
-    try {
-      holders = await fetchRuneHoldersFromAPI(runeName, processedCount);
-    } catch (error) {
-      console.error(`Error fetching holders, will retry from last checkpoint next time:`, error);
-      throw error;
-    }
+    let offset = processedCount;
+    let hasMore = true;
+    let totalProcessed = processedCount;
 
-    if (holders.length > 0) {
-      // Process in batches
-      for (let i = 0; i < holders.length; i += BATCH_SIZE) {
-        const batch = holders.slice(i, i + BATCH_SIZE);
-        await insertRuneHoldersBatch(client, batch, runeName);
-
-        // Save checkpoint after each batch
-        const currentProcessed = processedCount + i + batch.length;
-        await saveRuneCheckpoint(client, runeName, currentProcessed, holders.length);
-        console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${currentProcessed} holders`);
+    while (hasMore) {
+      // Add delay between batches to respect rate limits
+      if (offset > processedCount) {
+        await delay(8000);
       }
 
-      console.log(`[${new Date().toISOString()}] Completed update for ${runeName} with ${holders.length} holders`);
-    } else {
-      console.log(`[${new Date().toISOString()}] No holders found for ${runeName}`);
+      // Fetch and process one batch
+      const batchHolders = await fetchRuneHoldersBatch(runeName, offset, BATCH_SIZE);
+
+      if (batchHolders.length === 0) {
+        hasMore = false;
+        continue;
+      }
+
+      // Process this batch
+      await insertRuneHoldersBatch(client, batchHolders, runeName);
+
+      // Update offset and save checkpoint
+      offset += batchHolders.length;
+      totalProcessed += batchHolders.length;
+      await saveRuneCheckpoint(client, runeName, offset, totalProcessed);
+      console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${offset} holders`);
+
+      if (batchHolders.length < BATCH_SIZE) {
+        hasMore = false;
+      }
     }
+
+    console.log(`[${new Date().toISOString()}] Completed update for ${runeName} with ${totalProcessed} total holders`);
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error updating rune holders:`, error);
@@ -225,6 +205,7 @@ async function updateRuneHolders(runeName) {
 }
 
 export {
-  fetchRuneHoldersFromAPI,
+  fetchRuneHoldersBatch,
+  insertRuneHoldersBatch,
   updateRuneHolders
 };

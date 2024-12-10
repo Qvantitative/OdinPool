@@ -164,18 +164,30 @@ async function batchGetInscriptionAddresses(inscriptions) {
 async function updateWalletTrackingBatch(client, inscriptions) {
   if (!inscriptions.length) return;
 
+  // Check current listener count
+  if (process.listenerCount('SIGINT') >= 10) {
+    console.warn('Too many SIGINT listeners detected, cleaning up...');
+    process.removeAllListeners('SIGINT');
+  }
+
+  // Define cleanup handler
+  const cleanup = async () => {
+    console.log(`[${new Date().toISOString()}] Received SIGINT - completing current batch before shutdown`);
+    try {
+      await client.query('COMMIT');
+      process.removeListener('SIGINT', cleanup);
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      process.exit(1);
+    }
+  };
+
   try {
     await client.query('BEGIN');
 
-    // Add signal handler for this batch
-    const cleanup = async () => {
-      console.log(`[${new Date().toISOString()}] Received SIGINT - completing current batch before shutdown`);
-      // Let the current batch complete
-      await client.query('COMMIT');
-      process.exit(0);
-    };
-
-    process.on('SIGINT', cleanup);
+    // Use once instead of on to prevent multiple listeners
+    process.once('SIGINT', cleanup);
 
     const inscriptionsWithAddresses = await batchGetInscriptionAddresses(inscriptions);
     const validInscriptions = inscriptionsWithAddresses.filter(i => i.address);
@@ -248,13 +260,16 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     `);
 
     await client.query('COMMIT');
+    // Remove the SIGINT listener after successful completion
+    process.removeListener('SIGINT', cleanup);
     console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
 
   } catch (error) {
-      console.error(`[${new Date().toISOString()}] Batch error:`, error);
-      await client.query('ROLLBACK');
-      process.removeListener('SIGINT', cleanup);  // Add this line
-      throw error;
+    console.error(`[${new Date().toISOString()}] Batch error:`, error);
+    await client.query('ROLLBACK');
+    // Remove the SIGINT listener in case of error
+    process.removeListener('SIGINT', cleanup);
+    throw error;
   }
 }
 

@@ -346,19 +346,20 @@ async function insertInscriptionsToDB(inscriptions, projectSlug) {
     `;
 
     for (const inscription_id of inscriptions) {
-      console.log('Inserting:', inscription_id, projectSlug);
-      console.log('Executing query:', insertQuery, 'with values:', [inscription_id, projectSlug]);
+      console.log('Inserting:', inscription_id, projectSlug);  // Log each inscription ID being inserted
+      console.log('Executing query:', insertQuery, 'with values:', [inscription_id, projectSlug]);  // Log the query and values
+
       await client.query(insertQuery, [inscription_id, projectSlug]);
     }
 
     await client.query('COMMIT');
-    console.log('Transaction committed');
-    console.log('Inscriptions inserted successfully');
+    process.removeListener('SIGINT', cleanup);
+    console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
+
   } catch (error) {
+    console.error(`[${new Date().toISOString()}] Batch error:`, error);
     await client.query('ROLLBACK');
-    console.error('Error inserting inscription data:', error);
-  } finally {
-    client.release();
+    throw error;
   }
 }
 

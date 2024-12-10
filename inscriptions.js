@@ -245,11 +245,16 @@ async function updateProjectWalletTracking(projectSlug) {
 async function updateWalletTracking() {
   const client = await pool.connect();
 
+  const globalProjectSlug = 'global_project'; // a placeholder slug for global tracking
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
+    await ensureCheckpointTable(client);
+
+    // Load checkpoint for global project
+    const { processedCount: startProcessedCount } = await loadCheckpoint(client, globalProjectSlug);
+    let processedCount = startProcessedCount;
 
     const BATCH_SIZE = 500;
-    let processedCount = 0;
 
     while (true) {
       const { rows: inscriptions } = await client.query(`
@@ -264,7 +269,16 @@ async function updateWalletTracking() {
       await updateWalletTrackingBatch(client, inscriptions);
       processedCount += inscriptions.length;
 
-      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/42997 inscriptions processed`);
+      // Save checkpoint after each batch so we can resume
+      const totalInscriptions = 42997; // or dynamically query total if needed
+      await saveCheckpoint(client, globalProjectSlug, processedCount, totalInscriptions);
+
+      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${totalInscriptions} inscriptions processed`);
+
+      if (shouldShutdown) {
+        console.log('Shutdown requested, ending gracefully...');
+        break;
+      }
     }
 
   } catch (error) {

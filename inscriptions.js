@@ -164,13 +164,11 @@ async function batchGetInscriptionAddresses(inscriptions) {
 async function updateWalletTrackingBatch(client, inscriptions) {
   if (!inscriptions.length) return;
 
-  // Check current listener count
+  // Check current listener count but don't remove ALL listeners
   if (process.listenerCount('SIGINT') >= 10) {
-    console.warn('Too many SIGINT listeners detected, cleaning up...');
-    process.removeAllListeners('SIGINT');
+    console.warn('Too many SIGINT listeners detected');
   }
 
-  // Define cleanup handler
   const cleanup = async () => {
     console.log(`[${new Date().toISOString()}] Received SIGINT - completing current batch before shutdown`);
     try {
@@ -185,9 +183,7 @@ async function updateWalletTrackingBatch(client, inscriptions) {
 
   try {
     await client.query('BEGIN');
-
-    // Use once instead of on to prevent multiple listeners
-    process.once('SIGINT', cleanup);
+    process.on('SIGINT', cleanup);
 
     const inscriptionsWithAddresses = await batchGetInscriptionAddresses(inscriptions);
     const validInscriptions = inscriptionsWithAddresses.filter(i => i.address);
@@ -219,7 +215,7 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       }
     });
 
-    // Fixed bulk insert query with project_slug
+    // Handle inserts
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
         `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, TRUE)`
@@ -231,14 +227,16 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       `, inserts.flat());
     }
 
-    // Fixed bulk update query with project_slug preservation
+    // Handle updates
     if (updates.length) {
+      // First mark existing records as not current
       await client.query(`
         UPDATE wallets_ord
         SET is_current = FALSE
         WHERE inscription_id = ANY($1::text[]) AND is_current = TRUE
       `, [updates.map(u => u[0])]);
 
+      // Then insert new records
       const updateValues = updates.map((_, index) =>
         `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4}, TRUE)`
       ).join(', ');
@@ -249,7 +247,7 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       `, updates.flat());
     }
 
-    // Add a fix for any 'unknown' project_slugs
+    // Fix any unknown project slugs
     await client.query(`
       UPDATE wallets_ord w
       SET project_slug = i.project_slug
@@ -260,14 +258,12 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     `);
 
     await client.query('COMMIT');
-    // Remove the SIGINT listener after successful completion
     process.removeListener('SIGINT', cleanup);
     console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Batch error:`, error);
     await client.query('ROLLBACK');
-    // Remove the SIGINT listener in case of error
     process.removeListener('SIGINT', cleanup);
     throw error;
   }

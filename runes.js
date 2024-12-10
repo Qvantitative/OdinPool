@@ -51,7 +51,16 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function fetchRuneHoldersBatch(runeName, offset, batchSize) {
+// Helper function to adjust batch size to ensure offsets align with API requirements
+function adjustBatchSize(currentOffset, desiredBatchSize) {
+  // If the current offset isn't a multiple of 20, adjust the batch size
+  // to make the next offset land on a multiple of 20
+  const nextOffset = currentOffset + desiredBatchSize;
+  const nextMultipleOf20 = Math.ceil(nextOffset / 20) * 20;
+  return nextMultipleOf20 - currentOffset;
+}
+
+async function fetchRuneHoldersBatch(runeName, offset, desiredBatchSize) {
   const urlBase = "https://api.bestinslot.xyz/v3/runes/holders";
   const headers = {
     "x-api-key": process.env.BESTIN_SLOT_API_KEY,
@@ -59,17 +68,23 @@ async function fetchRuneHoldersBatch(runeName, offset, batchSize) {
   };
 
   try {
-    const url = `${urlBase}?rune_name=${runeName}&sort_by=balance&order=desc&count=${batchSize}&offset=${offset}`;
+    // Adjust batch size to ensure next offset will be a multiple of 20
+    const adjustedBatchSize = adjustBatchSize(offset, desiredBatchSize);
+
+    const url = `${urlBase}?rune_name=${runeName}&sort_by=balance&order=desc&count=${adjustedBatchSize}&offset=${offset}`;
     console.log(`Fetching from ${url}`);
 
     const response = await axios.get(url, { headers });
 
     if (Array.isArray(response.data.data)) {
       console.log(`Fetched ${response.data.data.length} holders at offset ${offset}`);
-      return response.data.data;
+      return {
+        holders: response.data.data,
+        nextOffset: offset + response.data.data.length
+      };
     } else {
       console.warn(`Unexpected response format at offset ${offset}`);
-      return [];
+      return { holders: [], nextOffset: offset };
     }
   } catch (error) {
     console.error('Error fetching rune holders batch:', error);
@@ -80,7 +95,6 @@ async function fetchRuneHoldersBatch(runeName, offset, batchSize) {
 async function insertRuneHoldersBatch(client, holders, runeName) {
   if (!holders.length) return;
 
-  // Check current listener count
   if (process.listenerCount('SIGINT') >= 10) {
     console.warn('Too many SIGINT listeners detected, cleaning up...');
     process.removeAllListeners('SIGINT');
@@ -102,7 +116,6 @@ async function insertRuneHoldersBatch(client, holders, runeName) {
     await client.query('BEGIN');
     process.once('SIGINT', cleanup);
 
-    // Update timestamps for existing records
     if (holders[0]?.rune_id) {
       await client.query(`
         UPDATE rune_holders
@@ -153,7 +166,7 @@ async function insertRuneHoldersBatch(client, holders, runeName) {
 
 async function updateRuneHolders(runeName) {
   const client = await pool.connect();
-  const BATCH_SIZE = 500;
+  const DESIRED_BATCH_SIZE = 500;
 
   try {
     console.log(`[${new Date().toISOString()}] Starting rune holders update for ${runeName}`);
@@ -167,29 +180,25 @@ async function updateRuneHolders(runeName) {
     let totalProcessed = processedCount;
 
     while (hasMore) {
-      // Add delay between batches to respect rate limits
       if (offset > processedCount) {
         await delay(8000);
       }
 
-      // Fetch and process one batch
-      const batchHolders = await fetchRuneHoldersBatch(runeName, offset, BATCH_SIZE);
+      const { holders: batchHolders, nextOffset } = await fetchRuneHoldersBatch(runeName, offset, DESIRED_BATCH_SIZE);
 
       if (batchHolders.length === 0) {
         hasMore = false;
         continue;
       }
 
-      // Process this batch
       await insertRuneHoldersBatch(client, batchHolders, runeName);
 
-      // Update offset and save checkpoint
-      offset += batchHolders.length;
+      offset = nextOffset;
       totalProcessed += batchHolders.length;
-      await saveRuneCheckpoint(client, runeName, offset, totalProcessed);
-      console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${offset} holders`);
+      await saveRuneCheckpoint(client, runeName, totalProcessed, totalProcessed);
+      console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${totalProcessed} holders`);
 
-      if (batchHolders.length < BATCH_SIZE) {
+      if (batchHolders.length < DESIRED_BATCH_SIZE) {
         hasMore = false;
       }
     }

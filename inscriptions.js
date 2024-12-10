@@ -272,9 +272,14 @@ async function updateWalletTracking() {
 
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
+    await client.query('SET statement_timeout = 0');
+    await ensureCheckpointTable(client);
+
+    // Load checkpoint with special slug for general tracking
+    const { processedCount } = await loadCheckpoint(client, 'ALL_INSCRIPTIONS');
+    console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions processed`);
 
     const BATCH_SIZE = 500;
-    let processedCount = 0;
 
     while (true) {
       const { rows: inscriptions } = await client.query(`
@@ -287,13 +292,19 @@ async function updateWalletTracking() {
       if (inscriptions.length === 0) break;
 
       await updateWalletTrackingBatch(client, inscriptions);
+
+      // Save checkpoint after each successful batch
+      await saveCheckpoint(client, 'ALL_INSCRIPTIONS', processedCount + inscriptions.length, 42997);
       processedCount += inscriptions.length;
 
       console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/42997 inscriptions processed`);
     }
 
+    console.log(`[${new Date().toISOString()}] Completed wallet tracking update`);
+
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error in main process:`, error);
+    throw error;
   } finally {
     client.release();
   }

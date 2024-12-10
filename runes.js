@@ -51,13 +51,11 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Helper function to adjust batch size to ensure offsets align with API requirements
-function adjustBatchSize(currentOffset, desiredBatchSize) {
-  // If the current offset isn't a multiple of 20, adjust the batch size
-  // to make the next offset land on a multiple of 20
-  const nextOffset = currentOffset + desiredBatchSize;
-  const nextMultipleOf20 = Math.ceil(nextOffset / 20) * 20;
-  return nextMultipleOf20 - currentOffset;
+/**
+ * Ensures that a given number is a multiple of 20 by rounding down.
+ */
+function ensureMultipleOf20(num) {
+  return Math.floor(num / 20) * 20;
 }
 
 async function fetchRuneHoldersBatch(runeName, offset, desiredBatchSize) {
@@ -67,15 +65,20 @@ async function fetchRuneHoldersBatch(runeName, offset, desiredBatchSize) {
     "Content-Type": "application/json",
   };
 
+  // Ensure offset is a multiple of 20
+  offset = ensureMultipleOf20(offset);
+
+  // Also ensure desiredBatchSize is a multiple of 20
+  desiredBatchSize = ensureMultipleOf20(desiredBatchSize);
+  if (desiredBatchSize === 0) {
+    desiredBatchSize = 20; // minimum multiple of 20 if zeroed out
+  }
+
+  const url = `${urlBase}?rune_name=${runeName}&sort_by=balance&order=desc&count=${desiredBatchSize}&offset=${offset}`;
+  console.log(`Fetching from ${url}`);
+
   try {
-    // Adjust batch size to ensure next offset will be a multiple of 20
-    const adjustedBatchSize = adjustBatchSize(offset, desiredBatchSize);
-
-    const url = `${urlBase}?rune_name=${runeName}&sort_by=balance&order=desc&count=${adjustedBatchSize}&offset=${offset}`;
-    console.log(`Fetching from ${url}`);
-
     const response = await axios.get(url, { headers });
-
     if (Array.isArray(response.data.data)) {
       console.log(`Fetched ${response.data.data.length} holders at offset ${offset}`);
       return {
@@ -166,7 +169,8 @@ async function insertRuneHoldersBatch(client, holders, runeName) {
 
 async function updateRuneHolders(runeName) {
   const client = await pool.connect();
-  const DESIRED_BATCH_SIZE = 500;
+  // Keep this as a multiple of 20
+  const DESIRED_BATCH_SIZE = 500; // already multiple of 20
 
   try {
     console.log(`[${new Date().toISOString()}] Starting rune holders update for ${runeName}`);
@@ -181,6 +185,7 @@ async function updateRuneHolders(runeName) {
 
     while (hasMore) {
       if (offset > processedCount) {
+        // Delay between fetches
         await delay(8000);
       }
 

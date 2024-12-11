@@ -291,34 +291,51 @@ async function updateWalletTracking() {
 async function insertInscriptionsToDB(inscriptions, projectSlug) {
   if (!Array.isArray(inscriptions)) {
     console.error('Error: Inscriptions is not an array');
-    return;
+    return { insertedCount: 0, skippedCount: 0, totalCount: 0 };
   }
 
   const client = await pool.connect();
+  let insertedCount = 0;
+  let skippedCount = 0;
 
   try {
     await client.query('BEGIN');
-    console.log('Starting transaction');
+    console.log('Starting transaction for inserting inscriptions');
 
     const insertQuery = `
       INSERT INTO inscriptions (inscription_id, project_slug)
       VALUES ($1, $2)
-      ON CONFLICT (inscription_id) DO NOTHING;
+      ON CONFLICT (inscription_id) DO NOTHING
+      RETURNING inscription_id;
     `;
 
     for (const inscription_id of inscriptions) {
-      console.log('Inserting:', inscription_id, projectSlug);
-      console.log('Executing query:', insertQuery, 'with values:', [inscription_id, projectSlug]);
+      console.log(`[${new Date().toISOString()}] Inserting: ${inscription_id} into ${projectSlug}`);
+      const res = await client.query(insertQuery, [inscription_id, projectSlug]);
 
-      await client.query(insertQuery, [inscription_id, projectSlug]);
+      if (res.rowCount === 1) {
+        insertedCount++;
+      } else {
+        skippedCount++;
+      }
     }
 
+    // After inserting all inscriptions, query total count from DB for the given project
+    const totalRes = await client.query(
+      'SELECT COUNT(*)::int AS total FROM inscriptions WHERE project_slug = $1',
+      [projectSlug]
+    );
+    const totalCount = totalRes.rows[0].total;
+
     await client.query('COMMIT');
-    console.log('Transaction committed');
-    console.log('Inscriptions inserted successfully');
+    console.log(`Transaction committed. Insertions completed for ${projectSlug}.`);
+    console.log(`Inserted: ${insertedCount}, Skipped: ${skippedCount}, Total in DB: ${totalCount}`);
+
+    return { insertedCount, skippedCount, totalCount };
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error inserting inscription data:', error);
+    return { insertedCount: 0, skippedCount: 0, totalCount: 0 };
   } finally {
     client.release();
   }

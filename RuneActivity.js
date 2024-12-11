@@ -41,7 +41,7 @@ async function fetchRuneActivityFromAPI() {
     sort_by: 'ts',
     order: 'desc',
     offset: 0,
-    count: 200,
+    count: 2000,
   };
 
   try {

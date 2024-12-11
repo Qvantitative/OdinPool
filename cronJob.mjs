@@ -8,7 +8,7 @@ import { updateRuneHolders } from './runes.js';
 import { updateTrendingRunes } from './TrendingRunes.js';
 
 // Import the update function from RunesActivity.js
-import { updateRuneActivity } from './RunesActivity.js';
+import { updateRuneActivity } from './RuneActivity.js';
 
 import {
   fetchInscriptionsFromAPI,

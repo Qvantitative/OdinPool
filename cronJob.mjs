@@ -5,7 +5,11 @@ import { updateAllData } from './updateBlockchainData.mjs';
 import { updateRawTransactionData } from './updateRawTransaction.mjs';
 import { fetchAndStoreTrendingData } from './trending.js';
 import { updateRuneHolders } from './runes.js';
-import { updateTrendingRunes } from './TrendingRunes.js';  // Add this import
+import { updateTrendingRunes } from './TrendingRunes.js';
+
+// Import the update function from RunesActivity.js
+import { updateRuneActivity } from './RunesActivity.js';
+
 import {
   fetchInscriptionsFromAPI,
   insertInscriptionsToDB,
@@ -17,17 +21,20 @@ import {
 let isWalletTrackingRunning = false;
 let isInscriptionFetchRunning = false;
 let isRunesFetchRunning = false;
-let isTrendingRunesRunning = false;  // Add this flag
+let isTrendingRunesRunning = false;
+// Add this flag for rune activity
+let isRuneActivityRunning = false;
 
-// Timeout configurations
 const TIMEOUTS = {
-  FETCH_INSCRIPTIONS: 1800000,   // 30 minutes
-  INSERT_INSCRIPTIONS: 600000,    // 10 minutes
-  WALLET_TRACKING: 3600000,       // 1 hour
-  BLOCKCHAIN_UPDATE: 45000,       // 45 seconds
-  RUNES_UPDATE: 1800000,          // 30 minutes for rune operations
-  TRENDING_RUNES_UPDATE: 600000,  // 10 minutes for trending runes
-  BACKFILL: 3600000              // 1 hour
+  FETCH_INSCRIPTIONS: 1800000,      // 30 minutes
+  INSERT_INSCRIPTIONS: 600000,      // 10 minutes
+  WALLET_TRACKING: 3600000,         // 1 hour
+  BLOCKCHAIN_UPDATE: 45000,         // 45 seconds
+  RUNES_UPDATE: 1800000,            // 30 minutes for rune operations
+  TRENDING_RUNES_UPDATE: 600000,    // 10 minutes for trending runes
+  BACKFILL: 3600000,                // 1 hour
+  // You can define a timeout for rune activity as well
+  RUNES_ACTIVITY_UPDATE: 600000     // 10 minutes for rune activity update
 };
 
 // Helper function for timeout wrapping
@@ -134,7 +141,7 @@ async function updateInscriptionWallets() {
   }
 }
 
-// Function to fetch and post runes
+// Function to fetch and post runes (holders info)
 async function fetchAndPostRunes() {
   if (isRunesFetchRunning) {
     console.log(`[${new Date().toISOString()}] Runes fetch already running. Skipping.`);
@@ -145,12 +152,10 @@ async function fetchAndPostRunes() {
   console.log(`[${new Date().toISOString()}] Starting runes fetch process`);
 
   try {
-    // List of runes to track - you can modify this array as needed
     const runesToTrack = ['DOGGOTOTHEMOON'];
 
     for (const runeName of runesToTrack) {
       console.log(`[${new Date().toISOString()}] Processing rune: ${runeName}`);
-
       await withTimeout(
         updateRuneHolders(runeName),
         TIMEOUTS.RUNES_UPDATE,
@@ -167,7 +172,7 @@ async function fetchAndPostRunes() {
   }
 }
 
-// Function for trending runes update
+// Function to update trending runes
 async function updateTrendingRunesData() {
   if (isTrendingRunesRunning) {
     console.log(`[${new Date().toISOString()}] Trending runes update already running. Skipping.`);
@@ -193,11 +198,37 @@ async function updateTrendingRunesData() {
   }
 }
 
+// Function to update rune activity
+async function updateRuneActivityData() {
+  if (isRuneActivityRunning) {
+    console.log(`[${new Date().toISOString()}] Rune activity update already running. Skipping.`);
+    return;
+  }
+
+  isRuneActivityRunning = true;
+  console.log(`[${new Date().toISOString()}] Starting rune activity update`);
+
+  try {
+    await withTimeout(
+      updateRuneActivity(),
+      TIMEOUTS.RUNES_ACTIVITY_UPDATE,
+      'Rune activity update'
+    );
+
+    console.log(`[${new Date().toISOString()}] Completed rune activity update`);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in rune activity update:`, error);
+    await handleTimeout(error);
+  } finally {
+    isRuneActivityRunning = false;
+  }
+}
+
 // Start cron jobs
 function startCronJobs() {
   console.log(`[${new Date().toISOString()}] Starting cron jobs`);
 
-  // Run wallet tracking every hour at minute 0
+  // Wallet tracking every hour at minute 0
   cron.schedule('0 * * * *', async () => {
     console.log(`[${new Date().toISOString()}] Running scheduled wallet tracking update`);
     await updateInscriptionWallets();
@@ -214,7 +245,7 @@ function startCronJobs() {
     }
   });
 
-  // Optional: Backfill inscriptions once a day at 2 AM
+  // Backfill inscriptions once a day at 2 AM
   cron.schedule('0 2 * * *', async () => {
     console.log(`[${new Date().toISOString()}] Running backfill for inscriptions`);
     try {
@@ -246,15 +277,19 @@ function startCronJobs() {
     await fetchAndPostRunes();
   });
 
-  // Run initial functions after startup
+  // Run rune activity update every 5 minutes (adjust as needed)
+  cron.schedule('*/5 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running rune activity update`);
+    await updateRuneActivityData();
+  });
+
+  // Initial runs after startup
   (async () => {
     try {
-      // Initial inscription wallet tracking
       await updateInscriptionWallets();
-      // Initial runes fetch
       await fetchAndPostRunes();
-      // Initial trending runes update
       await updateTrendingRunesData();
+      await updateRuneActivityData(); // Run rune activity update at startup
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
     }

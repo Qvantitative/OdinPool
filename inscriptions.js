@@ -17,39 +17,7 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function fetchInscriptionsFromAPI() {
-  const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=aeonsbtc&sort_by=inscr_num&order=asc";
-  const headers = {
-    "x-api-key": process.env.BESTIN_SLOT_API_KEY,
-    "Content-Type": "application/json",
-  };
-  const inscriptions = [];
-  const batchSize = 100;
-  const totalInscriptions = 3333;
-  const delayBetweenRequests = 8000;
-
-  try {
-    for (let offset = 0; offset < totalInscriptions; offset += batchSize) {
-      const url = `${urlBase}&offset=${offset}&count=${batchSize}`;
-      const response = await axios.get(url, { headers });
-
-      if (Array.isArray(response.data.data)) {
-        const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
-        inscriptions.push(...inscriptionIds);
-        console.log(`Fetched ${inscriptions.length} inscriptions so far`);
-      } else {
-        console.warn(`Unexpected response format at offset ${offset}, skipping batch.`);
-      }
-
-      await delay(delayBetweenRequests);
-    }
-    return inscriptions;
-  } catch (error) {
-    console.error('Error fetching inscription data:', error);
-    return [];
-  }
-}
-
+// Checkpoint management
 async function ensureCheckpointTable(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS wallet_tracking_checkpoints (
@@ -85,6 +53,41 @@ async function loadCheckpoint(client, projectSlug) {
   };
 }
 
+// Fetch inscriptions from API
+async function fetchInscriptionsFromAPI() {
+  const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=aeonsbtc&sort_by=inscr_num&order=asc";
+  const headers = {
+    "x-api-key": process.env.BESTIN_SLOT_API_KEY,
+    "Content-Type": "application/json",
+  };
+  const inscriptions = [];
+  const batchSize = 100;
+  const totalInscriptions = 3333;
+  const delayBetweenRequests = 8000;
+
+  try {
+    for (let offset = 0; offset < totalInscriptions; offset += batchSize) {
+      const url = `${urlBase}&offset=${offset}&count=${batchSize}`;
+      const response = await axios.get(url, { headers });
+
+      if (Array.isArray(response.data.data)) {
+        const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
+        inscriptions.push(...inscriptionIds);
+        console.log(`[${new Date().toISOString()}] Fetched ${inscriptions.length} inscriptions so far`);
+      } else {
+        console.warn(`[${new Date().toISOString()}] Unexpected response format at offset ${offset}, skipping batch.`);
+      }
+
+      await delay(delayBetweenRequests);
+    }
+    return inscriptions;
+  } catch (error) {
+    console.error('[${new Date().toISOString()}] Error fetching inscription data:', error);
+    return [];
+  }
+}
+
+// Batch address fetching
 async function batchGetInscriptionAddresses(inscriptions) {
   console.log(`[${new Date().toISOString()}] Fetching addresses for ${inscriptions.length} inscriptions`);
 
@@ -102,7 +105,7 @@ async function batchGetInscriptionAddresses(inscriptions) {
           address: response.data?.address || null
         };
       } catch (error) {
-        console.error(`Error fetching address for ${inscription.inscription_id}:`, error.message);
+        console.error(`[${new Date().toISOString()}] Error fetching address for ${inscription.inscription_id}:`, error.message);
         return {
           inscription_id: inscription.inscription_id,
           project_slug: inscription.project_slug,
@@ -115,19 +118,13 @@ async function batchGetInscriptionAddresses(inscriptions) {
   return Promise.all(addressPromises);
 }
 
-let shouldShutdown = false;
-process.on('SIGINT', () => {
-  console.log('SIGINT received, will shutdown gracefully after current batch...');
-  shouldShutdown = true;
-});
-
+// Main batch processing
 async function updateWalletTrackingBatch(client, inscriptions) {
   if (!inscriptions.length) return;
 
   try {
     await client.query('BEGIN');
 
-    // No SIGINT handling here; rely on shouldShutdown in the main loop.
     const inscriptionsWithAddresses = await batchGetInscriptionAddresses(inscriptions);
     const validInscriptions = inscriptionsWithAddresses.filter(i => i.address);
 
@@ -147,14 +144,15 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     const inserts = [];
     const updates = [];
 
-    for (const insc of validInscriptions) {
+    validInscriptions.forEach(insc => {
       const existing = existingMap.get(insc.inscription_id);
+
       if (!existing) {
         inserts.push([insc.inscription_id, insc.address, insc.project_slug]);
       } else if (existing.address !== insc.address) {
         updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug]);
       }
-    }
+    });
 
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
@@ -195,6 +193,7 @@ async function updateWalletTrackingBatch(client, inscriptions) {
 
     await client.query('COMMIT');
     console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
+
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Batch error:`, error);
     await client.query('ROLLBACK');
@@ -202,11 +201,36 @@ async function updateWalletTrackingBatch(client, inscriptions) {
   }
 }
 
+// Project-specific wallet tracking
 async function updateProjectWalletTracking(projectSlug) {
   const client = await pool.connect();
 
+  // Check current listener count but don't remove ALL listeners
+  if (process.listenerCount('SIGINT') >= 10) {
+    console.warn('Too many SIGINT listeners detected');
+  }
+
+  const cleanup = async () => {
+    try {
+      console.log(`[${new Date().toISOString()}] Received SIGINT - completing current operation before shutdown`);
+      await client.query('COMMIT');
+
+      // Add a small delay to ensure logs are flushed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Instead of process.exit, throw an error to handle graceful shutdown
+      throw new Error('SIGINT received - graceful shutdown');
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      process.removeListener('SIGINT', cleanup);
+      throw error;
+    }
+  };
+
   try {
-    console.log(`Starting wallet tracking update for ${projectSlug}`);
+    process.on('SIGINT', cleanup);
+
+    console.log(`[${new Date().toISOString()}] Starting wallet tracking update for project ${projectSlug}`);
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
@@ -215,44 +239,62 @@ async function updateProjectWalletTracking(projectSlug) {
       [projectSlug]
     );
 
-    const { processedCount } = await loadCheckpoint(client, projectSlug);
-    const batchSize = 500;
+    console.log(`[${new Date().toISOString()}] Found ${inscriptions.length} inscriptions for project ${projectSlug}`);
 
-    for (let i = processedCount; i < inscriptions.length; i += batchSize) {
-      const batch = inscriptions.slice(i, Math.min(i + batchSize, inscriptions.length));
-      await updateWalletTrackingBatch(client, batch);
-      await saveCheckpoint(client, projectSlug, i + batch.length, inscriptions.length);
-      console.log(`Checkpoint saved at: ${i + batch.length}/${inscriptions.length}`);
-
-      if (shouldShutdown) {
-        console.log('Shutdown requested, ending gracefully...');
-        break;
-      }
+    if (inscriptions.length === 0) {
+      console.log(`[${new Date().toISOString()}] No inscriptions found for project ${projectSlug}`);
+      return;
     }
 
-    const verifyResult = await client.query(`
-      SELECT COUNT(*) FROM wallets_ord WHERE project_slug = $1 AND is_current = TRUE
-    `, [projectSlug]);
-    console.log(`Project ${projectSlug} now has ${verifyResult.rows[0].count} current wallet trackings`);
+    const { processedCount } = await loadCheckpoint(client, projectSlug);
+    console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${inscriptions.length} inscriptions processed`);
+
+    const batchSize = 500;
+    for (let i = processedCount; i < inscriptions.length; i += batchSize) {
+      const batch = inscriptions.slice(i, Math.min(i + batchSize, inscriptions.length));
+      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(inscriptions.length/batchSize)}`);
+      await updateWalletTrackingBatch(client, batch);
+
+      await saveCheckpoint(client, projectSlug, i + batch.length, inscriptions.length);
+      console.log(`[${new Date().toISOString()}] Checkpoint saved at: ${i + batch.length}/${inscriptions.length} inscriptions`);
+    }
+
+    const verifyQuery = `
+      SELECT COUNT(*)
+      FROM wallets_ord
+      WHERE project_slug = $1 AND is_current = TRUE
+    `;
+    const verifyResult = await client.query(verifyQuery, [projectSlug]);
+    console.log(`[${new Date().toISOString()}] Project ${projectSlug} now has ${verifyResult.rows[0].count} current wallet trackings`);
+
+    process.removeListener('SIGINT', cleanup);
+
   } catch (error) {
-    console.error(`Error updating wallet tracking for ${projectSlug}:`, error);
+    if (error.message === 'SIGINT received - graceful shutdown') {
+      console.log(`[${new Date().toISOString()}] Gracefully shutting down...`);
+    } else {
+      console.error(`[${new Date().toISOString()}] Error updating wallet tracking for project ${projectSlug}:`, error);
+    }
+    process.removeListener('SIGINT', cleanup);
+    throw error;
   } finally {
     client.release();
-    console.log('Database connection released. Exiting...');
   }
 }
 
+// Global wallet tracking
 async function updateWalletTracking() {
   const client = await pool.connect();
+  const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
 
-  const globalProjectSlug = 'global_project'; // a placeholder slug for global tracking
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
+    await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
-    // Load checkpoint for global project
-    const { processedCount: startProcessedCount } = await loadCheckpoint(client, globalProjectSlug);
-    let processedCount = startProcessedCount;
+    const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
+    let processedCount = startCount;
+    console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions processed`);
 
     const BATCH_SIZE = 500;
 
@@ -269,78 +311,53 @@ async function updateWalletTracking() {
       await updateWalletTrackingBatch(client, inscriptions);
       processedCount += inscriptions.length;
 
-      // Save checkpoint after each batch so we can resume
-      const totalInscriptions = 42997; // or dynamically query total if needed
-      await saveCheckpoint(client, globalProjectSlug, processedCount, totalInscriptions);
-
-      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${totalInscriptions} inscriptions processed`);
-
-      if (shouldShutdown) {
-        console.log('Shutdown requested, ending gracefully...');
-        break;
-      }
+      await saveCheckpoint(client, PROJECT_SLUG, processedCount, 42997);
+      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/42997 inscriptions processed`);
     }
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error in main process:`, error);
+    throw error;
   } finally {
     client.release();
   }
 }
 
+// Insert inscriptions
 async function insertInscriptionsToDB(inscriptions, projectSlug) {
   if (!Array.isArray(inscriptions)) {
     console.error('Error: Inscriptions is not an array');
-    return { insertedCount: 0, skippedCount: 0, totalCount: 0 };
+    return;
   }
 
   const client = await pool.connect();
-  let insertedCount = 0;
-  let skippedCount = 0;
 
   try {
     await client.query('BEGIN');
-    console.log('Starting transaction for inserting inscriptions');
+    console.log(`[${new Date().toISOString()}] Starting transaction for ${projectSlug}`);
 
     const insertQuery = `
       INSERT INTO inscriptions (inscription_id, project_slug)
       VALUES ($1, $2)
-      ON CONFLICT (inscription_id) DO NOTHING
-      RETURNING inscription_id;
+      ON CONFLICT (inscription_id) DO NOTHING;
     `;
 
     for (const inscription_id of inscriptions) {
-      console.log(`[${new Date().toISOString()}] Inserting: ${inscription_id} into ${projectSlug}`);
-      const res = await client.query(insertQuery, [inscription_id, projectSlug]);
-
-      if (res.rowCount === 1) {
-        insertedCount++;
-      } else {
-        skippedCount++;
-      }
+      console.log(`[${new Date().toISOString()}] Inserting: ${inscription_id} for ${projectSlug}`);
+      await client.query(insertQuery, [inscription_id, projectSlug]);
     }
 
-    // After inserting all inscriptions, query total count from DB for the given project
-    const totalRes = await client.query(
-      'SELECT COUNT(*)::int AS total FROM inscriptions WHERE project_slug = $1',
-      [projectSlug]
-    );
-    const totalCount = totalRes.rows[0].total;
-
     await client.query('COMMIT');
-    console.log(`Transaction committed. Insertions completed for ${projectSlug}.`);
-    console.log(`Inserted: ${insertedCount}, Skipped: ${skippedCount}, Total in DB: ${totalCount}`);
-
-    return { insertedCount, skippedCount, totalCount };
+    console.log(`[${new Date().toISOString()}] Transaction committed`);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error inserting inscription data:', error);
-    return { insertedCount: 0, skippedCount: 0, totalCount: 0 };
+    console.error(`[${new Date().toISOString()}] Error inserting inscription data:`, error);
   } finally {
     client.release();
   }
 }
 
+// Fix unknown project slugs
 async function fixUnknownProjectSlugs() {
   const client = await pool.connect();
   try {
@@ -359,9 +376,9 @@ async function fixUnknownProjectSlugs() {
     `);
 
     await client.query('COMMIT');
-    console.log(`Fixed ${count} unknown project slugs`);
+    console.log(`[${new Date().toISOString()}] Fixed ${count} unknown project slugs`);
   } catch (error) {
-    console.error('Error fixing project slugs:', error);
+    console.error(`[${new Date().toISOString()}] Error fixing project slugs:`, error);
     await client.query('ROLLBACK');
   } finally {
     client.release();

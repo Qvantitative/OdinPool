@@ -69,6 +69,9 @@ async function fetchInscriptionsFromAPI() {
       const url = `${urlBase}&offset=${offset}&count=${batchSize}`;
       const response = await axios.get(url, { headers });
 
+      // Log the API response for debugging
+      console.log(`[${new Date().toISOString()}] API response at offset ${offset}:`, response.data);
+
       if (Array.isArray(response.data.data)) {
         const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
         inscriptions.push(...inscriptionIds);

@@ -286,15 +286,25 @@ async function updateProjectWalletTracking(projectSlug) {
 async function updateWalletTracking() {
   const client = await pool.connect();
   const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
+  const TOTAL_INSCRIPTIONS = 42997;
 
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
+    // Get current checkpoint
     const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
-    let processedCount = startCount;
-    console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions processed`);
+
+    // Reset to 0 if we've completed a full cycle
+    let processedCount = startCount >= TOTAL_INSCRIPTIONS ? 0 : startCount;
+
+    if (startCount >= TOTAL_INSCRIPTIONS) {
+      console.log(`[${new Date().toISOString()}] Completed full cycle, resetting to 0`);
+      await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
+    } else {
+      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions processed`);
+    }
 
     const BATCH_SIZE = 500;
 
@@ -311,8 +321,15 @@ async function updateWalletTracking() {
       await updateWalletTrackingBatch(client, inscriptions);
       processedCount += inscriptions.length;
 
-      await saveCheckpoint(client, PROJECT_SLUG, processedCount, 42997);
-      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/42997 inscriptions processed`);
+      // Only save checkpoint if we haven't completed the full cycle
+      if (processedCount < TOTAL_INSCRIPTIONS) {
+        await saveCheckpoint(client, PROJECT_SLUG, processedCount, TOTAL_INSCRIPTIONS);
+        console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
+      } else {
+        console.log(`[${new Date().toISOString()}] Completed full cycle of ${TOTAL_INSCRIPTIONS} inscriptions`);
+        await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
+        break; // Exit the loop after completing the full cycle
+      }
     }
 
   } catch (error) {

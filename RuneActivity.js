@@ -219,4 +219,4 @@ export {
   fetchRuneActivityFromAPI,
   insertRuneActivityToDB,
   updateRuneActivity
-};};
+};

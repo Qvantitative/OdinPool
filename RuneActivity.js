@@ -37,7 +37,7 @@ async function fetchRuneActivityFromAPI() {
   // offset=0
   // count=200
   const params = {
-    rune_name: 'DOGGOTOTHEMOON',
+    rune_name: 'PUPSWORLDPEACE',
     sort_by: 'ts',
     order: 'desc',
     offset: 0,
@@ -45,7 +45,7 @@ async function fetchRuneActivityFromAPI() {
   };
 
   try {
-    console.log(`Fetching rune activity from ${url} for DOGGOTOTHEMOON`);
+    console.log(`Fetching rune activity from ${url} for PUPSWORLDPEACE`);
     const response = await axios.get(url, { headers, params });
 
     if (Array.isArray(response.data.data)) {

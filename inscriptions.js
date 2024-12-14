@@ -322,7 +322,7 @@ async function updateProjectWalletTracking(projectSlug) {
 // Global wallet tracking
 async function updateWalletTracking() {
   const client = await pool.connect();
-  const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
+  const PROJECT_SLUG = 'ALL_INSCRIPTIONS';  // Keep this as ALL_INSCRIPTIONS
   const BATCH_SIZE = 500;
   const MAX_CONCURRENT_BATCHES = 3;
 
@@ -331,25 +331,22 @@ async function updateWalletTracking() {
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
-    // Get initial count, but make it reassignable
+    // Get total count of ALL inscriptions
     const { rows: [{ count: initialCount }] } = await client.query(`
-      SELECT COUNT(*) as count FROM inscriptions
+      SELECT COUNT(*) as count
+      FROM inscriptions
     `);
+
     let totalInscriptions = initialCount;
-    console.log(`[${new Date().toISOString()}] Found ${totalInscriptions} total inscriptions in database`);
+    console.log(`[${new Date().toISOString()}] Found ${totalInscriptions} total inscriptions across all projects`);
 
     // Get current checkpoint
     const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
 
-    // Reset to 0 if we've completed a full cycle
-    let processedCount = startCount >= totalInscriptions ? 0 : startCount;
-
-    if (startCount >= totalInscriptions) {
-      console.log(`[${new Date().toISOString()}] Completed full cycle, resetting to 0`);
-      await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
-    } else {
-      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${totalInscriptions} inscriptions processed`);
-    }
+    // Always start from 0 to ensure we process new inscriptions
+    let processedCount = 0;
+    await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
+    console.log(`[${new Date().toISOString()}] Starting new processing cycle from 0/${totalInscriptions} inscriptions`);
 
     while (processedCount < totalInscriptions) {
       const batchPromises = [];
@@ -380,26 +377,22 @@ async function updateWalletTracking() {
       const totalProcessed = completedBatches.reduce((sum, count) => sum + count, 0);
       processedCount += totalProcessed;
 
-      // Check if total inscriptions has changed
+      // Get current total (in case new inscriptions were added)
       const { rows: [{ count: currentTotal }] } = await client.query(`
         SELECT COUNT(*) as count FROM inscriptions
       `);
 
-      // Update checkpoint with current total
-      if (processedCount < currentTotal) {
-        await saveCheckpoint(client, PROJECT_SLUG, processedCount, currentTotal);
-        console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${currentTotal} inscriptions processed`);
-      } else {
-        console.log(`[${new Date().toISOString()}] Completed full cycle of ${currentTotal} inscriptions`);
-        await saveCheckpoint(client, PROJECT_SLUG, 0, currentTotal);
-        break;
-      }
+      // Update checkpoint and progress
+      await saveCheckpoint(client, PROJECT_SLUG, processedCount, currentTotal);
+      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${currentTotal} inscriptions processed`);
 
       if (totalProcessed === 0) break;
 
       // Update total inscriptions for next iteration
       totalInscriptions = currentTotal;
     }
+
+    console.log(`[${new Date().toISOString()}] Completed processing of all inscriptions`);
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error in main process:`, error);

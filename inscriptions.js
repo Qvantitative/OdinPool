@@ -162,18 +162,27 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       WHERE inscription_id = ANY($1::text[]) AND is_current = TRUE
     `, [validInscriptions.map(i => i.inscription_id)]);
 
-    const existingMap = new Map(existingRecords.map(r => [r.inscription_id, { address: r.address, project_slug: r.project_slug }]));
+    console.log(`[${new Date().toISOString()}] Found ${existingRecords.length} existing records`);
 
+    const existingMap = new Map(existingRecords.map(r => [r.inscription_id, { address: r.address, project_slug: r.project_slug }]));
     const inserts = [];
     const updates = [];
 
     validInscriptions.forEach(insc => {
       const existing = existingMap.get(insc.inscription_id);
 
+      console.log(`[${new Date().toISOString()}] Processing inscription ${insc.inscription_id}:`);
+      console.log(`- New address: ${insc.address}`);
+      console.log(`- Existing record:`, existing ? JSON.stringify(existing) : 'None');
+
       if (!existing) {
+        console.log(`- Action: Will INSERT`);
         inserts.push([insc.inscription_id, insc.address, insc.project_slug || 'unknown']);
       } else if (existing.address !== insc.address) {
+        console.log(`- Action: Will UPDATE (address changed)`);
         updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug || existing.project_slug]);
+      } else {
+        console.log(`- Action: SKIP (no changes needed)`);
       }
     });
 
@@ -322,10 +331,11 @@ async function updateWalletTracking() {
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
-    // Get total inscription count dynamically
-    const { rows: [{ count: totalInscriptions }] } = await client.query(`
+    // Get initial count, but make it reassignable
+    const { rows: [{ count: initialCount }] } = await client.query(`
       SELECT COUNT(*) as count FROM inscriptions
     `);
+    let totalInscriptions = initialCount;
     console.log(`[${new Date().toISOString()}] Found ${totalInscriptions} total inscriptions in database`);
 
     // Get current checkpoint

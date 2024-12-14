@@ -94,33 +94,53 @@ async function batchGetInscriptionAddresses(inscriptions) {
   const addressPromises = inscriptions.map(inscription =>
     limit(async () => {
       try {
-        const response = await axios.get(`${ORD_SERVER_URL}/inscription/${inscription.inscription_id}`, {
+        // Handle both possible inscription object structures
+        const inscriptionId = typeof inscription === 'object' ? inscription.inscription_id : inscription;
+
+        const response = await axios.get(`${ORD_SERVER_URL}/inscription/${inscriptionId}`, {
           headers: { Accept: 'application/json' },
           timeout: 5000
         });
 
+        // Log successful response
+        console.log(`[${new Date().toISOString()}] Successfully fetched address for ${inscriptionId}`);
+
         return {
-          inscription_id: inscription.inscription_id,
-          project_slug: inscription.project_slug,
+          inscription_id: inscriptionId,
+          project_slug: typeof inscription === 'object' ? inscription.project_slug : null,
           address: response.data?.address || null
         };
       } catch (error) {
         console.error(`[${new Date().toISOString()}] Error fetching address for ${inscription.inscription_id}:`, error.message);
+        if (error.response) {
+          console.error('Response status:', error.response.status);
+        }
         return {
-          inscription_id: inscription.inscription_id,
-          project_slug: inscription.project_slug,
+          inscription_id: typeof inscription === 'object' ? inscription.inscription_id : inscription,
+          project_slug: typeof inscription === 'object' ? inscription.project_slug : null,
           address: null
         };
       }
     })
   );
 
-  return Promise.all(addressPromises);
+  try {
+    const results = await Promise.all(addressPromises);
+    const validResults = results.filter(i => i.address);
+    console.log(`[${new Date().toISOString()}] Retrieved ${validResults.length} valid addresses out of ${results.length} total inscriptions`);
+    return results;
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in batch address fetching:`, error);
+    return [];
+  }
 }
 
 // Main batch processing
 async function updateWalletTrackingBatch(client, inscriptions) {
-  if (!inscriptions.length) return;
+  if (!inscriptions.length) {
+    console.log(`[${new Date().toISOString()}] Empty batch received, skipping`);
+    return;
+  }
 
   try {
     await client.query('BEGIN');
@@ -128,7 +148,10 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     const inscriptionsWithAddresses = await batchGetInscriptionAddresses(inscriptions);
     const validInscriptions = inscriptionsWithAddresses.filter(i => i.address);
 
+    console.log(`[${new Date().toISOString()}] Processing batch: ${validInscriptions.length} valid inscriptions out of ${inscriptions.length} total`);
+
     if (!validInscriptions.length) {
+      console.log(`[${new Date().toISOString()}] No valid inscriptions with addresses found in batch`);
       await client.query('ROLLBACK');
       return;
     }
@@ -148,11 +171,13 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       const existing = existingMap.get(insc.inscription_id);
 
       if (!existing) {
-        inserts.push([insc.inscription_id, insc.address, insc.project_slug]);
+        inserts.push([insc.inscription_id, insc.address, insc.project_slug || 'unknown']);
       } else if (existing.address !== insc.address) {
-        updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug]);
+        updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug || existing.project_slug]);
       }
     });
+
+    console.log(`[${new Date().toISOString()}] Prepared ${inserts.length} inserts and ${updates.length} updates`);
 
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
@@ -182,17 +207,20 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       `, updates.flat());
     }
 
-    await client.query(`
-      UPDATE wallets_ord w
-      SET project_slug = i.project_slug
-      FROM inscriptions i
-      WHERE w.inscription_id = i.inscription_id
-      AND w.project_slug = 'unknown'
-      AND w.is_current = TRUE
-    `);
+    // Update unknown project slugs if needed
+    if (inserts.length || updates.length) {
+      await client.query(`
+        UPDATE wallets_ord w
+        SET project_slug = i.project_slug
+        FROM inscriptions i
+        WHERE w.inscription_id = i.inscription_id
+        AND w.project_slug = 'unknown'
+        AND w.is_current = TRUE
+      `);
+    }
 
     await client.query('COMMIT');
-    console.log(`[${new Date().toISOString()}] Processed batch: ${inserts.length} inserts, ${updates.length} updates`);
+    console.log(`[${new Date().toISOString()}] Successfully processed batch: ${inserts.length} inserts, ${updates.length} updates`);
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Batch error:`, error);

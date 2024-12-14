@@ -51,7 +51,7 @@ async function fetchAndPostRunes() {
   console.log(`[${new Date().toISOString()}] Starting runes fetch process`);
 
   try {
-    const runesToTrack = ['PUPSWORLDPEACE'];
+    const runesToTrack = ['GIZMOIMAGINARYKITTEN'];
 
     for (const runeName of runesToTrack) {
       console.log(`[${new Date().toISOString()}] Processing rune: ${runeName}`);

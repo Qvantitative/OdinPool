@@ -39,7 +39,7 @@ async function fetchRuneActivityFromAPI() {
   };
 
   const params = {
-    rune_name: 'PUPSWORLDPEACE',
+    rune_name: 'GIZMOIMAGINARYKITTEN',
     sort_by: 'ts',
     order: 'desc',
     offset: 0,

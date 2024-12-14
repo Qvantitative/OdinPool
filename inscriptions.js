@@ -131,33 +131,44 @@ async function updateWalletTrackingBatch(client, inscriptions) {
     }
 
     const { rows: existingRecords } = await client.query(`
-      SELECT inscription_id, address, project_slug
+      SELECT inscription_id, address, project_slug, transferred_at
       FROM wallets_ord
       WHERE inscription_id = ANY($1::text[]) AND is_current = TRUE
     `, [validInscriptions.map(i => i.inscription_id)]);
 
-    const existingMap = new Map(existingRecords.map(r => [r.inscription_id, { address: r.address, project_slug: r.project_slug }]));
+    const existingMap = new Map(existingRecords.map(r => [r.inscription_id, {
+      address: r.address,
+      project_slug: r.project_slug,
+      transferred_at: r.transferred_at
+    }]));
 
-    const inserts = [];
+    const inserts = [];  // Declare arrays
     const updates = [];
 
     validInscriptions.forEach(insc => {
       const existing = existingMap.get(insc.inscription_id);
+      const currentTime = new Date();
 
       if (!existing) {
         inserts.push([insc.inscription_id, insc.address, insc.project_slug]);
-      } else if (existing.address !== insc.address) {
-        updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug]);
+      } else {
+        // If address changed OR if it's a new transfer (even with same address)
+        // Using 1 hour as threshold instead of 1 second
+        if (existing.address !== insc.address ||
+            (currentTime - new Date(existing.transferred_at) > 1000 * 60 * 60)) {
+          updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug]);
+        }
       }
     });
 
+    // Also update the insert and update queries to include transferred_at:
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
-        `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, TRUE)`
+        `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, TRUE, CURRENT_TIMESTAMP)`
       ).join(', ');
 
       await client.query(`
-        INSERT INTO wallets_ord (inscription_id, address, project_slug, is_current)
+        INSERT INTO wallets_ord (inscription_id, address, project_slug, is_current, transferred_at)
         VALUES ${insertValues}
       `, inserts.flat());
     }
@@ -170,11 +181,11 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       `, [updates.map(u => u[0])]);
 
       const updateValues = updates.map((_, index) =>
-        `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4}, TRUE)`
+        `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4}, TRUE, CURRENT_TIMESTAMP)`
       ).join(', ');
 
       await client.query(`
-        INSERT INTO wallets_ord (inscription_id, address, transferred_from, project_slug, is_current)
+        INSERT INTO wallets_ord (inscription_id, address, transferred_from, project_slug, is_current, transferred_at)
         VALUES ${updateValues}
       `, updates.flat());
     }

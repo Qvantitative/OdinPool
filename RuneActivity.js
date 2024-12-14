@@ -22,16 +22,18 @@ function parseNumericValue(value) {
   return isNaN(parsed) ? null : parsed;
 }
 
-// New function to handle special cases for outpoint
 function getOutpoint(activity) {
   if (activity.event_type === 'burn') {
-    // For burn events, use txid as outpoint since burns don't have traditional outpoints
     return `${activity.txid}:burn`;
   }
   return activity.outpoint;
 }
 
-async function fetchRuneActivityFromAPI() {
+async function fetchRuneActivityFromAPI(runeName) {
+  if (!runeName) {
+    throw new Error('runeName is required for fetching rune activity');
+  }
+
   const url = "https://api.bestinslot.xyz/v3/runes/activity";
   const headers = {
     "x-api-key": process.env.BESTIN_SLOT_API_KEY,
@@ -39,7 +41,7 @@ async function fetchRuneActivityFromAPI() {
   };
 
   const params = {
-    rune_name: 'GIZMOIMAGINARYKITTEN',
+    rune_name: runeName,
     sort_by: 'ts',
     order: 'desc',
     offset: 0,
@@ -47,17 +49,17 @@ async function fetchRuneActivityFromAPI() {
   };
 
   try {
-    console.log(`Fetching rune activity from ${url} for ${params.rune_name}`);
+    console.log(`Fetching rune activity from ${url} for ${runeName}`);
     const response = await axios.get(url, { headers, params });
 
     if (Array.isArray(response.data.data)) {
       return response.data.data;
     } else {
-      console.warn('Unexpected response format');
+      console.warn(`Unexpected response format for ${runeName}`);
       return [];
     }
   } catch (error) {
-    console.error('Error fetching rune activity data:', error);
+    console.error(`Error fetching rune activity data for ${runeName}:`, error);
     if (error.response?.data) {
       console.error('API Error details:', error.response.data);
     }
@@ -65,9 +67,9 @@ async function fetchRuneActivityFromAPI() {
   }
 }
 
-async function insertRuneActivityToDB(activities) {
+async function insertRuneActivityToDB(activities, runeName) {
   if (!Array.isArray(activities) || activities.length === 0) {
-    console.error('Error: No valid activity data to insert');
+    console.error(`Error: No valid activity data to insert for ${runeName}`);
     return;
   }
 
@@ -75,7 +77,7 @@ async function insertRuneActivityToDB(activities) {
 
   try {
     await client.query('BEGIN');
-    console.log('Starting transaction for rune activity insertion');
+    console.log(`Starting transaction for ${runeName} activity insertion`);
 
     const insertQuery = `
       INSERT INTO runes_activity (
@@ -121,11 +123,10 @@ async function insertRuneActivityToDB(activities) {
         sale_info
       } = activity;
 
-      // Get appropriate outpoint value based on event type
       const outpoint = getOutpoint(activity);
 
       if (!txid || !outpoint) {
-        console.warn(`Skipping activity due to missing required fields:`, {
+        console.warn(`Skipping ${runeName} activity due to missing required fields:`, {
           txid,
           outpoint,
           event_type
@@ -162,14 +163,14 @@ async function insertRuneActivityToDB(activities) {
         const result = await client.query(insertQuery, values);
         if (result.rowCount > 0) {
           successCount++;
-          console.log(`Successfully inserted ${event_type} activity:`, {
+          console.log(`Successfully inserted ${runeName} ${event_type} activity:`, {
             txid,
             outpoint,
             event_type
           });
         }
       } catch (error) {
-        console.error('Error inserting activity:', {
+        console.error(`Error inserting ${runeName} activity:`, {
           txid,
           outpoint,
           event_type,
@@ -180,32 +181,36 @@ async function insertRuneActivityToDB(activities) {
     }
 
     await client.query('COMMIT');
-    console.log(`Processing complete:`);
+    console.log(`Processing complete for ${runeName}:`);
     console.log(`- Inserted: ${successCount}`);
     console.log(`- Skipped: ${skipCount}`);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error inserting rune activity data:', error);
+    console.error(`Error inserting rune activity data for ${runeName}:`, error);
     throw error;
   } finally {
     client.release();
   }
 }
 
-async function updateRuneActivity() {
-  try {
-    console.log(`[${new Date().toISOString()}] Starting rune activity update for PUPSWORLDPEACE`);
+async function updateRuneActivity(runeName) {
+  if (!runeName) {
+    throw new Error('runeName is required for updating rune activity');
+  }
 
-    const activities = await fetchRuneActivityFromAPI();
+  try {
+    console.log(`[${new Date().toISOString()}] Starting rune activity update for ${runeName}`);
+
+    const activities = await fetchRuneActivityFromAPI(runeName);
 
     if (activities.length > 0) {
-      await insertRuneActivityToDB(activities);
-      console.log(`[${new Date().toISOString()}] Completed activity update`);
+      await insertRuneActivityToDB(activities, runeName);
+      console.log(`[${new Date().toISOString()}] Completed activity update for ${runeName}`);
     } else {
-      console.log(`[${new Date().toISOString()}] No activity found`);
+      console.log(`[${new Date().toISOString()}] No activity found for ${runeName}`);
     }
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error updating rune activity:`, error);
+    console.error(`[${new Date().toISOString()}] Error updating rune activity for ${runeName}:`, error);
     throw error;
   }
 }
@@ -214,4 +219,4 @@ export {
   fetchRuneActivityFromAPI,
   insertRuneActivityToDB,
   updateRuneActivity
-};
+};};

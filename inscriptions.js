@@ -314,34 +314,38 @@ async function updateProjectWalletTracking(projectSlug) {
 async function updateWalletTracking() {
   const client = await pool.connect();
   const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
-  const TOTAL_INSCRIPTIONS = 52997;
   const BATCH_SIZE = 500;
-  const MAX_CONCURRENT_BATCHES = 3; // Adjust based on your system's capacity
+  const MAX_CONCURRENT_BATCHES = 3;
 
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
+    // Get total inscription count dynamically
+    const { rows: [{ count: totalInscriptions }] } = await client.query(`
+      SELECT COUNT(*) as count FROM inscriptions
+    `);
+    console.log(`[${new Date().toISOString()}] Found ${totalInscriptions} total inscriptions in database`);
+
     // Get current checkpoint
     const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
 
     // Reset to 0 if we've completed a full cycle
-    let processedCount = startCount >= TOTAL_INSCRIPTIONS ? 0 : startCount;
+    let processedCount = startCount >= totalInscriptions ? 0 : startCount;
 
-    if (startCount >= TOTAL_INSCRIPTIONS) {
+    if (startCount >= totalInscriptions) {
       console.log(`[${new Date().toISOString()}] Completed full cycle, resetting to 0`);
-      await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
+      await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
     } else {
-      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions processed`);
+      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${totalInscriptions} inscriptions processed`);
     }
 
-    while (processedCount < TOTAL_INSCRIPTIONS) {
+    while (processedCount < totalInscriptions) {
       const batchPromises = [];
-      const batchCounts = [];
 
       // Create multiple batch processes
-      for (let i = 0; i < MAX_CONCURRENT_BATCHES && processedCount + (i * BATCH_SIZE) < TOTAL_INSCRIPTIONS; i++) {
+      for (let i = 0; i < MAX_CONCURRENT_BATCHES && processedCount + (i * BATCH_SIZE) < totalInscriptions; i++) {
         const currentOffset = processedCount + (i * BATCH_SIZE);
         const batchPromise = (async () => {
           const { rows: inscriptions } = await client.query(`
@@ -359,7 +363,6 @@ async function updateWalletTracking() {
         })();
 
         batchPromises.push(batchPromise);
-        batchCounts.push(BATCH_SIZE);
       }
 
       // Wait for all batch processes to complete
@@ -367,16 +370,25 @@ async function updateWalletTracking() {
       const totalProcessed = completedBatches.reduce((sum, count) => sum + count, 0);
       processedCount += totalProcessed;
 
-      // Update checkpoint after processing batches
-      if (processedCount < TOTAL_INSCRIPTIONS) {
-        await saveCheckpoint(client, PROJECT_SLUG, processedCount, TOTAL_INSCRIPTIONS);
-        console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
+      // Check if total inscriptions has changed
+      const { rows: [{ count: currentTotal }] } = await client.query(`
+        SELECT COUNT(*) as count FROM inscriptions
+      `);
+
+      // Update checkpoint with current total
+      if (processedCount < currentTotal) {
+        await saveCheckpoint(client, PROJECT_SLUG, processedCount, currentTotal);
+        console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${currentTotal} inscriptions processed`);
       } else {
-        console.log(`[${new Date().toISOString()}] Completed full cycle of ${TOTAL_INSCRIPTIONS} inscriptions`);
-        await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
+        console.log(`[${new Date().toISOString()}] Completed full cycle of ${currentTotal} inscriptions`);
+        await saveCheckpoint(client, PROJECT_SLUG, 0, currentTotal);
+        break;
       }
 
       if (totalProcessed === 0) break;
+
+      // Update total inscriptions for next iteration
+      totalInscriptions = currentTotal;
     }
 
   } catch (error) {

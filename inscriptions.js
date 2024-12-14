@@ -7,17 +7,52 @@ import pLimit from 'p-limit';
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 20, // Increased pool connections
+  max: 20,
 });
 
 const ORD_SERVER_URL = 'http://68.9.235.71:3000';
-const limit = pLimit(10); // Limit concurrent API calls
+const limit = pLimit(10);
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Fetch inscriptions from external API with rate limit handling
+// Checkpoint management
+async function ensureCheckpointTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS wallet_tracking_checkpoints (
+      project_slug VARCHAR(255) PRIMARY KEY,
+      last_processed_count INTEGER,
+      total_inscriptions INTEGER,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+async function saveCheckpoint(client, projectSlug, processedCount, totalInscriptions) {
+  await client.query(`
+    INSERT INTO wallet_tracking_checkpoints (project_slug, last_processed_count, total_inscriptions)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (project_slug)
+    DO UPDATE SET
+      last_processed_count = $2,
+      total_inscriptions = $3,
+      updated_at = CURRENT_TIMESTAMP
+  `, [projectSlug, processedCount, totalInscriptions]);
+}
+
+async function loadCheckpoint(client, projectSlug) {
+  const result = await client.query(`
+    SELECT last_processed_count, total_inscriptions
+    FROM wallet_tracking_checkpoints
+    WHERE project_slug = $1
+  `, [projectSlug]);
+  return {
+    processedCount: result.rows[0]?.last_processed_count || 0,
+    totalInscriptions: result.rows[0]?.total_inscriptions || 0
+  };
+}
+
 async function fetchInscriptionsFromAPI() {
   const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";
   const headers = {
@@ -27,7 +62,7 @@ async function fetchInscriptionsFromAPI() {
   const inscriptions = [];
   const batchSize = 100;
   const totalInscriptions = 10000;
-  const delayBetweenRequests = 8000; // Adjust delay time (in milliseconds) to fit the API's rate limit
+  const delayBetweenRequests = 8000;
 
   try {
     for (let offset = 0; offset < totalInscriptions; offset += batchSize) {
@@ -36,66 +71,21 @@ async function fetchInscriptionsFromAPI() {
 
       if (Array.isArray(response.data.data)) {
         const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
-        inscriptions.push(...inscriptionIds);  // Append the current batch to the main array
-        console.log(`Fetched ${inscriptions.length} inscriptions so far`);  // Log progress
+        inscriptions.push(...inscriptionIds);
+        console.log(`[${new Date().toISOString()}] Fetched ${inscriptions.length} inscriptions so far`);
       } else {
-        console.warn(`Unexpected response format at offset ${offset}, skipping batch.`);
+        console.warn(`[${new Date().toISOString()}] Unexpected response format at offset ${offset}, skipping batch.`);
       }
 
-      // Wait before making the next request to avoid hitting the rate limit
       await delay(delayBetweenRequests);
     }
     return inscriptions;
   } catch (error) {
-    console.error('Error fetching inscription data:', error);
-    return [];  // Return an empty array on error
+    console.error(`[${new Date().toISOString()}] Error fetching inscription data:`, error);
+    return [];
   }
 }
 
-async function updateProjectWalletTracking(projectSlug) {
-  const client = await pool.connect();
-
-  try {
-    console.log(`[${new Date().toISOString()}] Starting wallet tracking update for project ${projectSlug}`);
-    await client.query('SET statement_timeout = 0');
-
-    const { rows: inscriptions } = await client.query(
-      'SELECT inscription_id, project_slug FROM inscriptions WHERE project_slug = $1 ORDER BY id',
-      [projectSlug]
-    );
-
-    console.log(`[${new Date().toISOString()}] Found ${inscriptions.length} inscriptions for project ${projectSlug}`);
-
-    if (inscriptions.length === 0) {
-      console.log(`[${new Date().toISOString()}] No inscriptions found for project ${projectSlug}`);
-      return;
-    }
-
-    const batchSize = 500; // Increased batch size
-    for (let i = 0; i < inscriptions.length; i += batchSize) {
-      const batch = inscriptions.slice(i, Math.min(i + batchSize, inscriptions.length));
-      console.log(`[${new Date().toISOString()}] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(inscriptions.length/batchSize)}`);
-      await updateWalletTrackingBatch(client, batch);
-    }
-
-    // Final verification
-    const verifyQuery = `
-      SELECT COUNT(*)
-      FROM wallets_ord
-      WHERE project_slug = $1 AND is_current = TRUE
-    `;
-    const verifyResult = await client.query(verifyQuery, [projectSlug]);
-    console.log(`[${new Date().toISOString()}] Project ${projectSlug} now has ${verifyResult.rows[0].count} current wallet trackings`);
-
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error updating wallet tracking for project ${projectSlug}:`, error);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-// Batch address fetching with concurrency control
 async function batchGetInscriptionAddresses(inscriptions) {
   console.log(`[${new Date().toISOString()}] Fetching addresses for ${inscriptions.length} inscriptions`);
 
@@ -113,7 +103,7 @@ async function batchGetInscriptionAddresses(inscriptions) {
           address: response.data?.address || null
         };
       } catch (error) {
-        console.error(`Error fetching address for ${inscription.inscription_id}:`, error.message);
+        console.error(`[${new Date().toISOString()}] Error fetching address for ${inscription.inscription_id}:`, error.message);
         return {
           inscription_id: inscription.inscription_id,
           project_slug: inscription.project_slug,
@@ -126,8 +116,6 @@ async function batchGetInscriptionAddresses(inscriptions) {
   return Promise.all(addressPromises);
 }
 
-// Optimized batch processing
-// Modified updateWalletTrackingBatch function
 async function updateWalletTrackingBatch(client, inscriptions) {
   if (!inscriptions.length) return;
 
@@ -163,7 +151,6 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       }
     });
 
-    // Fixed bulk insert query with project_slug
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
         `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, TRUE)`
@@ -175,7 +162,6 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       `, inserts.flat());
     }
 
-    // Fixed bulk update query with project_slug preservation
     if (updates.length) {
       await client.query(`
         UPDATE wallets_ord
@@ -193,7 +179,6 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       `, updates.flat());
     }
 
-    // Add a fix for any 'unknown' project_slugs
     await client.query(`
       UPDATE wallets_ord w
       SET project_slug = i.project_slug
@@ -213,7 +198,123 @@ async function updateWalletTrackingBatch(client, inscriptions) {
   }
 }
 
-// You might also want to run this one-time fix for existing records
+async function updateWalletTracking() {
+  const client = await pool.connect();
+  const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
+  const BATCH_SIZE = 500;
+
+  try {
+    console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
+    await client.query('SET statement_timeout = 0');
+    await ensureCheckpointTable(client);
+
+    // Get total count of ALL inscriptions
+    const { rows: [{ count: initialCount }] } = await client.query(`
+      SELECT COUNT(*) as count
+      FROM inscriptions
+    `);
+    let totalInscriptions = initialCount;
+    console.log(`[${new Date().toISOString()}] Found ${totalInscriptions} total inscriptions across all projects`);
+
+    // Get current checkpoint
+    const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
+
+    // Reset to 0 if we've completed a full cycle
+    let processedCount = startCount >= totalInscriptions ? 0 : startCount;
+
+    if (startCount >= totalInscriptions) {
+      console.log(`[${new Date().toISOString()}] Previous cycle complete, starting new cycle from 0`);
+      await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
+    } else {
+      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${totalInscriptions} inscriptions processed`);
+    }
+
+    while (processedCount < totalInscriptions) {
+      const { rows: inscriptions } = await client.query(`
+        SELECT inscription_id, project_slug
+        FROM inscriptions
+        ORDER BY id
+        OFFSET $1 LIMIT $2
+      `, [processedCount, BATCH_SIZE]);
+
+      if (inscriptions.length === 0) break;
+
+      await updateWalletTrackingBatch(client, inscriptions);
+      processedCount += inscriptions.length;
+
+      // Save checkpoint after each batch
+      await saveCheckpoint(client, PROJECT_SLUG, processedCount, totalInscriptions);
+      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${totalInscriptions} inscriptions processed`);
+    }
+
+    // If we've completed all inscriptions, reset the checkpoint
+    if (processedCount >= totalInscriptions) {
+      console.log(`[${new Date().toISOString()}] Completed full cycle, resetting checkpoint to 0`);
+      await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
+    }
+
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in main process:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function insertInscriptionsToDB(inscriptions, projectSlug) {
+  if (!Array.isArray(inscriptions)) {
+    console.error('Error: Inscriptions is not an array');
+    return {
+      insertedCount: 0,
+      skippedCount: 0,
+      totalCount: 0
+    };
+  }
+
+  const client = await pool.connect();
+  let insertedCount = 0;
+  let skippedCount = 0;
+
+  try {
+    await client.query('BEGIN');
+    console.log(`[${new Date().toISOString()}] Starting transaction for ${projectSlug}`);
+
+    const insertQuery = `
+      INSERT INTO inscriptions (inscription_id, project_slug)
+      VALUES ($1, $2)
+      ON CONFLICT (inscription_id) DO NOTHING
+      RETURNING inscription_id;
+    `;
+
+    for (const inscription_id of inscriptions) {
+      console.log(`[${new Date().toISOString()}] Inserting: ${inscription_id} for ${projectSlug}`);
+      const result = await client.query(insertQuery, [inscription_id, projectSlug]);
+      if (result.rowCount > 0) {
+        insertedCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+
+    const { rows: [{ count: totalCount }] } = await client.query('SELECT COUNT(*) FROM inscriptions');
+
+    await client.query('COMMIT');
+    console.log(`[${new Date().toISOString()}] Transaction committed`);
+
+    return {
+      insertedCount,
+      skippedCount,
+      totalCount
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`[${new Date().toISOString()}] Error inserting inscription data:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function fixUnknownProjectSlugs() {
   const client = await pool.connect();
   try {
@@ -232,78 +333,10 @@ async function fixUnknownProjectSlugs() {
     `);
 
     await client.query('COMMIT');
-    console.log(`Fixed ${count} unknown project slugs`);
+    console.log(`[${new Date().toISOString()}] Fixed ${count} unknown project slugs`);
   } catch (error) {
-    console.error('Error fixing project slugs:', error);
+    console.error(`[${new Date().toISOString()}] Error fixing project slugs:`, error);
     await client.query('ROLLBACK');
-  } finally {
-    client.release();
-  }
-}
-
-async function updateWalletTracking() {
-  const client = await pool.connect();
-
-  try {
-    console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
-
-    const BATCH_SIZE = 500;
-    let processedCount = 0;
-
-    while (true) {
-      const { rows: inscriptions } = await client.query(`
-        SELECT inscription_id, project_slug
-        FROM inscriptions
-        ORDER BY id
-        OFFSET $1 LIMIT $2
-      `, [processedCount, BATCH_SIZE]);
-
-      if (inscriptions.length === 0) break;
-
-      await updateWalletTrackingBatch(client, inscriptions);
-      processedCount += inscriptions.length;
-
-      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/52997 inscriptions processed`);
-    }
-
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error in main process:`, error);
-  } finally {
-    client.release();
-  }
-}
-
-async function insertInscriptionsToDB(inscriptions, projectSlug) {
-  if (!Array.isArray(inscriptions)) {
-    console.error('Error: Inscriptions is not an array');
-    return;
-  }
-
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-    console.log('Starting transaction');
-
-    const insertQuery = `
-      INSERT INTO inscriptions (inscription_id, project_slug)
-      VALUES ($1, $2)
-      ON CONFLICT (inscription_id) DO NOTHING;
-    `;
-
-    for (const inscription_id of inscriptions) {
-      console.log('Inserting:', inscription_id, projectSlug);  // Log each inscription ID being inserted
-      console.log('Executing query:', insertQuery, 'with values:', [inscription_id, projectSlug]);  // Log the query and values
-
-      await client.query(insertQuery, [inscription_id, projectSlug]);
-    }
-
-    await client.query('COMMIT');
-    console.log('Transaction committed');
-    console.log('Inscriptions inserted successfully');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error inserting inscription data:', error);
   } finally {
     client.release();
   }
@@ -313,6 +346,5 @@ export {
   fetchInscriptionsFromAPI,
   insertInscriptionsToDB,
   updateWalletTracking,
-  updateProjectWalletTracking,
-  fixUnknownProjectSlugs  // Added new export
+  fixUnknownProjectSlugs
 };

@@ -202,34 +202,27 @@ async function updateWalletTracking() {
   const client = await pool.connect();
   const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
   const BATCH_SIZE = 500;
+  const TOTAL_INSCRIPTIONS = 52997;  // Fixed total count
 
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
     await client.query('SET statement_timeout = 0');
     await ensureCheckpointTable(client);
 
-    // Get total count of ALL inscriptions
-    const { rows: [{ count: initialCount }] } = await client.query(`
-      SELECT COUNT(*) as count
-      FROM inscriptions
-    `);
-    let totalInscriptions = initialCount;
-    console.log(`[${new Date().toISOString()}] Found ${totalInscriptions} total inscriptions across all projects`);
-
     // Get current checkpoint
     const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
 
     // Reset to 0 if we've completed a full cycle
-    let processedCount = startCount >= totalInscriptions ? 0 : startCount;
+    let processedCount = startCount >= TOTAL_INSCRIPTIONS ? 0 : startCount;
 
-    if (startCount >= totalInscriptions) {
+    if (startCount >= TOTAL_INSCRIPTIONS) {
       console.log(`[${new Date().toISOString()}] Previous cycle complete, starting new cycle from 0`);
-      await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
+      await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
     } else {
-      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${totalInscriptions} inscriptions processed`);
+      console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
-    while (processedCount < totalInscriptions) {
+    while (processedCount < TOTAL_INSCRIPTIONS) {
       const { rows: inscriptions } = await client.query(`
         SELECT inscription_id, project_slug
         FROM inscriptions
@@ -243,14 +236,14 @@ async function updateWalletTracking() {
       processedCount += inscriptions.length;
 
       // Save checkpoint after each batch
-      await saveCheckpoint(client, PROJECT_SLUG, processedCount, totalInscriptions);
-      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${totalInscriptions} inscriptions processed`);
+      await saveCheckpoint(client, PROJECT_SLUG, processedCount, TOTAL_INSCRIPTIONS);
+      console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
     // If we've completed all inscriptions, reset the checkpoint
-    if (processedCount >= totalInscriptions) {
+    if (processedCount >= TOTAL_INSCRIPTIONS) {
       console.log(`[${new Date().toISOString()}] Completed full cycle, resetting checkpoint to 0`);
-      await saveCheckpoint(client, PROJECT_SLUG, 0, totalInscriptions);
+      await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
     }
 
   } catch (error) {

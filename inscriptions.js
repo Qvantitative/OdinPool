@@ -156,17 +156,24 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       return;
     }
 
+    // Modified query to include transferred_at
     const { rows: existingRecords } = await client.query(`
-      SELECT inscription_id, address, project_slug
+      SELECT inscription_id, address, project_slug, transferred_at
       FROM wallets_ord
       WHERE inscription_id = ANY($1::text[]) AND is_current = TRUE
     `, [validInscriptions.map(i => i.inscription_id)]);
 
     console.log(`[${new Date().toISOString()}] Found ${existingRecords.length} existing records`);
 
-    const existingMap = new Map(existingRecords.map(r => [r.inscription_id, { address: r.address, project_slug: r.project_slug }]));
+    const existingMap = new Map(existingRecords.map(r => [r.inscription_id, {
+      address: r.address,
+      project_slug: r.project_slug,
+      transferred_at: r.transferred_at
+    }]));
+
     const inserts = [];
     const updates = [];
+    const currentTimestamp = new Date();
 
     validInscriptions.forEach(insc => {
       const existing = existingMap.get(insc.inscription_id);
@@ -176,13 +183,19 @@ async function updateWalletTrackingBatch(client, inscriptions) {
       console.log(`- Existing record:`, existing ? JSON.stringify(existing) : 'None');
 
       if (!existing) {
-        console.log(`- Action: Will INSERT`);
+        console.log(`- Action: Will INSERT (new inscription)`);
         inserts.push([insc.inscription_id, insc.address, insc.project_slug || 'unknown']);
-      } else if (existing.address !== insc.address) {
-        console.log(`- Action: Will UPDATE (address changed)`);
-        updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug || existing.project_slug]);
       } else {
-        console.log(`- Action: SKIP (no changes needed)`);
+        // Check if this is a new transfer (same address but new timestamp)
+        const timeDifference = currentTimestamp - new Date(existing.transferred_at);
+        const isRecentTransfer = timeDifference > 1000 * 60; // More than 1 minute old
+
+        if (existing.address !== insc.address || isRecentTransfer) {
+          console.log(`- Action: Will UPDATE (${existing.address !== insc.address ? 'address changed' : 'new transfer'})`);
+          updates.push([insc.inscription_id, insc.address, existing.address, insc.project_slug || existing.project_slug]);
+        } else {
+          console.log(`- Action: SKIP (no changes and recent transfer)`);
+        }
       }
     });
 
@@ -190,28 +203,30 @@ async function updateWalletTrackingBatch(client, inscriptions) {
 
     if (inserts.length) {
       const insertValues = inserts.map((_, index) =>
-        `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, TRUE)`
+        `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, TRUE, CURRENT_TIMESTAMP)`
       ).join(', ');
 
       await client.query(`
-        INSERT INTO wallets_ord (inscription_id, address, project_slug, is_current)
+        INSERT INTO wallets_ord (inscription_id, address, project_slug, is_current, transferred_at)
         VALUES ${insertValues}
       `, inserts.flat());
     }
 
     if (updates.length) {
+      // Mark existing records as not current
       await client.query(`
         UPDATE wallets_ord
         SET is_current = FALSE
         WHERE inscription_id = ANY($1::text[]) AND is_current = TRUE
       `, [updates.map(u => u[0])]);
 
+      // Insert new records with current timestamp
       const updateValues = updates.map((_, index) =>
-        `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4}, TRUE)`
+        `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4}, TRUE, CURRENT_TIMESTAMP)`
       ).join(', ');
 
       await client.query(`
-        INSERT INTO wallets_ord (inscription_id, address, transferred_from, project_slug, is_current)
+        INSERT INTO wallets_ord (inscription_id, address, transferred_from, project_slug, is_current, transferred_at)
         VALUES ${updateValues}
       `, updates.flat());
     }
@@ -230,6 +245,11 @@ async function updateWalletTrackingBatch(client, inscriptions) {
 
     await client.query('COMMIT');
     console.log(`[${new Date().toISOString()}] Successfully processed batch: ${inserts.length} inserts, ${updates.length} updates`);
+
+    return {
+      inserts: inserts.length,
+      updates: updates.length
+    };
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Batch error:`, error);

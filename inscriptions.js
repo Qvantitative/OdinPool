@@ -233,6 +233,7 @@ async function updateWalletTracking() {
       console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
+    // In updateWalletTracking:
     while (processedCount < TOTAL_INSCRIPTIONS) {
       const { rows: inscriptions } = await client.query(`
         SELECT inscription_id, project_slug
@@ -241,12 +242,17 @@ async function updateWalletTracking() {
         OFFSET $1 LIMIT $2
       `, [processedCount, BATCH_SIZE]);
 
-      if (inscriptions.length === 0) break;
+      // Add debug logging
+      console.log(`[${new Date().toISOString()}] Query returned ${inscriptions.length} inscriptions at offset ${processedCount}`);
+
+      if (inscriptions.length === 0) {
+        console.log(`[${new Date().toISOString()}] No more inscriptions found, but only processed ${processedCount}/${TOTAL_INSCRIPTIONS}`);
+        break;
+      }
 
       await updateWalletTrackingBatch(client, inscriptions);
       processedCount += inscriptions.length;
 
-      // Save checkpoint after each batch
       await saveCheckpoint(client, PROJECT_SLUG, processedCount, TOTAL_INSCRIPTIONS);
       console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }

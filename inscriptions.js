@@ -55,14 +55,14 @@ async function loadCheckpoint(client, projectSlug) {
 
 // Fetch inscriptions from API
 async function fetchInscriptionsFromAPI() {
-  const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=aeonsbtc&sort_by=inscr_num&order=asc";
+  const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";
   const headers = {
     "x-api-key": process.env.BESTIN_SLOT_API_KEY,
     "Content-Type": "application/json",
   };
   const inscriptions = [];
   const batchSize = 100;
-  const totalInscriptions = 3333;
+  const totalInscriptions = 10000;
   const delayBetweenRequests = 8000;
 
   try {
@@ -286,7 +286,9 @@ async function updateProjectWalletTracking(projectSlug) {
 async function updateWalletTracking() {
   const client = await pool.connect();
   const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
-  const TOTAL_INSCRIPTIONS = 42997;
+  const TOTAL_INSCRIPTIONS = 52997;
+  const BATCH_SIZE = 500;
+  const MAX_CONCURRENT_BATCHES = 3; // Adjust based on your system's capacity
 
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
@@ -306,30 +308,47 @@ async function updateWalletTracking() {
       console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount} inscriptions processed`);
     }
 
-    const BATCH_SIZE = 500;
+    while (processedCount < TOTAL_INSCRIPTIONS) {
+      const batchPromises = [];
+      const batchCounts = [];
 
-    while (true) {
-      const { rows: inscriptions } = await client.query(`
-        SELECT inscription_id, project_slug
-        FROM inscriptions
-        ORDER BY id
-        OFFSET $1 LIMIT $2
-      `, [processedCount, BATCH_SIZE]);
+      // Create multiple batch processes
+      for (let i = 0; i < MAX_CONCURRENT_BATCHES && processedCount + (i * BATCH_SIZE) < TOTAL_INSCRIPTIONS; i++) {
+        const currentOffset = processedCount + (i * BATCH_SIZE);
+        const batchPromise = (async () => {
+          const { rows: inscriptions } = await client.query(`
+            SELECT inscription_id, project_slug
+            FROM inscriptions
+            ORDER BY id
+            OFFSET $1 LIMIT $2
+          `, [currentOffset, BATCH_SIZE]);
 
-      if (inscriptions.length === 0) break;
+          if (inscriptions.length > 0) {
+            await updateWalletTrackingBatch(client, inscriptions);
+            return inscriptions.length;
+          }
+          return 0;
+        })();
 
-      await updateWalletTrackingBatch(client, inscriptions);
-      processedCount += inscriptions.length;
+        batchPromises.push(batchPromise);
+        batchCounts.push(BATCH_SIZE);
+      }
 
-      // Only save checkpoint if we haven't completed the full cycle
+      // Wait for all batch processes to complete
+      const completedBatches = await Promise.all(batchPromises);
+      const totalProcessed = completedBatches.reduce((sum, count) => sum + count, 0);
+      processedCount += totalProcessed;
+
+      // Update checkpoint after processing batches
       if (processedCount < TOTAL_INSCRIPTIONS) {
         await saveCheckpoint(client, PROJECT_SLUG, processedCount, TOTAL_INSCRIPTIONS);
         console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
       } else {
         console.log(`[${new Date().toISOString()}] Completed full cycle of ${TOTAL_INSCRIPTIONS} inscriptions`);
         await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);
-        break; // Exit the loop after completing the full cycle
       }
+
+      if (totalProcessed === 0) break;
     }
 
   } catch (error) {

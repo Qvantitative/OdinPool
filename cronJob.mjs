@@ -60,7 +60,7 @@ async function fetchAndPostInscriptions() {
   console.log(`[${new Date().toISOString()}] Starting inscription fetch process`);
 
   try {
-    const projectSlug = 'aeonsbtc';
+    const projectSlug = 'fukuhedrons';
     const inscriptions = await withTimeout(
       fetchInscriptionsFromAPI(),
       TIMEOUTS.FETCH_INSCRIPTIONS,

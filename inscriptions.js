@@ -18,58 +18,65 @@ function delay(ms) {
 }
 
 // Checkpoint management
-async function ensureCheckpointTable(client) {
+async function ensureFetchCheckpointTable(client) {
   await client.query(`
-    CREATE TABLE IF NOT EXISTS wallet_tracking_checkpoints (
+    CREATE TABLE IF NOT EXISTS inscription_fetch_checkpoints (
       project_slug VARCHAR(255) PRIMARY KEY,
-      last_processed_count INTEGER,
-      total_inscriptions INTEGER,
+      last_offset INTEGER,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 }
 
-async function saveCheckpoint(client, projectSlug, processedCount, totalInscriptions) {
+async function saveFetchCheckpoint(client, projectSlug, offset) {
   await client.query(`
-    INSERT INTO wallet_tracking_checkpoints (project_slug, last_processed_count, total_inscriptions)
-    VALUES ($1, $2, $3)
+    INSERT INTO inscription_fetch_checkpoints (project_slug, last_offset)
+    VALUES ($1, $2)
     ON CONFLICT (project_slug)
     DO UPDATE SET
-      last_processed_count = $2,
-      total_inscriptions = $3,
+      last_offset = $2,
       updated_at = CURRENT_TIMESTAMP
-  `, [projectSlug, processedCount, totalInscriptions]);
+  `, [projectSlug, offset]);
 }
 
-async function loadCheckpoint(client, projectSlug) {
+async function loadFetchCheckpoint(client, projectSlug) {
   const result = await client.query(`
-    SELECT last_processed_count, total_inscriptions
-    FROM wallet_tracking_checkpoints
+    SELECT last_offset
+    FROM inscription_fetch_checkpoints
     WHERE project_slug = $1
   `, [projectSlug]);
-  return {
-    processedCount: result.rows[0]?.last_processed_count || 0,
-    totalInscriptions: result.rows[0]?.total_inscriptions || 0
-  };
+  return result.rows[0]?.last_offset || 0;
 }
 
-async function fetchInscriptionsFromAPI() {
-  const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";
-  const headers = {
-    "x-api-key": process.env.BESTIN_SLOT_API_KEY,
-    "Content-Type": "application/json",
-  };
-  const inscriptions = [];
-  const batchSize = 100;
-  const totalInscriptions = 10000;
-  const delayBetweenRequests = 8000;
-
+async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
+  const client = await pool.connect();
   try {
-    for (let offset = 0; offset < totalInscriptions; offset += batchSize) {
+    await ensureFetchCheckpointTable(client);
+
+    const startingOffset = await loadFetchCheckpoint(client, projectSlug);
+    console.log(`[${new Date().toISOString()}] Starting fetch from offset ${startingOffset}`);
+
+    const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";
+    const headers = {
+      "x-api-key": process.env.BESTIN_SLOT_API_KEY,
+      "Content-Type": "application/json",
+    };
+    const inscriptions = [];
+    const batchSize = 100;
+    const totalInscriptions = 10000; // Adjust if needed
+    const delayBetweenRequests = 8000;
+
+    for (let offset = startingOffset; offset < totalInscriptions; offset += batchSize) {
+      // Check if we received a shutdown signal
+      if (global.shouldExit) {
+        console.log(`[${new Date().toISOString()}] Shutdown signal received. Saving progress at offset ${offset}.`);
+        await saveFetchCheckpoint(client, projectSlug, offset);
+        break;
+      }
+
       const url = `${urlBase}&offset=${offset}&count=${batchSize}`;
       const response = await axios.get(url, { headers });
 
-      // Log the API response for debugging
       console.log(`[${new Date().toISOString()}] API response at offset ${offset}:`, response.data);
 
       if (Array.isArray(response.data.data)) {
@@ -80,12 +87,19 @@ async function fetchInscriptionsFromAPI() {
         console.warn(`[${new Date().toISOString()}] Unexpected response format at offset ${offset}, skipping batch.`);
       }
 
+      // Save checkpoint after each batch
+      await saveFetchCheckpoint(client, projectSlug, offset + batchSize);
+
+      // Delay before next batch
       await delay(delayBetweenRequests);
     }
+
     return inscriptions;
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error fetching inscription data:`, error);
     return [];
+  } finally {
+    client.release();
   }
 }
 

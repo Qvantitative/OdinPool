@@ -49,7 +49,7 @@ async function cleanupConnections() {
   }
 }
 
-// Fetch and post inscriptions
+// fetchAndPostInscriptions
 async function fetchAndPostInscriptions() {
   if (isInscriptionFetchRunning) {
     console.log(`[${new Date().toISOString()}] Inscription fetch already running. Skipping.`);
@@ -57,22 +57,26 @@ async function fetchAndPostInscriptions() {
   }
 
   isInscriptionFetchRunning = true;
-  console.log(`[${new Date().toISOString()}] Starting inscription fetch process`);
+  const projectSlug = 'fukuhedrons';
 
+  console.log(`[${new Date().toISOString()}] Starting inscription fetch process`);
   try {
-    const projectSlug = 'fukuhedrons';
     const inscriptions = await withTimeout(
-      fetchInscriptionsFromAPI(),
+      fetchInscriptionsFromAPI(projectSlug), // Pass projectSlug
       TIMEOUTS.FETCH_INSCRIPTIONS,
       'Fetch inscriptions'
     );
+
+    if (global.shouldExit) {
+      console.log(`[${new Date().toISOString()}] Exiting early due to SIGINT. Partial data fetched will be resumed later.`);
+      return;
+    }
 
     if (!inscriptions?.length) {
       throw new Error('No valid inscriptions data received');
     }
 
     console.log(`[${new Date().toISOString()}] Fetched ${inscriptions.length} inscriptions`);
-
     const result = await withTimeout(
       insertInscriptionsToDB(inscriptions, projectSlug),
       TIMEOUTS.INSERT_INSCRIPTIONS,
@@ -156,8 +160,10 @@ function startCronJobs() {
   // Fetch and post inscriptions every 10 minutes
   cron.schedule('*/10 * * * *', async () => {
     console.log(`[${new Date().toISOString()}] Running scheduled fetchAndPostInscriptions job`);
+    console.log(`[${new Date().toISOString()}] Running scheduled fetchAndStoreTrendingData job`);
     try {
       await fetchAndPostInscriptions();
+      await fetchAndStoreTrendingData();
     } catch (error) {
       console.error('Error fetching and posting inscriptions:', error);
     }
@@ -182,9 +188,11 @@ process.on('SIGTERM', () => {
   cleanupConnections().finally(() => process.exit(0));
 });
 
+global.shouldExit = false;
+
 process.on('SIGINT', () => {
-  console.log(`[${new Date().toISOString()}] Received SIGINT - shutting down gracefully`);
-  cleanupConnections().finally(() => process.exit(0));
+  console.log(`[${new Date().toISOString()}] Received SIGINT - attempting graceful shutdown`);
+  global.shouldExit = true;
 });
 
 startCronJobs();

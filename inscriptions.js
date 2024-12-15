@@ -49,7 +49,8 @@ async function loadCheckpoint(client, projectSlug) {
     FROM inscription_checkpoints
     WHERE project_slug = $1
   `, [projectSlug]);
-  return result.rows[0] || { processedCount: 0, totalCount: 0 };
+
+  return result.rows[0] || { processedCount: 0, totalCount: 52997 }; // Default values
 }
 
 async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {

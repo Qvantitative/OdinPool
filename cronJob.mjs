@@ -201,14 +201,15 @@ process.on('SIGTERM', () => {
 
 global.shouldExit = false;
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log(`[${new Date().toISOString()}] Received SIGINT - attempting graceful shutdown`);
-  if (!criticalTaskRunning) {
-    global.shouldExit = true;
-    cleanupConnections().finally(() => process.exit(0));
-  } else {
+  if (criticalTaskRunning) {
     console.log(`[${new Date().toISOString()}] Critical task running. Deferring shutdown.`);
+    return; // Do not exit if critical tasks are running
   }
+  global.shouldExit = true;
+  await cleanupConnections();
+  process.exit(0);
 });
 
 let criticalTaskRunning = false;

@@ -67,7 +67,7 @@ async function loadCheckpoint(client, projectSlug) {
 async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
   const client = await pool.connect();
   try {
-    await ensureFetchCheckpointTable(client);
+    await ensureCheckpointTable(client);
 
     const startingOffset = await loadFetchCheckpoint(client, projectSlug);
     console.log(`[${new Date().toISOString()}] Starting fetch from offset ${startingOffset}`);

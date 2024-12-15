@@ -50,7 +50,18 @@ async function loadCheckpoint(client, projectSlug) {
     WHERE project_slug = $1
   `, [projectSlug]);
 
-  return result.rows[0] || { processedCount: 0, totalCount: 52997 }; // Default values
+  if (result.rows[0]) {
+    return {
+      processedCount: result.rows[0].processed_count,
+      totalCount: result.rows[0].total_count
+    };
+  }
+
+  // Default values if no checkpoint found
+  return {
+    processedCount: 0,
+    totalCount: 52997
+  };
 }
 
 async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {

@@ -18,7 +18,7 @@ function delay(ms) {
 }
 
 // Checkpoint management
-await ensureFetchCheckpointTable(client) {
+async function ensureFetchCheckpointTable(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS inscription_fetch_checkpoints (
       project_slug VARCHAR(255) PRIMARY KEY,

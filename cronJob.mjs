@@ -163,6 +163,17 @@ function startCronJobs() {
     }
   });
 
+  // Add this cron job after your existing ones:
+  cron.schedule('10 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running fetchAndPostInscriptions job`);
+    try {
+      await fetchAndPostInscriptions();
+    } catch (error) {
+      console.error('Error fetching and posting inscriptions:', error);
+    }
+  });
+
+
   // Initial runs after startup
   (async () => {
     try {

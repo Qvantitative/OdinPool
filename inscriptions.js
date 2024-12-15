@@ -93,6 +93,8 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
     console.log(`[${new Date().toISOString()}] Starting fetch from offset ${offset} (current DB count: ${currentCount}/${totalInscriptions})`);
 
     while (offset < totalInscriptions && currentCount < totalInscriptions) {
+      console.log(`[${new Date().toISOString()}] Current loop state - offset: ${offset}, currentCount: ${currentCount}, totalInscriptions: ${totalInscriptions}`);
+
       // Check if we received a shutdown signal
       if (global.shouldExit) {
         console.log(`[${new Date().toISOString()}] Shutdown signal received. Saving progress at offset ${offset}.`);
@@ -107,6 +109,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
 
       if (Array.isArray(response.data.data)) {
         const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
+        console.log(`[${new Date().toISOString()}] Received ${inscriptionIds.length} inscriptions from API`);
 
         if (inscriptionIds.length > 0) {
           // Insert this batch immediately
@@ -122,11 +125,23 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
 
           console.log(`[${new Date().toISOString()}] Progress: ${currentCount}/${totalInscriptions} inscriptions in DB`);
         } else {
-          console.log(`[${new Date().toISOString()}] No new inscriptions found at offset ${offset}, resetting to 0`);
-          offset = -batchSize; // Will become 0 after the += batchSize below
+          console.log(`[${new Date().toISOString()}] No new inscriptions found at offset ${offset}, current total: ${currentCount}`);
+          if (currentCount < totalInscriptions) {
+            console.log(`[${new Date().toISOString()}] Still need ${totalInscriptions - currentCount} more inscriptions, resetting offset to 0`);
+            offset = -batchSize; // Will become 0 after the += batchSize below
+          } else {
+            console.log(`[${new Date().toISOString()}] Reached target count, ending loop`);
+            break;
+          }
         }
       } else {
         console.warn(`[${new Date().toISOString()}] Unexpected response format at offset ${offset}, skipping batch.`);
+      }
+
+      // Add a progress check here too
+      if (currentCount >= totalInscriptions) {
+        console.log(`[${new Date().toISOString()}] Reached or exceeded target count (${currentCount}/${totalInscriptions}), ending loop`);
+        break;
       }
 
       offset += batchSize;

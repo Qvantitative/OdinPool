@@ -235,7 +235,7 @@ async function updateWalletTracking() {
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
     await client.query('SET statement_timeout = 0');
-    await ensureCheckpointTable(client);
+    await ensureFetchCheckpointTable(client); // Corrected function name
 
     // Get current checkpoint
     const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
@@ -250,7 +250,7 @@ async function updateWalletTracking() {
       console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
-    // In updateWalletTracking:
+    // Process inscriptions in batches
     while (processedCount < TOTAL_INSCRIPTIONS) {
       const { rows: inscriptions } = await client.query(`
         SELECT inscription_id, project_slug
@@ -259,7 +259,6 @@ async function updateWalletTracking() {
         OFFSET $1 LIMIT $2
       `, [processedCount, BATCH_SIZE]);
 
-      // Add debug logging
       console.log(`[${new Date().toISOString()}] Query returned ${inscriptions.length} inscriptions at offset ${processedCount}`);
 
       if (inscriptions.length === 0) {
@@ -274,7 +273,7 @@ async function updateWalletTracking() {
       console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
-    // If we've completed all inscriptions, reset the checkpoint
+    // Reset the checkpoint if completed
     if (processedCount >= TOTAL_INSCRIPTIONS) {
       console.log(`[${new Date().toISOString()}] Completed full cycle, resetting checkpoint to 0`);
       await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);

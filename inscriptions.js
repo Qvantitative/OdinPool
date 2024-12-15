@@ -69,7 +69,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
   try {
     await ensureCheckpointTable(client);
 
-    const startingOffset = await loadFetchCheckpoint(client, projectSlug);
+    const { processedCount: startingOffset } = await loadCheckpoint(client, projectSlug);
     console.log(`[${new Date().toISOString()}] Starting fetch from offset ${startingOffset}`);
 
     const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";
@@ -86,7 +86,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
       // Check if we received a shutdown signal
       if (global.shouldExit) {
         console.log(`[${new Date().toISOString()}] Shutdown signal received. Saving progress at offset ${offset}.`);
-        await saveFetchCheckpoint(client, projectSlug, offset);
+        await saveCheckpoint(client, projectSlug, offset, totalInscriptions);
         break;
       }
 
@@ -104,7 +104,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
       }
 
       // Save checkpoint after each batch
-      await saveFetchCheckpoint(client, projectSlug, offset + batchSize);
+      await saveCheckpoint(client, projectSlug, offset + batchSize, totalInscriptions);
 
       // Delay before next batch
       await delay(delayBetweenRequests);

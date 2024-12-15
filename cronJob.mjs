@@ -153,19 +153,9 @@ function startCronJobs() {
     }
   });
 
-  // Fetch trending data every 10 minutes
+  // Fetch and post inscriptions every 10 minutes
   cron.schedule('*/10 * * * *', async () => {
-    console.log(`[${new Date().toISOString()}] Running fetchAndStoreTrendingData job`);
-    try {
-      await fetchAndStoreTrendingData();
-    } catch (error) {
-      console.error('Error fetching and storing trending data:', error);
-    }
-  });
-
-  // Add this cron job after your existing ones:
-  cron.schedule('10 * * * *', async () => {
-    console.log(`[${new Date().toISOString()}] Running fetchAndPostInscriptions job`);
+    console.log(`[${new Date().toISOString()}] Running scheduled fetchAndPostInscriptions job`);
     try {
       await fetchAndPostInscriptions();
     } catch (error) {
@@ -173,14 +163,14 @@ function startCronJobs() {
     }
   });
 
-
   // Initial runs after startup
   (async () => {
+    // Run the function once at startup
     try {
-      await updateInscriptionWallets();
-      // No runes tasks here, those are in cronJobB.mjs now
+      console.log(`[${new Date().toISOString()}] Running fetchAndPostInscriptions job at startup`);
+      await fetchAndPostInscriptions();
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
+      console.error(`[${new Date().toISOString()}] Error running fetchAndPostInscriptions at startup:`, error);
     }
   })();
 

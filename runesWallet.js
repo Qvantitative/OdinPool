@@ -115,40 +115,41 @@ async function insertWalletActivitiesBatch(client, activities, walletAddr) {
         rune,
         kind,
         address,
-        from_address,
-        tx_id,
-        tx_block_time,
-        tx_block_height,
-        tx_block_hash,
-        endpoint_tx_id,
+        newOwner,
+        txId,
+        txBlockTime,
+        txBlockHeight,
+        txBlockHash,
+        mempoolTxId,
         amount,
-        formatted_amount,
-        created_at,
-        updated_at,
-        spaced_rune
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      ON CONFLICT (id)
-      DO NOTHING;
+        formattedAmount,
+        createdAt,
+        btcUsdPrice,
+        spacedRune
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15
+      )
+      ON CONFLICT (id) DO NOTHING;
     `;
 
     for (const activity of activities) {
-      // Adapted to the actual keys from the API response:
       const {
         id,
         rune,
         kind,
         address,
-        from: from_address,
-        txId: tx_id,
-        txBlockTime: tx_block_time,
-        txBlockHeight: tx_block_height,
-        txBlockHash: tx_block_hash,
-        enpointTxId: endpoint_tx_id,
+        newOwner,
+        txId,
+        txBlockTime,
+        txBlockHeight,
+        txBlockHash,
+        mempoolTxId,
         amount,
-        formattedAmount: formatted_amount,
-        createdAt: created_at,
-        updatedAt: updated_at,
-        spacedRune: spaced_rune
+        formattedAmount,
+        createdAt,
+        btcUsdPrice,
+        spacedRune
       } = activity;
 
       await client.query(insertQuery, [
@@ -156,17 +157,17 @@ async function insertWalletActivitiesBatch(client, activities, walletAddr) {
         rune,
         kind,
         address,
-        from_address,
-        tx_id,
-        tx_block_time,
-        tx_block_height,
-        tx_block_hash,
-        endpoint_tx_id,
+        newOwner,       // Fixed: matches the API key
+        txId,
+        txBlockTime,
+        txBlockHeight,
+        txBlockHash,
+        mempoolTxId,
         amount,
-        formatted_amount,
-        created_at,
-        updated_at,
-        spaced_rune
+        formattedAmount,
+        createdAt,
+        btcUsdPrice,
+        spacedRune
       ]);
     }
 

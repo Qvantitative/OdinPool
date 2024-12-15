@@ -69,9 +69,6 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
   try {
     await ensureCheckpointTable(client);
 
-    const { processedCount: startingOffset } = await loadCheckpoint(client, projectSlug);
-    console.log(`[${new Date().toISOString()}] Starting fetch from offset ${startingOffset}`);
-
     const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";
     const headers = {
       "x-api-key": process.env.BESTIN_SLOT_API_KEY,
@@ -81,7 +78,21 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
     const totalInscriptions = 10000;
     const delayBetweenRequests = 8000;
 
-    for (let offset = startingOffset; offset < totalInscriptions; offset += batchSize) {
+    // Check current progress
+    const { rows: [{ count: currentCount }] } = await client.query('SELECT COUNT(*) FROM inscriptions WHERE project_slug = $1', [projectSlug]);
+    const { processedCount: startingOffset } = await loadCheckpoint(client, projectSlug);
+
+    // Reset offset if we've reached the end but haven't processed everything
+    let offset = startingOffset;
+    if (startingOffset >= totalInscriptions && currentCount < totalInscriptions) {
+      console.log(`[${new Date().toISOString()}] Resetting offset to 0 (current count: ${currentCount}, target: ${totalInscriptions})`);
+      offset = 0;
+      await saveCheckpoint(client, projectSlug, 0, totalInscriptions);
+    }
+
+    console.log(`[${new Date().toISOString()}] Starting fetch from offset ${offset} (current DB count: ${currentCount}/${totalInscriptions})`);
+
+    while (offset < totalInscriptions && currentCount < totalInscriptions) {
       // Check if we received a shutdown signal
       if (global.shouldExit) {
         console.log(`[${new Date().toISOString()}] Shutdown signal received. Saving progress at offset ${offset}.`);
@@ -97,24 +108,42 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
       if (Array.isArray(response.data.data)) {
         const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
 
-        // Insert this batch immediately
-        console.log(`[${new Date().toISOString()}] Inserting batch of ${inscriptionIds.length} inscriptions at offset ${offset}`);
-        await insertInscriptionsToDB(inscriptionIds, projectSlug);
+        if (inscriptionIds.length > 0) {
+          // Insert this batch immediately
+          console.log(`[${new Date().toISOString()}] Inserting batch of ${inscriptionIds.length} inscriptions at offset ${offset}`);
+          await insertInscriptionsToDB(inscriptionIds, projectSlug);
 
-        // Save checkpoint after successful insert
-        await saveCheckpoint(client, projectSlug, offset + batchSize, totalInscriptions);
+          // Update current count
+          const { rows: [{ count: newCount }] } = await client.query('SELECT COUNT(*) FROM inscriptions WHERE project_slug = $1', [projectSlug]);
+          currentCount = newCount;
+
+          // Save checkpoint after successful insert
+          await saveCheckpoint(client, projectSlug, offset + batchSize, totalInscriptions);
+
+          console.log(`[${new Date().toISOString()}] Progress: ${currentCount}/${totalInscriptions} inscriptions in DB`);
+        } else {
+          console.log(`[${new Date().toISOString()}] No new inscriptions found at offset ${offset}, resetting to 0`);
+          offset = -batchSize; // Will become 0 after the += batchSize below
+        }
       } else {
         console.warn(`[${new Date().toISOString()}] Unexpected response format at offset ${offset}, skipping batch.`);
+      }
+
+      offset += batchSize;
+
+      // Reset offset if we've reached the end but haven't processed everything
+      if (offset >= totalInscriptions && currentCount < totalInscriptions) {
+        console.log(`[${new Date().toISOString()}] Reached end but only have ${currentCount}/${totalInscriptions} inscriptions. Resetting offset to 0`);
+        offset = 0;
+        await saveCheckpoint(client, projectSlug, 0, totalInscriptions);
       }
 
       // Delay before next batch
       await delay(delayBetweenRequests);
     }
 
-    const { rows: [{ count }] } = await client.query('SELECT COUNT(*) FROM inscriptions WHERE project_slug = $1', [projectSlug]);
-    console.log(`[${new Date().toISOString()}] Total inscriptions in DB for ${projectSlug}: ${count}`);
-
-    return count;
+    console.log(`[${new Date().toISOString()}] Fetch complete. Total inscriptions in DB for ${projectSlug}: ${currentCount}`);
+    return currentCount;
 
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error fetching inscription data:`, error);

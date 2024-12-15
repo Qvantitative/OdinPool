@@ -73,7 +73,8 @@ async function fetchAndPostInscriptions() {
     }
 
     if (!inscriptions?.length) {
-      throw new Error('No valid inscriptions data received');
+      console.log(`[${new Date().toISOString()}] No inscriptions returned for this batch, will try again next cycle`);
+      return;
     }
 
     console.log(`[${new Date().toISOString()}] Fetched ${inscriptions.length} inscriptions`);

@@ -159,7 +159,7 @@ function startCronJobs() {
 
   // Fetch and post inscriptions every 10 minutes
   cron.schedule('*/10 * * * *', async () => {
-    console.log(`[${new Date().toISOString()}] Running scheduled fetchAndPostInscriptions job`);
+    //console.log(`[${new Date().toISOString()}] Running scheduled fetchAndPostInscriptions job`);
     console.log(`[${new Date().toISOString()}] Running scheduled fetchAndStoreTrendingData job`);
     try {
       //await fetchAndPostInscriptions();

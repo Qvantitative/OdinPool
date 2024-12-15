@@ -203,8 +203,24 @@ global.shouldExit = false;
 
 process.on('SIGINT', () => {
   console.log(`[${new Date().toISOString()}] Received SIGINT - attempting graceful shutdown`);
-  global.shouldExit = true;
+  if (!criticalTaskRunning) {
+    global.shouldExit = true;
+    cleanupConnections().finally(() => process.exit(0));
+  } else {
+    console.log(`[${new Date().toISOString()}] Critical task running. Deferring shutdown.`);
+  }
 });
+
+let criticalTaskRunning = false;
+
+async function someCriticalTask() {
+  criticalTaskRunning = true;
+  try {
+    // Your critical task logic here
+  } finally {
+    criticalTaskRunning = false;
+  }
+}
 
 startCronJobs();
 process.stdin.resume();

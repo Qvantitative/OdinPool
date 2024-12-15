@@ -17,35 +17,39 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Checkpoint management
-async function ensureFetchCheckpointTable(client) {
+// Ensure the checkpoint table exists
+async function ensureCheckpointTable(client) {
   await client.query(`
-    CREATE TABLE IF NOT EXISTS inscription_fetch_checkpoints (
+    CREATE TABLE IF NOT EXISTS inscription_checkpoints (
       project_slug VARCHAR(255) PRIMARY KEY,
-      last_offset INTEGER,
+      processed_count INTEGER,
+      total_count INTEGER,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 }
 
-async function saveFetchCheckpoint(client, projectSlug, offset) {
+// Save the checkpoint to the database
+async function saveCheckpoint(client, projectSlug, processedCount, totalCount) {
   await client.query(`
-    INSERT INTO inscription_fetch_checkpoints (project_slug, last_offset)
-    VALUES ($1, $2)
+    INSERT INTO inscription_checkpoints (project_slug, processed_count, total_count)
+    VALUES ($1, $2, $3)
     ON CONFLICT (project_slug)
     DO UPDATE SET
-      last_offset = $2,
+      processed_count = $2,
+      total_count = $3,
       updated_at = CURRENT_TIMESTAMP
-  `, [projectSlug, offset]);
+  `, [projectSlug, processedCount, totalCount]);
 }
 
-async function loadFetchCheckpoint(client, projectSlug) {
+// Load the checkpoint from the database
+async function loadCheckpoint(client, projectSlug) {
   const result = await client.query(`
-    SELECT last_offset
-    FROM inscription_fetch_checkpoints
+    SELECT processed_count, total_count
+    FROM inscription_checkpoints
     WHERE project_slug = $1
   `, [projectSlug]);
-  return result.rows[0]?.last_offset || 0;
+  return result.rows[0] || { processedCount: 0, totalCount: 0 };
 }
 
 async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
@@ -230,17 +234,15 @@ async function updateWalletTracking() {
   const client = await pool.connect();
   const PROJECT_SLUG = 'ALL_INSCRIPTIONS';
   const BATCH_SIZE = 500;
-  const TOTAL_INSCRIPTIONS = 52997;  // Fixed total count
+  const TOTAL_INSCRIPTIONS = 52997;
 
   try {
     console.log(`[${new Date().toISOString()}] Starting optimized wallet tracking update`);
     await client.query('SET statement_timeout = 0');
-    await ensureFetchCheckpointTable(client); // Corrected function name
+    await ensureCheckpointTable(client); // Ensure checkpoint table exists
 
-    // Get current checkpoint
     const { processedCount: startCount } = await loadCheckpoint(client, PROJECT_SLUG);
 
-    // Reset to 0 if we've completed a full cycle
     let processedCount = startCount >= TOTAL_INSCRIPTIONS ? 0 : startCount;
 
     if (startCount >= TOTAL_INSCRIPTIONS) {
@@ -250,7 +252,6 @@ async function updateWalletTracking() {
       console.log(`[${new Date().toISOString()}] Resuming from checkpoint: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
-    // Process inscriptions in batches
     while (processedCount < TOTAL_INSCRIPTIONS) {
       const { rows: inscriptions } = await client.query(`
         SELECT inscription_id, project_slug
@@ -273,7 +274,6 @@ async function updateWalletTracking() {
       console.log(`[${new Date().toISOString()}] Progress: ${processedCount}/${TOTAL_INSCRIPTIONS} inscriptions processed`);
     }
 
-    // Reset the checkpoint if completed
     if (processedCount >= TOTAL_INSCRIPTIONS) {
       console.log(`[${new Date().toISOString()}] Completed full cycle, resetting checkpoint to 0`);
       await saveCheckpoint(client, PROJECT_SLUG, 0, TOTAL_INSCRIPTIONS);

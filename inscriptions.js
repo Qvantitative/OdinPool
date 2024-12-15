@@ -77,9 +77,8 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
       "x-api-key": process.env.BESTIN_SLOT_API_KEY,
       "Content-Type": "application/json",
     };
-    const inscriptions = [];
-    const batchSize = 100;
-    const totalInscriptions = 10000; // Adjust if needed
+    const batchSize = 500;
+    const totalInscriptions = 10000;
     const delayBetweenRequests = 8000;
 
     for (let offset = startingOffset; offset < totalInscriptions; offset += batchSize) {
@@ -97,23 +96,29 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
 
       if (Array.isArray(response.data.data)) {
         const inscriptionIds = response.data.data.map(inscription => inscription.inscription_id);
-        inscriptions.push(...inscriptionIds);
-        console.log(`[${new Date().toISOString()}] Fetched ${inscriptions.length} inscriptions so far`);
+
+        // Insert this batch immediately
+        console.log(`[${new Date().toISOString()}] Inserting batch of ${inscriptionIds.length} inscriptions at offset ${offset}`);
+        await insertInscriptionsToDB(inscriptionIds, projectSlug);
+
+        // Save checkpoint after successful insert
+        await saveCheckpoint(client, projectSlug, offset + batchSize, totalInscriptions);
       } else {
         console.warn(`[${new Date().toISOString()}] Unexpected response format at offset ${offset}, skipping batch.`);
       }
-
-      // Save checkpoint after each batch
-      await saveCheckpoint(client, projectSlug, offset + batchSize, totalInscriptions);
 
       // Delay before next batch
       await delay(delayBetweenRequests);
     }
 
-    return inscriptions;
+    const { rows: [{ count }] } = await client.query('SELECT COUNT(*) FROM inscriptions WHERE project_slug = $1', [projectSlug]);
+    console.log(`[${new Date().toISOString()}] Total inscriptions in DB for ${projectSlug}: ${count}`);
+
+    return count;
+
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error fetching inscription data:`, error);
-    return [];
+    return 0;
   } finally {
     client.release();
   }

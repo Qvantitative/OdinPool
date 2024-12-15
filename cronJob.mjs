@@ -163,7 +163,7 @@ function startCronJobs() {
     //console.log(`[${new Date().toISOString()}] Running scheduled fetchAndPostInscriptions job`);
     console.log(`[${new Date().toISOString()}] Running scheduled fetchAndStoreTrendingData job`);
     try {
-      await fetchAndPostInscriptions();
+      //await fetchAndPostInscriptions();
       await fetchAndStoreTrendingData();
     } catch (error) {
       console.error('Error fetching and posting inscriptions:', error);
@@ -175,11 +175,11 @@ function startCronJobs() {
     // Run the function once at startup
     try {
       console.log(`[${new Date().toISOString()}] Running fetchAndPostInscriptions job at startup`);
-      await fetchAndPostInscriptions();
-      //await updateInscriptionWallets();
+      //await fetchAndPostInscriptions();
+      await updateInscriptionWallets();
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error running fetchAndPostInscriptions at startup:`, error);
-      //console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
+      //console.error(`[${new Date().toISOString()}] Error running fetchAndPostInscriptions at startup:`, error);
+      console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
     }
   })();
 

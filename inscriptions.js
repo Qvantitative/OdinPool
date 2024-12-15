@@ -74,7 +74,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
       "x-api-key": process.env.BESTIN_SLOT_API_KEY,
       "Content-Type": "application/json",
     };
-    const batchSize = 500;
+    const batchSize = 100;
     const totalInscriptions = 10000;
     const delayBetweenRequests = 8000;
 

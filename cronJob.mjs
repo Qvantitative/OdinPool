@@ -162,7 +162,7 @@ function startCronJobs() {
     console.log(`[${new Date().toISOString()}] Running scheduled fetchAndPostInscriptions job`);
     console.log(`[${new Date().toISOString()}] Running scheduled fetchAndStoreTrendingData job`);
     try {
-      await fetchAndPostInscriptions();
+      //await fetchAndPostInscriptions();
       await fetchAndStoreTrendingData();
     } catch (error) {
       console.error('Error fetching and posting inscriptions:', error);
@@ -173,12 +173,23 @@ function startCronJobs() {
   (async () => {
     // Run the function once at startup
     try {
-      console.log(`[${new Date().toISOString()}] Running fetchAndPostInscriptions job at startup`);
-      await fetchAndPostInscriptions();
+      //console.log(`[${new Date().toISOString()}] Running fetchAndPostInscriptions job at startup`);
+      //await fetchAndPostInscriptions();
+      await updateInscriptionWallets();
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error running fetchAndPostInscriptions at startup:`, error);
+      //console.error(`[${new Date().toISOString()}] Error running fetchAndPostInscriptions at startup:`, error);
+      console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
     }
   })();
+
+  (async () => {
+      try {
+        await updateInscriptionWallets();
+        // No runes tasks here, those are in cronJobB.mjs now
+      } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
+      }
+    })();
 
   console.log(`[${new Date().toISOString()}] All non-rune cron jobs started`);
 }

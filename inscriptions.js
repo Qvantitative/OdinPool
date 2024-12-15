@@ -79,7 +79,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
     const delayBetweenRequests = 8000;
 
     // Check current progress
-    const { rows: [{ count: currentCount }] } = await client.query('SELECT COUNT(*) FROM inscriptions WHERE project_slug = $1', [projectSlug]);
+    let { rows: [{ count: currentCount }] } = await client.query('SELECT COUNT(*) FROM inscriptions WHERE project_slug = $1', [projectSlug]);
     const { processedCount: startingOffset } = await loadCheckpoint(client, projectSlug);
 
     // Reset offset if we've reached the end but haven't processed everything

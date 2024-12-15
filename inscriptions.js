@@ -69,8 +69,7 @@ async function fetchInscriptionsFromAPI(projectSlug = 'fukuhedrons') {
   try {
     await ensureCheckpointTable(client);
 
-    const totalInscriptions = 10000;
-    let processedCount = startingOffset >= totalInscriptions ? 0 : startingOffset;
+    const { processedCount: startingOffset } = await loadCheckpoint(client, projectSlug);
     console.log(`[${new Date().toISOString()}] Starting fetch from offset ${startingOffset}`);
 
     const urlBase = "https://api.bestinslot.xyz/v3/collection/inscriptions?slug=fukuhedrons&sort_by=inscr_num&order=asc";

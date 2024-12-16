@@ -969,6 +969,75 @@ app.get('/api/ord/address/:address', async (req, res) => {
   }
 });
 
+app.get('/api/runes/activities/summary', async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    // Get pagination parameters from query string
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Get total count for pagination
+    const countResult = await client.query(
+      'SELECT COUNT(*) FROM v_runes_activities_summary'
+    );
+    const totalItems = parseInt(countResult.rows[0].count);
+
+    // Get paginated data
+    const query = `
+      SELECT
+        rune_ticker,
+        rune_name,
+        symbol,
+        volume_24h,
+        total_volume,
+        unit_price_sats,
+        market_cap,
+        holder_count,
+        is_verified,
+        updated_at
+      FROM v_runes_activities_summary
+      ORDER BY volume_24h DESC NULLS LAST
+      LIMIT $1 OFFSET $2
+    `;
+
+    const result = await client.query(query, [limit, offset]);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    // Format response
+    const response = {
+      status: 'success',
+      data: result.rows,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        itemsPerPage: limit,
+        hasNextPage,
+        hasPrevPage,
+        nextPage: hasNextPage ? page + 1 : null,
+        prevPage: hasPrevPage ? page - 1 : null
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching runes activities summary:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch runes activities summary',
+      error: error.message
+    });
+  } finally {
+    client.release();
+  }
+});
+
 app.get('/api/trending-runes', async (req, res) => {
  try {
    const { limit = 100, offset = 0 } = req.query;

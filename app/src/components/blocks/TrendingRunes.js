@@ -2,27 +2,45 @@
 
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 
-const formatSupply = (value) => {
+const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';
 
-  const trillion = 1_000_000_000_000;
-  const billion = 1_000_000_000;
-  const million = 1_000_000;
-  const thousand = 1_000;
+  try {
+    const numValue = Number(value);
+    if (isNaN(numValue)) return 'N/A';
 
-  const absValue = Math.abs(value);
+    const trillion = 1_000_000_000_000;
+    const billion = 1_000_000_000;
+    const million = 1_000_000;
+    const thousand = 1_000;
 
-  if (absValue >= trillion) {
-    return `${(value / trillion).toFixed(2)}T`;
-  } else if (absValue >= billion) {
-    return `${(value / billion).toFixed(2)}B`;
-  } else if (absValue >= million) {
-    return `${(value / million).toFixed(2)}M`;
-  } else if (absValue >= thousand) {
-    return `${(value / thousand).toFixed(2)}K`;
+    const absValue = Math.abs(numValue);
+
+    if (absValue >= trillion) {
+      return `${(numValue / trillion).toFixed(decimals)}T`;
+    } else if (absValue >= billion) {
+      return `${(numValue / billion).toFixed(decimals)}B`;
+    } else if (absValue >= million) {
+      return `${(numValue / million).toFixed(decimals)}M`;
+    } else if (absValue >= thousand) {
+      return `${(numValue / thousand).toFixed(decimals)}K`;
+    }
+
+    return numValue.toFixed(decimals);
+  } catch (error) {
+    console.error('Error formatting number:', error);
+    return 'N/A';
   }
+};
 
-  return value.toString();
+const formatPrice = (value) => {
+  if (value === null || value === undefined) return 'N/A';
+  try {
+    const numValue = Number(value);
+    return isNaN(numValue) ? 'N/A' : numValue.toFixed(8);
+  } catch {
+    return 'N/A';
+  }
 };
 
 const TrendingRunes = () => {
@@ -33,7 +51,6 @@ const TrendingRunes = () => {
   const [pagination, setPagination] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch runes data
   const fetchRunesData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
@@ -50,18 +67,17 @@ const TrendingRunes = () => {
     }
   }, []);
 
-  // Memoize sorted runes
   const sortedRunes = useMemo(() => {
     let sortableRunes = [...runes];
     if (sortConfig.key !== null) {
       sortableRunes.sort((a, b) => {
         if (sortConfig.key === 'rune_name' || sortConfig.key === 'rune_ticker') {
           return sortConfig.direction === 'ascending'
-            ? a[sortConfig.key].localeCompare(b[sortConfig.key])
-            : b[sortConfig.key].localeCompare(a[sortConfig.key]);
+            ? (a[sortConfig.key] || '').localeCompare(b[sortConfig.key] || '')
+            : (b[sortConfig.key] || '').localeCompare(a[sortConfig.key] || '');
         } else {
-          const aValue = a[sortConfig.key] ?? 0;
-          const bValue = b[sortConfig.key] ?? 0;
+          const aValue = Number(a[sortConfig.key]) || 0;
+          const bValue = Number(b[sortConfig.key]) || 0;
           return sortConfig.direction === 'ascending'
             ? aValue - bValue
             : bValue - aValue;
@@ -85,7 +101,6 @@ const TrendingRunes = () => {
     fetchRunesData(newPage);
   }, [fetchRunesData]);
 
-  // Fetch data on mount
   useEffect(() => {
     fetchRunesData(currentPage);
   }, [fetchRunesData, currentPage]);
@@ -147,19 +162,19 @@ const TrendingRunes = () => {
                       </span>
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      {formatSupply(rune.holder_count)}
+                      {formatNumber(rune.holder_count, 0)}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      {formatSupply(rune.volume_24h)}
+                      {formatNumber(rune.volume_24h)}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      {formatSupply(rune.total_volume)}
+                      {formatNumber(rune.total_volume)}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      {rune.unit_price_sats?.toFixed(8) ?? 'N/A'}
+                      {formatPrice(rune.unit_price_sats)}
                     </td>
                     <td className="border border-gray-400 px-2 py-1">
-                      {formatSupply(rune.market_cap)}
+                      {formatNumber(rune.market_cap)}
                     </td>
                   </tr>
                 ))}

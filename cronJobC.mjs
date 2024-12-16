@@ -2,18 +2,21 @@
 
 import cron from 'node-cron';
 import { updateWalletActivities } from './runesWallet.js';
+import { updateRunesActivities } from './RunesActivities.js';
 
 const WALLETS_TO_TRACK = [
   'bc1pt65exley6pv6uqws7xr3ku7u922tween0nfyz257rnl5300cjnrsjp9er6' // Add or replace wallet addresses as needed
 ];
 
-// Track running state for each wallet
+// Track running state for each wallet and runes activities
 const runningState = {
-  walletActivities: new Set()
+  walletActivities: new Set(),
+  runesActivitiesUpdate: false
 };
 
 const TIMEOUTS = {
-  WALLET_ACTIVITIES_UPDATE: 600000 // 10 minutes for wallet activities update, adjust as needed
+  WALLET_ACTIVITIES_UPDATE: 600000, // 10 minutes for wallet activities update
+  RUNES_ACTIVITIES_UPDATE: 300000   // 5 minutes for runes activities update
 };
 
 const withTimeout = (promise, timeoutMs, operationName) => {
@@ -66,6 +69,31 @@ async function updateActivitiesForWallet(walletAddr) {
   }
 }
 
+// New function to handle runes activities update
+async function updateRunesActivitiesWithState() {
+  if (runningState.runesActivitiesUpdate) {
+    console.log(`[${new Date().toISOString()}] Runes activities update already running. Skipping.`);
+    return;
+  }
+
+  runningState.runesActivitiesUpdate = true;
+  console.log(`[${new Date().toISOString()}] Starting runes activities update`);
+
+  try {
+    await withTimeout(
+      updateRunesActivities(),
+      TIMEOUTS.RUNES_ACTIVITIES_UPDATE,
+      'Runes activities update'
+    );
+    console.log(`[${new Date().toISOString()}] Completed runes activities update`);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in runes activities update:`, error);
+    await handleTimeout(error);
+  } finally {
+    runningState.runesActivitiesUpdate = false;
+  }
+}
+
 async function processAllWallets(operation) {
   for (const walletAddr of WALLETS_TO_TRACK) {
     await operation(walletAddr);
@@ -73,24 +101,34 @@ async function processAllWallets(operation) {
 }
 
 function startCronJobs() {
-  console.log(`[${new Date().toISOString()}] Starting wallet activities cron jobs for ${WALLETS_TO_TRACK.join(', ')}`);
+  console.log(`[${new Date().toISOString()}] Starting cron jobs for wallet and runes activities`);
 
-  // Example: Run wallet activities update every 5 minutes
+  // Run wallet activities update every 10 minutes
   cron.schedule('*/10 * * * *', async () => {
     console.log(`[${new Date().toISOString()}] Running wallet activities update`);
     await processAllWallets(updateActivitiesForWallet);
   });
 
+  // Run runes activities update every 5 minutes
+  cron.schedule('*/5 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running runes activities update`);
+    await updateRunesActivitiesWithState();
+  });
+
   // Initial runs after startup
   (async () => {
     try {
-      await processAllWallets(updateActivitiesForWallet);
+      console.log(`[${new Date().toISOString()}] Running initial updates`);
+      await Promise.all([
+        processAllWallets(updateActivitiesForWallet),
+        updateRunesActivitiesWithState()
+      ]);
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
     }
   })();
 
-  console.log(`[${new Date().toISOString()}] Wallet activities cron jobs started`);
+  console.log(`[${new Date().toISOString()}] All cron jobs started`);
 }
 
 process.on('SIGTERM', () => {

@@ -76,7 +76,7 @@ function startCronJobs() {
   console.log(`[${new Date().toISOString()}] Starting wallet activities cron jobs for ${WALLETS_TO_TRACK.join(', ')}`);
 
   // Example: Run wallet activities update every 5 minutes
-  cron.schedule('*/5 * * * *', async () => {
+  cron.schedule('*/10 * * * *', async () => {
     console.log(`[${new Date().toISOString()}] Running wallet activities update`);
     await processAllWallets(updateActivitiesForWallet);
   });

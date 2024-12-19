@@ -16,8 +16,21 @@ function delay(ms) {
 
 function parseNumericValue(value) {
   if (value === null || value === undefined) return null;
-  const parsed = parseFloat(value);
-  return isNaN(parsed) ? null : parsed;
+  try {
+    // Convert to string first to handle large numbers
+    const stringValue = value.toString();
+    // Remove any commas if present
+    const cleanValue = stringValue.replace(/,/g, '');
+    // Check if it's a valid number
+    if (!isNaN(cleanValue) && isFinite(cleanValue)) {
+      // Return as string to preserve precision
+      return cleanValue;
+    }
+    return null;
+  } catch (error) {
+    console.warn(`Error parsing numeric value: ${value}`, error);
+    return null;
+  }
 }
 
 async function fetchRunesActivitiesFromAPI() {
@@ -82,20 +95,28 @@ async function insertRunesActivitiesToDB(activities) {
         rune_id_tx,
         rune_number
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+        $1, $2, $3, $4,
+        CAST($5 AS NUMERIC(36,8)),
+        CAST($6 AS NUMERIC(36,8)),
+        $7,
+        CAST($8 AS NUMERIC(36,8)),
+        $9, $10,
+        CAST($11 AS NUMERIC(36,8)),
+        $12, $13,
+        CAST($14 AS NUMERIC(36,8)),
+        $15, $16, $17, $18, $19, $20
       )
       ON CONFLICT (rune_ticker)
       DO UPDATE SET
-        volume_24h = EXCLUDED.volume_24h,
-        total_volume = EXCLUDED.total_volume,
+        volume_24h = CAST(EXCLUDED.volume_24h AS NUMERIC(36,8)),
+        total_volume = CAST(EXCLUDED.total_volume AS NUMERIC(36,8)),
         total_transactions = EXCLUDED.total_transactions,
-        unit_price_sats = EXCLUDED.unit_price_sats,
+        unit_price_sats = CAST(EXCLUDED.unit_price_sats AS NUMERIC(36,8)),
         transaction_count = EXCLUDED.transaction_count,
-        unit_price_change = EXCLUDED.unit_price_change,
+        unit_price_change = CAST(EXCLUDED.unit_price_change AS NUMERIC(36,8)),
         holder_count = EXCLUDED.holder_count,
         pending_count = EXCLUDED.pending_count,
-        market_cap = EXCLUDED.market_cap,
+        market_cap = CAST(EXCLUDED.market_cap AS NUMERIC(36,8)),
         updated_at = NOW()
       RETURNING id;`;
 

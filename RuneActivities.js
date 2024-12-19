@@ -58,16 +58,21 @@ function parseNumericValue(value) {
 function parseAmount(value) {
   if (value === null || value === undefined || value === '') return null;
 
-  // Remove any non-numeric characters except minus sign
-  const cleanedValue = value.toString().replace(/[^0-9-]/g, '');
+  try {
+    // Remove any non-numeric characters except minus sign
+    const cleanedValue = value.toString().replace(/[^0-9-]/g, '');
 
-  // For very large numbers, keep as string to avoid precision loss
-  if (cleanedValue.length > 15) {
-    return cleanedValue;
+    // Return null for invalid values
+    if (!cleanedValue || cleanedValue === '-') return null;
+
+    // For large numbers, return as string without scientific notation
+    const num = BigInt(cleanedValue);
+    return num.toString(); // Return as string to preserve full precision
+
+  } catch (error) {
+    console.warn(`Failed to parse amount value: ${value}`, error);
+    return null;
   }
-
-  const parsed = parseInt(cleanedValue, 10);
-  return isNaN(parsed) ? null : parsed;
 }
 
 /**
@@ -144,6 +149,17 @@ async function fetchActivitiesForRuneTicker(runeTicker) {
  * Prepare values for database insertion with proper type handling
  */
 function prepareActivityValues(activity) {
+  const amount = parseAmount(activity.amount);
+  const txValue = parseAmount(activity.txValue);
+
+  // Log parsed values for debugging
+  if (amount !== null) {
+    console.log(`Parsed amount for activity ${activity.id}: ${amount}`);
+  }
+  if (txValue !== null) {
+    console.log(`Parsed txValue for activity ${activity.id}: ${txValue}`);
+  }
+
   return [
     activity.id,
     activity.kind,
@@ -151,8 +167,8 @@ function prepareActivityValues(activity) {
     activity.newOwner,
     activity.address,
     activity.rune,
-    parseAmount(activity.amount), // Use special parsing for amount
-    activity.txValue ? parseAmount(activity.txValue) : null,
+    amount,
+    txValue,
     activity.txId,
     activity.txVout !== undefined ? parseInt(activity.txVout) : null,
     activity.txBlockTime,

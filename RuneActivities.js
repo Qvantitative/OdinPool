@@ -149,45 +149,84 @@ async function fetchActivitiesForRuneTicker(runeTicker) {
  * Prepare values for database insertion with proper type handling
  */
 function prepareActivityValues(activity) {
-  const amount = parseAmount(activity.amount);
-  const txValue = parseAmount(activity.txValue);
+  // Helper function to safely parse integers from strings
+  const safeParseInt = (value) => {
+    if (value === null || value === undefined) return null;
+    // Handle string numbers without decimals
+    const cleaned = value.toString().trim();
+    if (!cleaned) return null;
+    const parsed = parseInt(cleaned);
+    return isNaN(parsed) ? null : parsed;
+  };
 
-  // Log parsed values for debugging
-  if (amount !== null) {
-    console.log(`Parsed amount for activity ${activity.id}: ${amount}`);
-  }
-  if (txValue !== null) {
-    console.log(`Parsed txValue for activity ${activity.id}: ${txValue}`);
-  }
+  // Helper function to safely parse floats from strings
+  const safeParseFloat = (value) => {
+    if (value === null || value === undefined) return null;
+    // Handle string numbers with potential decimals
+    const cleaned = value.toString().trim();
+    if (!cleaned) return null;
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
+  };
 
-  return [
-    activity.id,
-    activity.kind,
-    activity.oldOwner,
-    activity.newOwner,
-    activity.address,
-    activity.rune,
-    amount,
-    txValue,
-    activity.txId,
-    activity.txVout !== undefined ? parseInt(activity.txVout) : null,
-    activity.txBlockTime,
-    activity.txBlockHeight !== undefined ? parseInt(activity.txBlockHeight) : null,
-    activity.txBlockHash,
-    activity.mempoolTxId,
-    activity.deletedAt,
-    activity.createdAt,
-    activity.listedPrice ? parseInt(activity.listedPrice) : null,
-    activity.listedMakerFeeBp !== undefined ? parseInt(activity.listedMakerFeeBp) : null,
-    activity.listedTakerFeeBp !== undefined ? parseInt(activity.listedTakerFeeBp) : null,
-    activity.btcUsdPrice ? parseFloat(activity.btcUsdPrice) : null,
-    activity.sellerPaymentReceiverAddress,
-    activity.buyerPaymentAddress,
-    activity.listingWalletSource,
-    activity.walletSource,
-    activity.isRbfProtectionBuyBroadcast === true || activity.isRbfProtectionBuyBroadcast === false ?
-      activity.isRbfProtectionBuyBroadcast : null
+  // Special handling for amount values which can be very large
+  const parseAmount = (value) => {
+    if (value === null || value === undefined) return null;
+    try {
+      // Remove any quotes and trim
+      const cleaned = value.toString().trim().replace(/['"]/g, '');
+      if (!cleaned) return null;
+
+      // Handle scientific notation if present
+      if (cleaned.includes('e')) {
+        return BigInt(cleaned).toString();
+      }
+
+      // Return the cleaned string for large numbers
+      // This preserves exact precision for large values
+      return cleaned.replace(/[^0-9-]/g, '');
+    } catch (error) {
+      console.warn(`Failed to parse amount value: ${value}`, error);
+      return null;
+    }
+  };
+
+  // Parse the values with proper handling for the exact format we're seeing
+  const parsedValues = [
+    activity.id,                                    // String UUID
+    activity.kind,                                  // String enum
+    activity.oldOwner,                             // String address
+    activity.newOwner,                             // Can be null
+    activity.address,                              // String address
+    activity.rune,                                 // String ticker
+    parseAmount(activity.amount),                  // String number
+    activity.txValue,                              // Can be null
+    activity.txId,                                 // Can be null
+    activity.txVout,                               // Can be null
+    activity.txBlockTime,                          // Can be null
+    activity.txBlockHeight,                        // Can be null
+    activity.txBlockHash,                          // Can be null
+    activity.mempoolTxId,                          // Can be null
+    activity.deletedAt,                            // Can be null
+    activity.createdAt,                            // String timestamp
+    safeParseInt(activity.listedPrice),            // String number
+    activity.listedMakerFeeBp,                     // Number or null
+    activity.listedTakerFeeBp,                     // Can be null
+    safeParseFloat(activity.btcUsdPrice),          // String float
+    activity.sellerPaymentReceiverAddress,         // String address
+    activity.buyerPaymentAddress,                  // Can be null
+    activity.listingWalletSource,                  // String enum
+    activity.walletSource,                         // Can be null
+    activity.isRbfProtectionBuyBroadcast           // Can be null
   ];
+
+  // Log the parsed values for debugging
+  console.log(`Processing activity ${activity.id}:`);
+  console.log(`- Amount: ${parsedValues[6]} (original: ${activity.amount})`);
+  console.log(`- Listed Price: ${parsedValues[16]} (original: ${activity.listedPrice})`);
+  console.log(`- BTC USD Price: ${parsedValues[19]} (original: ${activity.btcUsdPrice})`);
+
+  return parsedValues;
 }
 
 /**

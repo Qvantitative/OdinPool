@@ -53,6 +53,24 @@ function parseNumericValue(value) {
 }
 
 /**
+ * Parse amount values safely handling large numbers
+ */
+function parseAmount(value) {
+  if (value === null || value === undefined || value === '') return null;
+
+  // Remove any non-numeric characters except minus sign
+  const cleanedValue = value.toString().replace(/[^0-9-]/g, '');
+
+  // For very large numbers, keep as string to avoid precision loss
+  if (cleanedValue.length > 15) {
+    return cleanedValue;
+  }
+
+  const parsed = parseInt(cleanedValue, 10);
+  return isNaN(parsed) ? null : parsed;
+}
+
+/**
  * Retry mechanism for API calls
  */
 async function withRetry(operation, retries = MAX_RETRIES) {
@@ -123,7 +141,7 @@ async function fetchActivitiesForRuneTicker(runeTicker) {
 }
 
 /**
- * Prepare values for database insertion
+ * Prepare values for database insertion with proper type handling
  */
 function prepareActivityValues(activity) {
   return [
@@ -133,8 +151,8 @@ function prepareActivityValues(activity) {
     activity.newOwner,
     activity.address,
     activity.rune,
-    activity.amount ? parseInt(activity.amount) : null,
-    activity.txValue ? parseInt(activity.txValue) : null,
+    parseAmount(activity.amount), // Use special parsing for amount
+    activity.txValue ? parseAmount(activity.txValue) : null,
     activity.txId,
     activity.txVout !== undefined ? parseInt(activity.txVout) : null,
     activity.txBlockTime,
@@ -157,7 +175,7 @@ function prepareActivityValues(activity) {
 }
 
 /**
- * Insert activities into database
+ * Modified insertRuneActivitiesToDB function with updated INSERT query
  */
 async function insertRuneActivitiesToDB(runeTicker, activities) {
   if (!Array.isArray(activities) || activities.length === 0) {

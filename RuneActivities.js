@@ -34,9 +34,12 @@ async function fetchRuneTickersFromAPI() {
     const response = await axios.get(url, { headers });
 
     if (Array.isArray(response.data.runes)) {
-      // Extract just the ticker of each rune
-      const tickers = response.data.runes.map(r => r.rune).filter(Boolean);
-      return tickers;
+      // Extract runes sorted by volume
+      const allTickers = response.data.runes.map(r => r.rune).filter(Boolean);
+
+      // Take only top 20
+      const top20Tickers = allTickers.slice(0, 20);
+      return top20Tickers;
     } else {
       console.warn('Unexpected response format for runes');
       return [];

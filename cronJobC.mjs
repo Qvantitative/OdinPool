@@ -4,13 +4,11 @@ import cron from 'node-cron';
 import { updateWalletActivities } from './runesWallet.js';
 import { updateRunesActivities } from './RunesActivities.js';
 
-// ***** NEW IMPORT ADDED BELOW *****
-import { updateRunesActivities as updateNewRuneActivities } from './RuneActivities.js';
-
 const WALLETS_TO_TRACK = [
   'bc1pt65exley6pv6uqws7xr3ku7u922tween0nfyz257rnl5300cjnrsjp9er6' // Add or replace wallet addresses as needed
 ];
 
+// Track running state for each wallet and runes activities
 const runningState = {
   walletActivities: new Set(),
   runesActivitiesUpdate: false
@@ -145,49 +143,3 @@ process.on('SIGINT', () => {
 
 startCronJobs();
 process.stdin.resume();
-
-// ***** NEW CODE ADDED BELOW *****
-// This code adds similar logic for the new RuneActivities.js
-
-// Running state for the new RuneActivities (not altering existing keys, just adding a new variable)
-let runningNewRuneActivitiesUpdate = false;
-
-async function updateNewRuneActivitiesWithState() {
-  if (runningNewRuneActivitiesUpdate) {
-    console.log(`[${new Date().toISOString()}] New Rune activities update already running. Skipping.`);
-    return;
-  }
-
-  runningNewRuneActivitiesUpdate = true;
-  console.log(`[${new Date().toISOString()}] Starting new Rune activities update`);
-
-  try {
-    await withTimeout(
-      updateNewRuneActivities(), // from RuneActivities.js
-      TIMEOUTS.RUNES_ACTIVITIES_UPDATE,
-      'New Rune activities update'
-    );
-    console.log(`[${new Date().toISOString()}] Completed new Rune activities update`);
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error in new Rune activities update:`, error);
-    await handleTimeout(error);
-  } finally {
-    runningNewRuneActivitiesUpdate = false;
-  }
-}
-
-// Schedule the new Rune activities update every 5 minutes (or another interval as desired)
-cron.schedule('*/5 * * * *', async () => {
-  console.log(`[${new Date().toISOString()}] Running new Rune activities update`);
-  await updateNewRuneActivitiesWithState();
-});
-
-// Also run it once on startup
-(async () => {
-  try {
-    console.log(`[${new Date().toISOString()}] Running initial updates for new Rune activities`);
-    await updateNewRuneActivitiesWithState();
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error in initial setup for new Rune activities:`, error);
-  }
-})();

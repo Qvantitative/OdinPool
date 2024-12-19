@@ -114,7 +114,8 @@ async function fetchActivitiesForRuneTicker(runeTicker) {
     console.log(`Fetching activities for ${runeTicker}`);
     const response = await api.get(`/runes/activities/${runeTicker}`);
 
-    const activities = response.data?.activities || [];
+    // The response is an array directly, not nested under 'activities'
+    const activities = Array.isArray(response.data) ? response.data : [];
     console.log(`Found ${activities.length} activities for ${runeTicker}`);
 
     return activities;

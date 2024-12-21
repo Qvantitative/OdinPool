@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import TrendingRunesChart from './TrendingRunesChart';
+import TrendingRunesChart from './TrendingRunes';
 
 const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';

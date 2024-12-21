@@ -15,6 +15,7 @@ const TrendingRunesChart = ({ runes, loading, error }) => {
 
       const size = 30 + (marketCapRatio * 70);
 
+      // Generate a spiral layout
       const phi = (1 + Math.sqrt(5)) / 2;
       const i = index + 1;
       const theta = i * phi * Math.PI;
@@ -57,7 +58,7 @@ const TrendingRunesChart = ({ runes, loading, error }) => {
             <circle
               r={rune.size / 10}
               fill={rune.color}
-              opacity={hoveredRune?.rune_ticker === rune.rune_ticker ? "0.9" : "0.7"}
+              opacity={hoveredRune?.rune_ticker === rune.rune_ticker ? '0.9' : '0.7'}
               className="transition-all duration-300"
             />
             <text
@@ -74,13 +75,15 @@ const TrendingRunesChart = ({ runes, loading, error }) => {
       </svg>
 
       {hoveredRune && (
-        <div className="absolute bg-gray-900 text-white p-4 rounded shadow-lg text-sm"
-             style={{
-               left: `${hoveredRune.x}%`,
-               top: `${hoveredRune.y}%`,
-               transform: 'translate(-50%, -120%)',
-               zIndex: 10
-             }}>
+        <div
+          className="absolute bg-gray-900 text-white p-4 rounded shadow-lg text-sm"
+          style={{
+            left: `${hoveredRune.x}%`,
+            top: `${hoveredRune.y}%`,
+            transform: 'translate(-50%, -120%)',
+            zIndex: 10
+          }}
+        >
           <div className="font-bold">{hoveredRune.rune_name}</div>
           <div>Market Cap: {formatNumber(hoveredRune.market_cap)}</div>
           <div>24h Volume: {formatNumber(hoveredRune.volume_24h)}</div>

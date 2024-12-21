@@ -161,7 +161,8 @@ const TrendingRunes = () => {
       <div className="relative w-full" style={{ minHeight: '600px' }}>
         <svg
           className="w-full h-[600px]"
-          viewBox="0 0 100 100"
+          width="100%"
+          height="800" // or whatever height you want
           preserveAspectRatio="xMidYMid meet"
         >
           {/* Background */}

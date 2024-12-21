@@ -1,6 +1,7 @@
 // app/components/blocks/TrendingRunes.js
 
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import TrendingRunesChart from '../charts/TrendingRunes';
 
 const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';
@@ -44,6 +45,7 @@ const formatPrice = (value) => {
 };
 
 const TrendingRunes = () => {
+  const [viewMode, setViewMode] = useState('table');
   const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -110,13 +112,43 @@ const TrendingRunes = () => {
       <div className="w-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Trending Runes</h2>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-4 py-2 rounded-md transition-colors duration-200 ${
+                viewMode === 'table'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Table View
+            </button>
+            <button
+              onClick={() => setViewMode('chart')}
+              className={`px-4 py-2 rounded-md transition-colors duration-200 ${
+                viewMode === 'chart'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Bubble Chart
+            </button>
+          </div>
         </div>
 
         {error && <div className="text-red-500">{error}</div>}
-        {loading && <div>Loading...</div>}
 
-        {!loading && (
-          <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+        {viewMode === 'chart' ? (
+          <TrendingRunesChart
+            runes={sortedRunes}
+            loading={loading}
+            error={error}
+          />
+        ) : (
+          <>
+            {loading && <div>Loading...</div>}
+            {!loading && (
+              <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
             <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
               <thead>
                 <tr>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import TrendingRunesChart from './TrendingRunes';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import TrendingRunesChart from './TrendingRunesChart';
 
 const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';
@@ -42,9 +42,7 @@ const TrendingRunes = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'volume_24h', direction: 'descending' });
   const [pagination, setPagination] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Toggle between table and chart
-  const [view, setView] = useState('table'); // "table" or "chart"
+  const [view, setView] = useState('table'); // Single view state
 
   const fetchRunesData = useCallback(async (page = 1) => {
     setLoading(true);
@@ -104,7 +102,7 @@ const TrendingRunes = () => {
     <div className="w-full">
       {error && <div className="text-red-500">{error}</div>}
 
-      {/* Buttons to toggle between table view and chart view */}
+      {/* Single set of view toggle buttons */}
       <div className="mb-4 flex gap-2">
         <button
           onClick={() => setView('table')}
@@ -128,8 +126,10 @@ const TrendingRunes = () => {
         </button>
       </div>
 
-      {/* Render either table or the bubble chart */}
-      {view === 'table' ? (
+      {/* Conditional rendering based on view state */}
+      {view === 'chart' ? (
+        <TrendingRunesChart runes={sortedRunes} loading={loading} error={error} />
+      ) : (
         <>
           {loading ? (
             <div>Loading...</div>
@@ -208,7 +208,9 @@ const TrendingRunes = () => {
                       <td className="border border-gray-400 px-2 py-1">
                         {formatNumber(rune.holder_count, 0)}
                       </td>
-                      <td className="border border-gray-400 px-2 py-1">{formatNumber(rune.volume_24h)}</td>
+                      <td className="border border-gray-400 px-2 py-1">
+                        {formatNumber(rune.volume_24h)}
+                      </td>
                       <td className="border border-gray-400 px-2 py-1">
                         {formatNumber(rune.total_volume)}
                       </td>
@@ -248,12 +250,9 @@ const TrendingRunes = () => {
             </div>
           )}
         </>
-      ) : (
-        // Chart view
-        <TrendingRunesChart runes={runes} loading={loading} error={error} />
       )}
     </div>
   );
 };
 
-export default memo(TrendingRunes);
+export default TrendingRunes;

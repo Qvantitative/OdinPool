@@ -78,8 +78,8 @@ const TrendingRunes = () => {
     // Attempts per bubble for random placement
     const maxAttempts = 500;
     // Range for bubble size in px-like units (used in viewBox space)
-    const MIN_SIZE = 30;
-    const MAX_SIZE = 150;
+    const MIN_SIZE = 100;
+    const MAX_SIZE = 300;
     // Margin from the edges
     const margin = 5;
 

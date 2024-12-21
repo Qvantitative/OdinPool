@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import TrendingCollections from './TrendingCollections';
-import TrendingRunes from './TrendingRunes';
+import TrendingRunes from './charts/TrendingRunes';
 
 const TrendingWrapper = () => {
   const [activeView, setActiveView] = useState('collections');

@@ -4,7 +4,7 @@ import React, { useState, memo } from 'react';
 import TrendingCollections from './TrendingCollections';
 import TrendingRunes from './TrendingRunes';
 
-const TrendingWrapper = () => {  // Remove the props
+const TrendingWrapper = () => {
   const [activeView, setActiveView] = useState('collections');
 
   return (

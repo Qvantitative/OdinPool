@@ -21,9 +21,8 @@ const abbreviateName = (name, maxLength = 6) => {
   return name.length <= maxLength ? name : name.slice(0, maxLength - 1) + '…';
 };
 
-// Simple color logic: green if up, red if down
-// Use partial opacity to make the bubbles look less solid
 const getBubbleFill = (percentChange) => {
+  // Green if up, red if down, partial opacity
   return percentChange >= 0
     ? 'rgba(22, 199, 132, 0.4)' // greenish
     : 'rgba(207, 43, 43, 0.4)'; // reddish
@@ -31,8 +30,8 @@ const getBubbleFill = (percentChange) => {
 
 const getBubbleStroke = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.6)' // greenish glow
-    : 'rgba(207, 43, 43, 0.6)'; // reddish glow
+    ? 'rgba(22, 199, 132, 0.6)'
+    : 'rgba(207, 43, 43, 0.6)';
 };
 
 const TrendingRunes = () => {
@@ -64,7 +63,7 @@ const TrendingRunes = () => {
   const normalizedData = useMemo(() => {
     if (!runes?.length) return [];
 
-    // Sort by market cap so that bigger caps get drawn first (behind smaller ones)
+    // Sort by market cap so bigger caps are drawn behind (first in the array).
     const sortedRunes = [...runes].sort(
       (a, b) => (b.market_cap || 0) - (a.market_cap || 0)
     );
@@ -74,21 +73,28 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => r.market_cap || 0)
     );
 
-    // Where we'll store final placed bubble data
-    const placedBubbles = [];
+    // We’ll place up to these many bubbles
+    const maxBubbles = 50;
+    // Attempts per bubble for random placement
+    const maxAttempts = 500;
+    // Range for bubble size in px-like units (used in viewBox space)
+    const MIN_SIZE = 30;
+    const MAX_SIZE = 150;
+    // Margin from the edges
+    const margin = 5;
 
-    // Try to place each bubble in a random non-overlapping position
-    const maxBubbles = 50; // only place up to 50
-    const maxAttempts = 500; // attempts per bubble
-    const margin = 2; // extra space from the viewBox edges
+    const placedBubbles = [];
 
     for (let i = 0; i < sortedRunes.length && placedBubbles.length < maxBubbles; i++) {
       const rune = sortedRunes[i];
-      const size = 20 + ((rune.market_cap || 0) / maxMarketCap) * 80;
-      // Radius in the SVG coordinate system
+      // Pick a size based on market cap
+      const size =
+        MIN_SIZE + ((rune.market_cap || 0) / maxMarketCap) * (MAX_SIZE - MIN_SIZE);
+
+      // Convert size to radius in the SVG’s coordinate system
       const radius = size / 10;
 
-      // Compute percent change (you can adapt your logic here)
+      // Simple 24h % change calculation
       const percentChange =
         ((rune.volume_24h || 0) / (rune.total_volume || 1) - 1) * 100;
 
@@ -98,7 +104,7 @@ const TrendingRunes = () => {
         const x = radius + margin + Math.random() * (100 - 2 * (radius + margin));
         const y = radius + margin + Math.random() * (100 - 2 * (radius + margin));
 
-        // Check overlap with already-placed bubbles
+        // Check overlap with previously placed bubbles
         let overlap = false;
         for (const pb of placedBubbles) {
           const dx = x - pb.x;
@@ -111,7 +117,6 @@ const TrendingRunes = () => {
           }
         }
 
-        // If no overlap, place it and break
         if (!overlap) {
           placedBubbles.push({
             ...rune,
@@ -126,8 +131,7 @@ const TrendingRunes = () => {
         }
       }
 
-      // If we couldn't place it after maxAttempts, ignore or forcibly place
-      // (Below just ignores it; you could forcibly place, but it might overlap.)
+      // If we can’t place it after maxAttempts, we skip.
       if (!placed) {
         console.warn(`Could not place ${rune.rune_name} after ${maxAttempts} tries.`);
       }
@@ -173,6 +177,7 @@ const TrendingRunes = () => {
                 onMouseEnter={() => setHoveredRune(rune)}
                 onMouseLeave={() => setHoveredRune(null)}
                 className="cursor-pointer transition-transform duration-200"
+                // Move the group to (x%, y%), then apply hover scale.
                 style={{
                   transform: `translate(${rune.x}%, ${rune.y}%) scale(${
                     isHovered ? 1.1 : 1
@@ -181,7 +186,7 @@ const TrendingRunes = () => {
               >
                 {/* Glow outline */}
                 <circle
-                  r={rune.r + 2} // a bit larger than main bubble
+                  r={rune.r + 2}
                   fill="transparent"
                   stroke={getBubbleStroke(rune.percentChange)}
                   strokeWidth="2"

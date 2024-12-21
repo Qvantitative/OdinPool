@@ -1,5 +1,3 @@
-// app/components/blocks/TrendingWrapper.js
-
 import React, { useState, memo } from 'react';
 import TrendingCollections from './TrendingCollections';
 import TrendingRunes from './TrendingRunes';
@@ -7,11 +5,16 @@ import TrendingRunes from './TrendingRunes';
 const TrendingWrapper = () => {
   const [activeView, setActiveView] = useState('collections');
 
+  const handleViewChange = (view) => {
+    console.log(`Switching to ${view} view`);
+    setActiveView(view);
+  };
+
   return (
     <div className="w-full max-w-[1600px] mx-auto">
       <div className="flex gap-2 mb-4">
         <button
-          onClick={() => setActiveView('collections')}
+          onClick={() => handleViewChange('collections')}
           className={`px-4 py-2 rounded ${
             activeView === 'collections'
               ? 'bg-blue-500 text-white'
@@ -21,7 +24,7 @@ const TrendingWrapper = () => {
           Collections
         </button>
         <button
-          onClick={() => setActiveView('runes')}
+          onClick={() => handleViewChange('runes')}
           className={`px-4 py-2 rounded ${
             activeView === 'runes'
               ? 'bg-blue-500 text-white'

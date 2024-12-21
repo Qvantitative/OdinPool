@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import TrendingRunesChart from './TrendingRunes';
+// app/components/blocks/TrendingRunes.js
+
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 
 const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';
+
   try {
     const numValue = Number(value);
     if (isNaN(numValue)) return 'N/A';
@@ -14,12 +16,28 @@ const formatNumber = (value, decimals = 2) => {
 
     const absValue = Math.abs(numValue);
 
-    if (absValue >= trillion) return `${(numValue / trillion).toFixed(decimals)}T`;
-    if (absValue >= billion) return `${(numValue / billion).toFixed(decimals)}B`;
-    if (absValue >= million) return `${(numValue / million).toFixed(decimals)}M`;
-    if (absValue >= thousand) return `${(numValue / thousand).toFixed(decimals)}K`;
+    if (absValue >= trillion) {
+      return `${(numValue / trillion).toFixed(decimals)}T`;
+    } else if (absValue >= billion) {
+      return `${(numValue / billion).toFixed(decimals)}B`;
+    } else if (absValue >= million) {
+      return `${(numValue / million).toFixed(decimals)}M`;
+    } else if (absValue >= thousand) {
+      return `${(numValue / thousand).toFixed(decimals)}K`;
+    }
 
     return numValue.toFixed(decimals);
+  } catch (error) {
+    console.error('Error formatting number:', error);
+    return 'N/A';
+  }
+};
+
+const formatPrice = (value) => {
+  if (value === null || value === undefined) return 'N/A';
+  try {
+    const numValue = Number(value);
+    return isNaN(numValue) ? 'N/A' : numValue.toFixed(8);
   } catch {
     return 'N/A';
   }
@@ -32,7 +50,6 @@ const TrendingRunes = () => {
   const [sortConfig, setSortConfig] = useState({ key: 'volume_24h', direction: 'descending' });
   const [pagination, setPagination] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [view, setView] = useState('table');
 
   const fetchRunesData = useCallback(async (page = 1) => {
     setLoading(true);
@@ -42,16 +59,17 @@ const TrendingRunes = () => {
       const data = await response.json();
       setRunes(data.data);
       setPagination(data.pagination);
-    } catch (err) {
+    } catch (error) {
       setError('Error fetching runes data.');
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }
   }, []);
 
   const sortedRunes = useMemo(() => {
-    const sortableRunes = [...runes];
-    if (sortConfig.key) {
+    let sortableRunes = [...runes];
+    if (sortConfig.key !== null) {
       sortableRunes.sort((a, b) => {
         if (sortConfig.key === 'rune_name' || sortConfig.key === 'rune_ticker') {
           return sortConfig.direction === 'ascending'
@@ -60,7 +78,9 @@ const TrendingRunes = () => {
         } else {
           const aValue = Number(a[sortConfig.key]) || 0;
           const bValue = Number(b[sortConfig.key]) || 0;
-          return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
+          return sortConfig.direction === 'ascending'
+            ? aValue - bValue
+            : bValue - aValue;
         }
       });
     }
@@ -68,99 +88,119 @@ const TrendingRunes = () => {
   }, [runes, sortConfig]);
 
   const handleSort = useCallback((key) => {
-    setSortConfig((prev) => ({
+    setSortConfig((prevConfig) => ({
       key,
-      direction:
-        prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending',
+      direction: prevConfig.key === key && prevConfig.direction === 'ascending'
+        ? 'descending'
+        : 'ascending'
     }));
   }, []);
 
-  const handlePageChange = useCallback(
-    (newPage) => {
-      setCurrentPage(newPage);
-      fetchRunesData(newPage);
-    },
-    [fetchRunesData]
-  );
+  const handlePageChange = useCallback((newPage) => {
+    setCurrentPage(newPage);
+    fetchRunesData(newPage);
+  }, [fetchRunesData]);
 
   useEffect(() => {
     fetchRunesData(currentPage);
   }, [fetchRunesData, currentPage]);
 
-  const handleViewChange = (newView) => setView(newView);
-
   return (
     <div className="w-full">
       {error && <div className="text-red-500">{error}</div>}
 
-      <div className="mb-4 flex gap-2">
-        <button
-          onClick={() => handleViewChange('table')}
-          className={`px-4 py-2 rounded ${
-            view === 'table'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          Table View
-        </button>
-        <button
-          onClick={() => handleViewChange('chart')}
-          className={`px-4 py-2 rounded ${
-            view === 'chart'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          Chart View
-        </button>
-      </div>
-
-      {view === 'chart' ? (
-        <TrendingRunesChart runes={sortedRunes} loading={loading} error={error} />
+      {loading ? (
+        <div>Loading...</div>
       ) : (
-        <>
-          {loading ? (
-            <div>Loading...</div>
-          ) : (
-            <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
-                <thead>
-                  <tr>
-                    <th onClick={() => handleSort('rune_ticker')}>Ticker</th>
-                    <th>Symbol</th>
-                    <th onClick={() => handleSort('rune_name')}>Name</th>
-                    <th onClick={() => handleSort('holder_count')}>Holders</th>
-                    <th onClick={() => handleSort('volume_24h')}>24h Volume</th>
-                    <th onClick={() => handleSort('market_cap')}>Market Cap</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRunes.map((rune) => (
-                    <tr key={rune.rune_ticker}>
-                      <td>{rune.rune_ticker}</td>
-                      <td>{rune.symbol}</td>
-                      <td>{rune.rune_name}</td>
-                      <td>{formatNumber(rune.holder_count)}</td>
-                      <td>{formatNumber(rune.volume_24h)}</td>
-                      <td>{formatNumber(rune.market_cap)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {pagination && (
-            <div className="flex justify-center gap-2 mt-4">
-              <button onClick={() => handlePageChange(pagination.prevPage)}>Previous</button>
-              <span>Page {pagination.currentPage} of {pagination.totalPages}</span>
-              <button onClick={() => handlePageChange(pagination.nextPage)}>Next</button>
-            </div>
-          )}
-        </>
+        <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+          <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
+            <thead>
+              <tr>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('rune_ticker')}>
+                  Ticker {sortConfig.key === 'rune_ticker' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="border border-gray-400 px-2 py-1">
+                  Symbol
+                </th>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('rune_name')}>
+                  Name {sortConfig.key === 'rune_name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('holder_count')}>
+                  Holders {sortConfig.key === 'holder_count' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('volume_24h')}>
+                  24h Volume {sortConfig.key === 'volume_24h' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('total_volume')}>
+                  Total Volume {sortConfig.key === 'total_volume' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('unit_price_sats')}>
+                  Price (sats) {sortConfig.key === 'unit_price_sats' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+                <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('market_cap')}>
+                  Market Cap {sortConfig.key === 'market_cap' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedRunes.map((rune) => (
+                <tr key={rune.rune_ticker}>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {rune.rune_ticker}
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {rune.symbol}
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    <span className="font-bold">
+                      {rune.rune_name}
+                    </span>
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {formatNumber(rune.holder_count, 0)}
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {formatNumber(rune.volume_24h)}
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {formatNumber(rune.total_volume)}
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {formatPrice(rune.unit_price_sats)}
+                  </td>
+                  <td className="border border-gray-400 px-2 py-1">
+                    {formatNumber(rune.market_cap)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {pagination && (
+        <div className="flex justify-center gap-2 mt-4">
+          <button
+            onClick={() => handlePageChange(pagination.prevPage)}
+            disabled={!pagination.hasPrevPage}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-4 py-2">
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(pagination.nextPage)}
+            disabled={!pagination.hasNextPage}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       )}
     </div>
   );
 };
 
-export default TrendingRunes;
+export default memo(TrendingRunes);

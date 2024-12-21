@@ -31,8 +31,8 @@ const getBubbleFill = (percentChange) => {
 
 const getBubbleStroke = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.6)'
-    : 'rgba(207, 43, 43, 0.6)';
+    ? 'rgba(22, 199, 132, 0.6)' // greenish glow
+    : 'rgba(207, 43, 43, 0.6)'; // reddish glow
 };
 
 const TrendingRunes = () => {
@@ -69,30 +69,71 @@ const TrendingRunes = () => {
       (a, b) => (b.market_cap || 0) - (a.market_cap || 0)
     );
 
+    // For bubble sizes
     const maxMarketCap = Math.max(
       ...sortedRunes.map((r) => r.market_cap || 0)
     );
 
-    return sortedRunes.slice(0, 50).map((rune) => {
-      // Bubble size range: 20–100
+    // Where we'll store final placed bubble data
+    const placedBubbles = [];
+
+    // Try to place each bubble in a random non-overlapping position
+    const maxBubbles = 50; // only place up to 50
+    const maxAttempts = 500; // attempts per bubble
+    const margin = 2; // extra space from the viewBox edges
+
+    for (let i = 0; i < sortedRunes.length && placedBubbles.length < maxBubbles; i++) {
+      const rune = sortedRunes[i];
       const size = 20 + ((rune.market_cap || 0) / maxMarketCap) * 80;
+      // Radius in the SVG coordinate system
+      const radius = size / 10;
 
-      // Random layout for the scattered bubble effect
-      const x = 5 + Math.random() * 90;
-      const y = 5 + Math.random() * 90;
-
-      // Simple way of computing a 24h percent change (modify to your liking):
+      // Compute percent change (you can adapt your logic here)
       const percentChange =
         ((rune.volume_24h || 0) / (rune.total_volume || 1) - 1) * 100;
 
-      return {
-        ...rune,
-        size,
-        x,
-        y,
-        percentChange,
-      };
-    });
+      let placed = false;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Random x,y in [radius+margin, 100-(radius+margin)]
+        const x = radius + margin + Math.random() * (100 - 2 * (radius + margin));
+        const y = radius + margin + Math.random() * (100 - 2 * (radius + margin));
+
+        // Check overlap with already-placed bubbles
+        let overlap = false;
+        for (const pb of placedBubbles) {
+          const dx = x - pb.x;
+          const dy = y - pb.y;
+          const distSq = dx * dx + dy * dy;
+          const minDist = radius + pb.r;
+          if (distSq < minDist * minDist) {
+            overlap = true;
+            break;
+          }
+        }
+
+        // If no overlap, place it and break
+        if (!overlap) {
+          placedBubbles.push({
+            ...rune,
+            size,
+            r: radius,
+            x,
+            y,
+            percentChange,
+          });
+          placed = true;
+          break;
+        }
+      }
+
+      // If we couldn't place it after maxAttempts, ignore or forcibly place
+      // (Below just ignores it; you could forcibly place, but it might overlap.)
+      if (!placed) {
+        console.warn(`Could not place ${rune.rune_name} after ${maxAttempts} tries.`);
+      }
+    }
+
+    return placedBubbles;
   }, [runes]);
 
   if (loading) {
@@ -129,7 +170,6 @@ const TrendingRunes = () => {
             return (
               <g
                 key={rune.rune_ticker}
-                transform={`translate(${rune.x},${rune.y})`}
                 onMouseEnter={() => setHoveredRune(rune)}
                 onMouseLeave={() => setHoveredRune(null)}
                 className="cursor-pointer transition-transform duration-200"
@@ -139,25 +179,22 @@ const TrendingRunes = () => {
                   })`,
                 }}
               >
-                {/* Subtle glow outline */}
+                {/* Glow outline */}
                 <circle
-                  r={rune.size / 8 + 2}
+                  r={rune.r + 2} // a bit larger than main bubble
                   fill="transparent"
                   stroke={getBubbleStroke(rune.percentChange)}
                   strokeWidth="2"
-                  style={{
-                    filter: 'blur(3px)',
-                  }}
+                  style={{ filter: 'blur(3px)' }}
                 />
                 {/* Main bubble */}
                 <circle
-                  r={rune.size / 10}
+                  r={rune.r}
                   fill={getBubbleFill(rune.percentChange)}
-                  // Make it even more transparent if desired
                   opacity={0.9}
                 />
 
-                {/* Name (abbreviated) in the center (top) */}
+                {/* Name (abbreviated) in center (upper text) */}
                 <text
                   textAnchor="middle"
                   dy="-0.3em"
@@ -168,7 +205,7 @@ const TrendingRunes = () => {
                   {abbreviateName(rune.rune_name || '', 6)}
                 </text>
 
-                {/* 24h % change in the center (bottom) */}
+                {/* 24h % change (lower text) */}
                 <text
                   textAnchor="middle"
                   dy="0.9em"

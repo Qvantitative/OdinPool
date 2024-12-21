@@ -6,24 +6,29 @@ const TrendingRunesChart = ({ runes, loading, error }) => {
   const normalizedData = useMemo(() => {
     if (!runes?.length) return [];
 
-    const maxMarketCap = Math.max(...runes.map(r => r.market_cap || 0));
-    const maxVolume = Math.max(...runes.map(r => r.volume_24h || 0));
+    // Find max Market Cap & Volume to scale bubble size & color intensity
+    const maxMarketCap = Math.max(...runes.map((r) => r.market_cap || 0));
+    const maxVolume = Math.max(...runes.map((r) => r.volume_24h || 0));
 
+    // Show top 30 runes in a spiral
     return runes.slice(0, 30).map((rune, index) => {
       const marketCapRatio = (rune.market_cap || 0) / maxMarketCap;
       const volumeRatio = (rune.volume_24h || 0) / maxVolume;
 
-      const size = 30 + (marketCapRatio * 70);
+      // Bubble size: min 30, up to ~100 px
+      const size = 30 + marketCapRatio * 70;
 
-      // Generate a spiral layout
+      // Golden spiral layout:
       const phi = (1 + Math.sqrt(5)) / 2;
       const i = index + 1;
       const theta = i * phi * Math.PI;
       const distance = Math.sqrt(i) / Math.sqrt(runes.length);
 
+      // x,y in [0..100] -> use as percentages in the SVG viewBox
       const x = distance * Math.cos(theta) * 40 + 50;
       const y = distance * Math.sin(theta) * 40 + 50;
 
+      // Color intensity is based on 24h volume
       const colorIntensity = Math.floor(volumeRatio * 200);
 
       return {
@@ -74,6 +79,7 @@ const TrendingRunesChart = ({ runes, loading, error }) => {
         ))}
       </svg>
 
+      {/* Hover tooltip */}
       {hoveredRune && (
         <div
           className="absolute bg-gray-900 text-white p-4 rounded shadow-lg text-sm"
@@ -98,7 +104,7 @@ const TrendingRunesChart = ({ runes, loading, error }) => {
   );
 };
 
-// Helper function for number formatting
+// Simple number formatter
 const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';
   try {

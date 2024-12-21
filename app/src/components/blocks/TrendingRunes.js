@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import TrendingRunesChart from './TrendingRunes';
+import TrendingRunesChart from './TrendingRunesChart';
 
 const formatNumber = (value, decimals = 2) => {
   if (value === null || value === undefined) return 'N/A';
-
   try {
     const numValue = Number(value);
     if (isNaN(numValue)) return 'N/A';
@@ -15,19 +14,13 @@ const formatNumber = (value, decimals = 2) => {
 
     const absValue = Math.abs(numValue);
 
-    if (absValue >= trillion) {
-      return `${(numValue / trillion).toFixed(decimals)}T`;
-    } else if (absValue >= billion) {
-      return `${(numValue / billion).toFixed(decimals)}B`;
-    } else if (absValue >= million) {
-      return `${(numValue / million).toFixed(decimals)}M`;
-    } else if (absValue >= thousand) {
-      return `${(numValue / thousand).toFixed(decimals)}K`;
-    }
+    if (absValue >= trillion) return `${(numValue / trillion).toFixed(decimals)}T`;
+    if (absValue >= billion) return `${(numValue / billion).toFixed(decimals)}B`;
+    if (absValue >= million) return `${(numValue / million).toFixed(decimals)}M`;
+    if (absValue >= thousand) return `${(numValue / thousand).toFixed(decimals)}K`;
 
     return numValue.toFixed(decimals);
-  } catch (error) {
-    console.error('Error formatting number:', error);
+  } catch {
     return 'N/A';
   }
 };
@@ -50,8 +43,8 @@ const TrendingRunes = () => {
   const [pagination, setPagination] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // NEW: state to toggle table vs. chart
-  const [view, setView] = useState('table'); // 'table' or 'chart'
+  // Toggle between table and chart
+  const [view, setView] = useState('table'); // "table" or "chart"
 
   const fetchRunesData = useCallback(async (page = 1) => {
     setLoading(true);
@@ -61,17 +54,17 @@ const TrendingRunes = () => {
       const data = await response.json();
       setRunes(data.data);
       setPagination(data.pagination);
-    } catch (error) {
+    } catch (err) {
       setError('Error fetching runes data.');
-      console.error('Fetch error:', error);
+      console.error('Fetch error:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   const sortedRunes = useMemo(() => {
-    let sortableRunes = [...runes];
-    if (sortConfig.key !== null) {
+    const sortableRunes = [...runes];
+    if (sortConfig.key) {
       sortableRunes.sort((a, b) => {
         if (sortConfig.key === 'rune_name' || sortConfig.key === 'rune_ticker') {
           return sortConfig.direction === 'ascending'
@@ -80,9 +73,7 @@ const TrendingRunes = () => {
         } else {
           const aValue = Number(a[sortConfig.key]) || 0;
           const bValue = Number(b[sortConfig.key]) || 0;
-          return sortConfig.direction === 'ascending'
-            ? aValue - bValue
-            : bValue - aValue;
+          return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
         }
       });
     }
@@ -90,19 +81,20 @@ const TrendingRunes = () => {
   }, [runes, sortConfig]);
 
   const handleSort = useCallback((key) => {
-    setSortConfig((prevConfig) => ({
+    setSortConfig((prev) => ({
       key,
       direction:
-        prevConfig.key === key && prevConfig.direction === 'ascending'
-          ? 'descending'
-          : 'ascending'
+        prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending'
     }));
   }, []);
 
-  const handlePageChange = useCallback((newPage) => {
-    setCurrentPage(newPage);
-    fetchRunesData(newPage);
-  }, [fetchRunesData]);
+  const handlePageChange = useCallback(
+    (newPage) => {
+      setCurrentPage(newPage);
+      fetchRunesData(newPage);
+    },
+    [fetchRunesData]
+  );
 
   useEffect(() => {
     fetchRunesData(currentPage);
@@ -112,8 +104,8 @@ const TrendingRunes = () => {
     <div className="w-full">
       {error && <div className="text-red-500">{error}</div>}
 
-      {/* NEW: Buttons to switch between table view and chart view */}
-      <div className="flex gap-2 mb-4">
+      {/* Buttons to toggle between table view and chart view */}
+      <div className="mb-4 flex gap-2">
         <button
           onClick={() => setView('table')}
           className={`px-4 py-2 rounded ${
@@ -136,16 +128,13 @@ const TrendingRunes = () => {
         </button>
       </div>
 
-      {/* Conditional rendering for Table vs Chart */}
-      {view === 'table' && (
+      {/* Render either table or the bubble chart */}
+      {view === 'table' ? (
         <>
           {loading ? (
             <div>Loading...</div>
           ) : (
-            <div
-              className="scroll-container w-full"
-              style={{ maxHeight: '600px', overflowY: 'auto' }}
-            >
+            <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
               <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
                 <thead>
                   <tr>
@@ -157,9 +146,7 @@ const TrendingRunes = () => {
                       {sortConfig.key === 'rune_ticker' &&
                         (sortConfig.direction === 'ascending' ? '▲' : '▼')}
                     </th>
-                    <th className="border border-gray-400 px-2 py-1">
-                      Symbol
-                    </th>
+                    <th className="border border-gray-400 px-2 py-1">Symbol</th>
                     <th
                       className="border border-gray-400 px-2 py-1 cursor-pointer"
                       onClick={() => handleSort('rune_name')}
@@ -213,21 +200,15 @@ const TrendingRunes = () => {
                 <tbody>
                   {sortedRunes.map((rune) => (
                     <tr key={rune.rune_ticker}>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {rune.rune_ticker}
-                      </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {rune.symbol}
-                      </td>
+                      <td className="border border-gray-400 px-2 py-1">{rune.rune_ticker}</td>
+                      <td className="border border-gray-400 px-2 py-1">{rune.symbol}</td>
                       <td className="border border-gray-400 px-2 py-1">
                         <span className="font-bold">{rune.rune_name}</span>
                       </td>
                       <td className="border border-gray-400 px-2 py-1">
                         {formatNumber(rune.holder_count, 0)}
                       </td>
-                      <td className="border border-gray-400 px-2 py-1">
-                        {formatNumber(rune.volume_24h)}
-                      </td>
+                      <td className="border border-gray-400 px-2 py-1">{formatNumber(rune.volume_24h)}</td>
                       <td className="border border-gray-400 px-2 py-1">
                         {formatNumber(rune.total_volume)}
                       </td>
@@ -244,6 +225,7 @@ const TrendingRunes = () => {
             </div>
           )}
 
+          {/* Pagination buttons */}
           {pagination && (
             <div className="flex justify-center gap-2 mt-4">
               <button
@@ -266,9 +248,8 @@ const TrendingRunes = () => {
             </div>
           )}
         </>
-      )}
-
-      {view === 'chart' && (
+      ) : (
+        // Chart view
         <TrendingRunesChart runes={runes} loading={loading} error={error} />
       )}
     </div>

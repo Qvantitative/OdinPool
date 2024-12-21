@@ -149,92 +149,93 @@ const TrendingRunes = () => {
             {loading && <div>Loading...</div>}
             {!loading && (
               <div className="scroll-container w-full" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-            <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('rune_ticker')}>
-                    Ticker {sortConfig.key === 'rune_ticker' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1">
-                    Symbol
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('rune_name')}>
-                    Name {sortConfig.key === 'rune_name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('holder_count')}>
-                    Holders {sortConfig.key === 'holder_count' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('volume_24h')}>
-                    24h Volume {sortConfig.key === 'volume_24h' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('total_volume')}>
-                    Total Volume {sortConfig.key === 'total_volume' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('unit_price_sats')}>
-                    Price (sats) {sortConfig.key === 'unit_price_sats' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                  <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('market_cap')}>
-                    Market Cap {sortConfig.key === 'market_cap' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
-                  </th>
-                </tr>
-              </thead>
+                <table className="table-auto border-collapse border border-gray-500 w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('rune_ticker')}>
+                        Ticker {sortConfig.key === 'rune_ticker' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1">
+                        Symbol
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('rune_name')}>
+                        Name {sortConfig.key === 'rune_name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('holder_count')}>
+                        Holders {sortConfig.key === 'holder_count' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('volume_24h')}>
+                        24h Volume {sortConfig.key === 'volume_24h' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('total_volume')}>
+                        Total Volume {sortConfig.key === 'total_volume' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('unit_price_sats')}>
+                        Price (sats) {sortConfig.key === 'unit_price_sats' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                      <th className="border border-gray-400 px-2 py-1 cursor-pointer" onClick={() => handleSort('market_cap')}>
+                        Market Cap {sortConfig.key === 'market_cap' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRunes.map((rune) => (
+                      <tr key={rune.rune_ticker}>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {rune.rune_ticker}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {rune.symbol}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          <span className="font-bold">
+                            {rune.rune_name}
+                          </span>
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {formatNumber(rune.holder_count, 0)}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {formatNumber(rune.volume_24h)}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {formatNumber(rune.total_volume)}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {formatPrice(rune.unit_price_sats)}
+                        </td>
+                        <td className="border border-gray-400 px-2 py-1">
+                          {formatNumber(rune.market_cap)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-              <tbody>
-                {sortedRunes.map((rune) => (
-                  <tr key={rune.rune_ticker}>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {rune.rune_ticker}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {rune.symbol}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      <span className="font-bold">
-                        {rune.rune_name}
-                      </span>
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {formatNumber(rune.holder_count, 0)}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {formatNumber(rune.volume_24h)}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {formatNumber(rune.total_volume)}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {formatPrice(rune.unit_price_sats)}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1">
-                      {formatNumber(rune.market_cap)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {pagination && (
-          <div className="flex justify-center gap-2 mt-4">
-            <button
-              onClick={() => handlePageChange(pagination.prevPage)}
-              disabled={!pagination.hasPrevPage}
-              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="px-4 py-2">
-              Page {pagination.currentPage} of {pagination.totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(pagination.nextPage)}
-              disabled={!pagination.hasNextPage}
-              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
+            {pagination && (
+              <div className="flex justify-center gap-2 mt-4">
+                <button
+                  onClick={() => handlePageChange(pagination.prevPage)}
+                  disabled={!pagination.hasPrevPage}
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="px-4 py-2">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(pagination.nextPage)}
+                  disabled={!pagination.hasNextPage}
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

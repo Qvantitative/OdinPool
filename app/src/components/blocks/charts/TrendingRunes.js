@@ -198,11 +198,15 @@ const TrendingRunes = () => {
           <div
             className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
             style={{
-              left: `${hoveredRune.x}px`,
-              top: `${hoveredRune.y}px`,
-              transform: hoveredRune.y <= TOP_THRESHOLD
-                ? 'translate(-50%, 50%)' // Show below for bubbles near top
-                : 'translate(-50%, -150%)', // Show above for other bubbles
+              left: `${Math.min(
+                Math.max(hoveredRune.x, 50),
+                1600 - 150
+              )}px`, // Prevent overflow on X-axis
+              top: `${Math.min(
+                Math.max(hoveredRune.y, 50),
+                600 - 100
+              )}px`, // Prevent overflow on Y-axis
+              transform: 'translate(-50%, -50%)', // Center the tooltip
               zIndex: 10,
             }}
           >

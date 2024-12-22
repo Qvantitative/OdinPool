@@ -44,6 +44,7 @@ const TrendingRunes = () => {
       setLoading(true);
       try {
         const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
+        console.log("Runes Activities:", response)
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         setRunes(data.data);

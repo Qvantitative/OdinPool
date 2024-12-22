@@ -68,9 +68,8 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    const MIN_SIZE = 400; // Smaller minimum size
-    const MAX_SIZE = 1000; // Smaller maximum size
-
+    const MIN_SIZE = 400;
+    const MAX_SIZE = 1000;
     const placedBubbles = [];
     const maxBubbles = 50;
     const maxAttempts = 1000;
@@ -86,8 +85,8 @@ const TrendingRunes = () => {
 
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin)); // Wider area
-        const y = radius + margin + Math.random() * (600 - 2 * (radius + margin)); // Narrower height
+        const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin));
+        const y = radius + margin + Math.random() * (600 - 2 * (radius + margin));
 
         let overlap = false;
         for (const pb of placedBubbles) {
@@ -139,14 +138,15 @@ const TrendingRunes = () => {
     );
   }
 
+  // Define threshold for top of chart (e.g., top 25% of chart height)
+  const TOP_THRESHOLD = 600 * 0.25; // 25% of chart height (600px)
+
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ minHeight: '600px' }}> {/* Reduced height */}
+      <div className="relative w-full" style={{ minHeight: '600px' }}>
         <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="none">
-          {/* Background */}
           <rect width="1600" height="600" fill="#111827" />
 
-          {/* Bubbles */}
           {normalizedData.map((rune) => (
             <g
               key={rune.rune_ticker}
@@ -154,7 +154,6 @@ const TrendingRunes = () => {
               onMouseLeave={() => setHoveredRune(null)}
               className="cursor-pointer transition-transform duration-200"
             >
-              {/* Glow outline */}
               <circle
                 cx={rune.x}
                 cy={rune.y}
@@ -164,7 +163,6 @@ const TrendingRunes = () => {
                 strokeWidth="2"
                 style={{ filter: 'blur(3px)' }}
               />
-              {/* Main bubble */}
               <circle
                 cx={rune.x}
                 cy={rune.y}
@@ -172,7 +170,6 @@ const TrendingRunes = () => {
                 fill={getBubbleFill(rune.percentChange)}
                 opacity={0.9}
               />
-              {/* Bubble text */}
               <text
                 x={rune.x}
                 y={rune.y - 10}
@@ -197,14 +194,15 @@ const TrendingRunes = () => {
           ))}
         </svg>
 
-        {/* Tooltip */}
         {hoveredRune && (
           <div
             className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
             style={{
               left: `${hoveredRune.x}px`,
               top: `${hoveredRune.y}px`,
-              transform: 'translate(-50%, -150%)',
+              transform: hoveredRune.y <= TOP_THRESHOLD
+                ? 'translate(-50%, 50%)' // Show below for bubbles near top
+                : 'translate(-50%, -150%)', // Show above for other bubbles
               zIndex: 10,
             }}
           >

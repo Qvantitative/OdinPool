@@ -102,27 +102,16 @@ const getBubbleStroke = (percentChange) => {
 };
 
 const TrendingRunes = () => {
-  const [runes, setRunes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [hoveredRune, setHoveredRune] = useState(null);
+  const [containerHeight, setContainerHeight] = useState(600);
 
   useEffect(() => {
-    const fetchRunes = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setRunes(data.data);
-      } catch (err) {
-        setError('Error fetching runes data');
-        console.error('Fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
+    const updateHeight = () => {
+      const screenHeight = window.innerHeight;
+      setContainerHeight(screenHeight * 0.6); // Adjust height to 60% of screen height
     };
-    fetchRunes();
+    updateHeight(); // Set initial height
+    window.addEventListener('resize', updateHeight); // Update on resize
+    return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
   const normalizedData = useMemo(() => {
@@ -154,7 +143,7 @@ const TrendingRunes = () => {
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin));
-        const y = radius + margin + Math.random() * (600 - 2 * (radius + margin));
+        const y = radius + margin + Math.random() * (containerHeight - 2 * (radius + margin));
 
         let overlap = false;
         for (const pb of placedBubbles) {
@@ -175,7 +164,7 @@ const TrendingRunes = () => {
             y,
             r: radius,
             percentChange,
-            volume
+            volume,
           });
           placed = true;
           break;
@@ -188,7 +177,7 @@ const TrendingRunes = () => {
     }
 
     return placedBubbles;
-  }, [runes]);
+  }, [runes, containerHeight]);
 
   if (loading) {
     return (
@@ -206,14 +195,11 @@ const TrendingRunes = () => {
     );
   }
 
-  // Define threshold for top half of chart (50% of height)
-  const TOP_THRESHOLD = 600 * 0.5; // 300px - midpoint of chart height (600px)
-
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ minHeight: '600px' }}>
-        <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="none">
-          <rect width="1600" height="600" fill="#111827" />
+      <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
+        <svg className="w-full h-full" viewBox={`0 0 1600 ${containerHeight}`} preserveAspectRatio="none">
+          <rect width="1600" height={containerHeight} fill="#111827" />
 
           {normalizedData.map((rune) => (
             <g
@@ -261,45 +247,6 @@ const TrendingRunes = () => {
             </g>
           ))}
         </svg>
-
-        {hoveredRune && (
-          <div
-            className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
-            style={{
-              left: `${determineTooltipX(hoveredRune.x, 1600)}px`, // Use container width dynamically
-              top: `${determineTooltipY(hoveredRune.y, 600)}px`, // Use container height dynamically
-              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, 600)}`,
-            }}
-          >
-            <div className="space-y-2">
-              <div className="font-bold text-purple-400">{hoveredRune.rune_name}</div>
-              <div className="text-sm space-y-1">
-                <div>
-                  <span className="text-gray-400">24h Volume:</span>{' '}
-                  <span className="font-medium">{formatNumber(hoveredRune.volume)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Price Change:</span>{' '}
-                  <span
-                    className={`font-medium ${
-                      hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'
-                    }`}
-                  >
-                    {hoveredRune.percentChange.toFixed(2)}%
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Current Price:</span>{' '}
-                  <span className="font-medium">{formatNumber(hoveredRune.unit_price_sats)} sats</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Holders:</span>{' '}
-                  <span className="font-medium">{formatNumber(hoveredRune.holder_count)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

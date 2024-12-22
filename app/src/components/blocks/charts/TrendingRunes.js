@@ -144,8 +144,8 @@ const TrendingRunes = () => {
 
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ minHeight: '600px' }}>
-        <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="xMidYMid meet">
+      <div className="relative w-full" style={{ minHeight: '1000px' }}>
+        <svg className="w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
           {/* Background */}
           <rect width="1000" height="1000" fill="#111827" />
 

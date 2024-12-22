@@ -21,10 +21,13 @@ const determineTooltipX = (x, containerWidth) => {
   const tooltipWidth = 300;
 
   if (x < tooltipWidth / 2 + margin) {
+    // Near left edge
     return x + margin;
   } else if (x > containerWidth - tooltipWidth / 2 - margin) {
+    // Near right edge
     return x - tooltipWidth - margin;
   } else {
+    // Default (centered)
     return x;
   }
 };
@@ -35,12 +38,16 @@ const determineTooltipY = (y, containerHeight) => {
   const topThird = containerHeight / 3;
 
   if (y < topThird) {
-    return y;
+    // Top third of the chart
+    return y; // Keep the Y coordinate, position tooltip to the side
   } else if (y < tooltipHeight + margin) {
+    // Near top edge
     return y + margin;
   } else if (y > containerHeight - tooltipHeight - margin) {
+    // Near bottom edge
     return y - tooltipHeight - margin;
   } else {
+    // Default (centered)
     return y;
   }
 };
@@ -51,20 +58,28 @@ const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
   const topThird = containerHeight / 3;
 
   if (y < topThird) {
+    // Top third of the chart
     if (x < containerWidth / 2) {
+      // Tooltip to the right for left-side bubbles
       return 'translate(10%, -50%)';
     } else {
+      // Tooltip to the left for right-side bubbles
       return 'translate(-110%, -50%)';
     }
   } else if (x < tooltipWidth / 2) {
+    // Near left edge
     return 'translate(0, -50%)';
   } else if (x > containerWidth - tooltipWidth / 2) {
+    // Near right edge
     return 'translate(-100%, -50%)';
   } else if (y < tooltipHeight) {
+    // Near top edge
     return 'translate(-50%, 10%)';
   } else if (y > containerHeight - tooltipHeight) {
+    // Near bottom edge
     return 'translate(-50%, -120%)';
   } else {
+    // Default
     return 'translate(-50%, -120%)';
   }
 };
@@ -76,14 +91,14 @@ const abbreviateName = (name, maxLength = 6) => {
 
 const getBubbleFill = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.6)' // greenish
-    : 'rgba(207, 43, 43, 0.6)'; // reddish
+    ? 'rgba(22, 199, 132, 0.4)' // greenish
+    : 'rgba(207, 43, 43, 0.4)'; // reddish
 };
 
 const getBubbleStroke = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 1)'
-    : 'rgba(207, 43, 43, 1)';
+    ? 'rgba(22, 199, 132, 0.6)'
+    : 'rgba(207, 43, 43, 0.6)';
 };
 
 const TrendingRunes = () => {
@@ -121,8 +136,8 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    const MIN_SIZE = 20;
-    const MAX_SIZE = 80;
+    const MIN_SIZE = 400;
+    const MAX_SIZE = 1000;
     const placedBubbles = [];
     const maxBubbles = 50;
     const maxAttempts = 1000;
@@ -132,7 +147,7 @@ const TrendingRunes = () => {
       const rune = sortedRunes[i];
       const volume = Number(rune.volume_24h) || 0;
       const size = MIN_SIZE + (volume / maxVolume) * (MAX_SIZE - MIN_SIZE);
-      const radius = size;
+      const radius = size / 10;
 
       const percentChange = Number(rune.unit_price_change) || 0;
 
@@ -191,6 +206,9 @@ const TrendingRunes = () => {
     );
   }
 
+  // Define threshold for top half of chart (50% of height)
+  const TOP_THRESHOLD = 600 * 0.5; // 300px - midpoint of chart height (600px)
+
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
       <div className="relative w-full" style={{ minHeight: '600px' }}>
@@ -207,16 +225,24 @@ const TrendingRunes = () => {
               <circle
                 cx={rune.x}
                 cy={rune.y}
-                r={rune.r + 3}
-                fill={getBubbleFill(rune.percentChange)}
+                r={rune.r + 2}
+                fill="transparent"
                 stroke={getBubbleStroke(rune.percentChange)}
                 strokeWidth="2"
+                style={{ filter: 'blur(3px)' }}
+              />
+              <circle
+                cx={rune.x}
+                cy={rune.y}
+                r={rune.r}
+                fill={getBubbleFill(rune.percentChange)}
+                opacity={0.9}
               />
               <text
                 x={rune.x}
                 y={rune.y - 10}
                 textAnchor="middle"
-                fontSize={Math.max(12, rune.r / 4)}
+                fontSize={Math.max(12, rune.r / 5)}
                 fill="#FFFFFF"
                 className="pointer-events-none select-none font-bold"
               >
@@ -235,6 +261,45 @@ const TrendingRunes = () => {
             </g>
           ))}
         </svg>
+
+        {hoveredRune && (
+          <div
+            className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
+            style={{
+              left: `${determineTooltipX(hoveredRune.x, 1600)}px`, // Use container width dynamically
+              top: `${determineTooltipY(hoveredRune.y, 600)}px`, // Use container height dynamically
+              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, 600)}`,
+            }}
+          >
+            <div className="space-y-2">
+              <div className="font-bold text-purple-400">{hoveredRune.rune_name}</div>
+              <div className="text-sm space-y-1">
+                <div>
+                  <span className="text-gray-400">24h Volume:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.volume)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Price Change:</span>{' '}
+                  <span
+                    className={`font-medium ${
+                      hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {hoveredRune.percentChange.toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Current Price:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.unit_price_sats)} sats</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Holders:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.holder_count)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

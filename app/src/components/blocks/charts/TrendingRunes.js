@@ -60,7 +60,6 @@ const TrendingRunes = () => {
   const normalizedData = useMemo(() => {
     if (!runes?.length) return [];
 
-    // Sort by 24h volume so higher volume runes are drawn behind
     const sortedRunes = [...runes].sort(
       (a, b) => (Number(b.volume_24h) || 0) - (Number(a.volume_24h) || 0)
     );
@@ -69,9 +68,8 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    // Bubble size range
-    const MIN_SIZE = 600;  // Doubled the minimum size
-    const MAX_SIZE = 1600;  // Doubled the maximum size
+    const MIN_SIZE = 400; // Smaller minimum size
+    const MAX_SIZE = 1000; // Smaller maximum size
 
     const placedBubbles = [];
     const maxBubbles = 50;
@@ -84,13 +82,12 @@ const TrendingRunes = () => {
       const size = MIN_SIZE + (volume / maxVolume) * (MAX_SIZE - MIN_SIZE);
       const radius = size / 10;
 
-      // Use unit_price_change for percent change calculation
       const percentChange = Number(rune.unit_price_change) || 0;
 
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const x = radius + margin + Math.random() * (1000 - 2 * (radius + margin));
-        const y = radius + margin + Math.random() * (1000 - 2 * (radius + margin));
+        const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin)); // Wider area
+        const y = radius + margin + Math.random() * (600 - 2 * (radius + margin)); // Narrower height
 
         let overlap = false;
         for (const pb of placedBubbles) {
@@ -144,12 +141,10 @@ const TrendingRunes = () => {
 
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ minHeight: '1000px' }}>
-        <svg className="w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-          {/* Background */}
-          <rect width="1000" height="1000" fill="#111827" />
+      <div className="relative w-full" style={{ minHeight: '600px' }}> {/* Reduced height */}
+        <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="none"> {/* Wider viewBox */}
+          <rect width="1600" height="600" fill="#111827" />
 
-          {/* Bubbles */}
           {normalizedData.map((rune) => (
             <g
               key={rune.rune_ticker}
@@ -157,7 +152,6 @@ const TrendingRunes = () => {
               onMouseLeave={() => setHoveredRune(null)}
               className="cursor-pointer transition-transform duration-200"
             >
-              {/* Glow outline */}
               <circle
                 cx={rune.x}
                 cy={rune.y}
@@ -167,7 +161,6 @@ const TrendingRunes = () => {
                 strokeWidth="2"
                 style={{ filter: 'blur(3px)' }}
               />
-              {/* Main bubble */}
               <circle
                 cx={rune.x}
                 cy={rune.y}
@@ -175,7 +168,6 @@ const TrendingRunes = () => {
                 fill={getBubbleFill(rune.percentChange)}
                 opacity={0.9}
               />
-              {/* Bubble text */}
               <text
                 x={rune.x}
                 y={rune.y - 10}
@@ -199,25 +191,6 @@ const TrendingRunes = () => {
             </g>
           ))}
         </svg>
-
-        {/* Tooltip */}
-        {hoveredRune && (
-          <div
-            className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
-            style={{
-              left: `${hoveredRune.x}px`,
-              top: `${hoveredRune.y}px`,
-              transform: 'translate(-50%, -120%)',
-              zIndex: 10,
-            }}
-          >
-            <div className="font-bold mb-1">{hoveredRune.rune_name}</div>
-            <div>24h Volume: {formatNumber(hoveredRune.volume)}</div>
-            <div>Price Change: {hoveredRune.unit_price_change}%</div>
-            <div>Current Price: {formatNumber(hoveredRune.unit_price_sats)} sats</div>
-            <div>Holders: {formatNumber(hoveredRune.holder_count)}</div>
-          </div>
-        )}
       </div>
     </div>
   );

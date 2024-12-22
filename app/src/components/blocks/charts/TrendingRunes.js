@@ -16,57 +16,37 @@ const formatNumber = (value, decimals = 2) => {
   }
 };
 
-const determineTooltipX = (x, containerWidth) => {
-  const margin = 10;
+const determineTooltipPosition = (x, y, containerWidth, containerHeight) => {
   const tooltipWidth = 300;
+  const tooltipHeight = 120;
+  const margin = 10;
 
+  // Initialize position
+  let posX = x;
+  let posY = y;
+  let transform = 'translate(-50%, -50%)';
+
+  // Handle X positioning
   if (x < tooltipWidth / 2 + margin) {
-    return x + margin;
+    // Too close to left edge
+    posX = tooltipWidth / 2 + margin;
+    transform = 'translate(-50%, -50%)';
   } else if (x > containerWidth - tooltipWidth / 2 - margin) {
-    return x - tooltipWidth - margin;
-  } else {
-    return x;
+    // Too close to right edge
+    posX = containerWidth - tooltipWidth / 2 - margin;
+    transform = 'translate(-50%, -50%)';
   }
-};
 
-const determineTooltipY = (y, containerHeight) => {
-  const margin = 10;
-  const tooltipHeight = 120;
-  const topThird = containerHeight / 3;
-
-  if (y < topThird) {
-    return y;
-  } else if (y < tooltipHeight + margin) {
-    return y + margin;
-  } else if (y > containerHeight - tooltipHeight - margin) {
-    return y - tooltipHeight - margin;
-  } else {
-    return y;
+  // Handle Y positioning
+  if (y < tooltipHeight / 2 + margin) {
+    // Too close to top edge
+    posY = tooltipHeight / 2 + margin;
+  } else if (y > containerHeight - tooltipHeight / 2 - margin) {
+    // Too close to bottom edge
+    posY = containerHeight - tooltipHeight / 2 - margin;
   }
-};
 
-const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
-  const tooltipWidth = 300;
-  const tooltipHeight = 120;
-  const topThird = containerHeight / 3;
-
-  if (y < topThird) {
-    if (x < containerWidth / 2) {
-      return 'translate(10%, -50%)';
-    } else {
-      return 'translate(-110%, -50%)';
-    }
-  } else if (x < tooltipWidth / 2) {
-    return 'translate(0, -50%)';
-  } else if (x > containerWidth - tooltipWidth / 2) {
-    return 'translate(-100%, -50%)';
-  } else if (y < tooltipHeight) {
-    return 'translate(-50%, 10%)';
-  } else if (y > containerHeight - tooltipHeight) {
-    return 'translate(-50%, -120%)';
-  } else {
-    return 'translate(-50%, -120%)';
-  }
+  return { x: posX, y: posY, transform };
 };
 
 const abbreviateName = (name, maxLength = 6) => {
@@ -257,11 +237,13 @@ const TrendingRunes = () => {
 
         {hoveredRune && (
           <div
-            className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
+            className="fixed z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
             style={{
-              left: `${determineTooltipX(hoveredRune.x, 1600)}px`,
-              top: `${determineTooltipY(hoveredRune.y, containerHeight)}px`,
-              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, containerHeight)}`,
+              left: `${determineTooltipPosition(hoveredRune.x, hoveredRune.y, 1600, containerHeight).x}px`,
+              top: `${determineTooltipPosition(hoveredRune.x, hoveredRune.y, 1600, containerHeight).y}px`,
+              transform: determineTooltipPosition(hoveredRune.x, hoveredRune.y, 1600, containerHeight).transform,
+              maxWidth: '300px',
+              width: 'auto'
             }}
           >
             <div className="space-y-2">

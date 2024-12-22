@@ -21,11 +21,11 @@ const determineTooltipX = (x, containerWidth) => {
   const tooltipWidth = 300;
 
   if (x < tooltipWidth / 2 + margin) {
-    return x + margin; // Near left edge
+    return x + margin;
   } else if (x > containerWidth - tooltipWidth / 2 - margin) {
-    return x - tooltipWidth - margin; // Near right edge
+    return x - tooltipWidth - margin;
   } else {
-    return x; // Default (centered)
+    return x;
   }
 };
 
@@ -35,13 +35,13 @@ const determineTooltipY = (y, containerHeight) => {
   const topThird = containerHeight / 3;
 
   if (y < topThird) {
-    return y; // Top third of the chart
+    return y;
   } else if (y < tooltipHeight + margin) {
-    return y + margin; // Near top edge
+    return y + margin;
   } else if (y > containerHeight - tooltipHeight - margin) {
-    return y - tooltipHeight - margin; // Near bottom edge
+    return y - tooltipHeight - margin;
   } else {
-    return y; // Default (centered)
+    return y;
   }
 };
 
@@ -52,20 +52,20 @@ const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
 
   if (y < topThird) {
     if (x < containerWidth / 2) {
-      return 'translate(10%, -50%)'; // Tooltip to the right for left-side bubbles
+      return 'translate(10%, -50%)';
     } else {
-      return 'translate(-110%, -50%)'; // Tooltip to the left for right-side bubbles
+      return 'translate(-110%, -50%)';
     }
   } else if (x < tooltipWidth / 2) {
-    return 'translate(0, -50%)'; // Near left edge
+    return 'translate(0, -50%)';
   } else if (x > containerWidth - tooltipWidth / 2) {
-    return 'translate(-100%, -50%)'; // Near right edge
+    return 'translate(-100%, -50%)';
   } else if (y < tooltipHeight) {
-    return 'translate(-50%, 10%)'; // Near top edge
+    return 'translate(-50%, 10%)';
   } else if (y > containerHeight - tooltipHeight) {
-    return 'translate(-50%, -120%)'; // Near bottom edge
+    return 'translate(-50%, -120%)';
   } else {
-    return 'translate(-50%, -120%)'; // Default
+    return 'translate(-50%, -120%)';
   }
 };
 
@@ -76,8 +76,8 @@ const abbreviateName = (name, maxLength = 6) => {
 
 const getBubbleFill = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.4)' // greenish
-    : 'rgba(207, 43, 43, 0.4)'; // reddish
+    ? 'rgba(22, 199, 132, 0.4)'
+    : 'rgba(207, 43, 43, 0.4)';
 };
 
 const getBubbleStroke = (percentChange) => {
@@ -87,7 +87,7 @@ const getBubbleStroke = (percentChange) => {
 };
 
 const TrendingRunes = () => {
-  const [runes, setRunes] = useState([]); // Ensure runes is initialized
+  const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hoveredRune, setHoveredRune] = useState(null);
@@ -96,10 +96,10 @@ const TrendingRunes = () => {
   useEffect(() => {
     const updateHeight = () => {
       const screenHeight = window.innerHeight;
-      setContainerHeight(Math.max(400, screenHeight * 0.6)); // Ensure a minimum height
+      setContainerHeight(Math.max(400, screenHeight * 0.6));
     };
-    updateHeight(); // Set initial height
-    window.addEventListener('resize', updateHeight); // Update on resize
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
@@ -110,7 +110,7 @@ const TrendingRunes = () => {
         const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        setRunes(data.data || []); // Fallback to an empty array
+        setRunes(data.data || []);
       } catch (err) {
         console.error('Error fetching runes:', err);
         setError('Error fetching runes data');
@@ -254,6 +254,45 @@ const TrendingRunes = () => {
             </g>
           ))}
         </svg>
+
+        {hoveredRune && (
+          <div
+            className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
+            style={{
+              left: `${determineTooltipX(hoveredRune.x, 1600)}px`,
+              top: `${determineTooltipY(hoveredRune.y, containerHeight)}px`,
+              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, containerHeight)}`,
+            }}
+          >
+            <div className="space-y-2">
+              <div className="font-bold text-purple-400">{hoveredRune.rune_name}</div>
+              <div className="text-sm space-y-1">
+                <div>
+                  <span className="text-gray-400">24h Volume:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.volume)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Price Change:</span>{' '}
+                  <span
+                    className={`font-medium ${
+                      hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {hoveredRune.percentChange.toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Current Price:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.unit_price_sats)} sats</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Holders:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.holder_count)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

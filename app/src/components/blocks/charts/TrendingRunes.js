@@ -142,9 +142,11 @@ const TrendingRunes = () => {
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
       <div className="relative w-full" style={{ minHeight: '600px' }}> {/* Reduced height */}
-        <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="none"> {/* Wider viewBox */}
+        <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="none">
+          {/* Background */}
           <rect width="1600" height="600" fill="#111827" />
 
+          {/* Bubbles */}
           {normalizedData.map((rune) => (
             <g
               key={rune.rune_ticker}
@@ -152,6 +154,7 @@ const TrendingRunes = () => {
               onMouseLeave={() => setHoveredRune(null)}
               className="cursor-pointer transition-transform duration-200"
             >
+              {/* Glow outline */}
               <circle
                 cx={rune.x}
                 cy={rune.y}
@@ -161,6 +164,7 @@ const TrendingRunes = () => {
                 strokeWidth="2"
                 style={{ filter: 'blur(3px)' }}
               />
+              {/* Main bubble */}
               <circle
                 cx={rune.x}
                 cy={rune.y}
@@ -168,6 +172,7 @@ const TrendingRunes = () => {
                 fill={getBubbleFill(rune.percentChange)}
                 opacity={0.9}
               />
+              {/* Bubble text */}
               <text
                 x={rune.x}
                 y={rune.y - 10}
@@ -191,6 +196,25 @@ const TrendingRunes = () => {
             </g>
           ))}
         </svg>
+
+        {/* Tooltip */}
+        {hoveredRune && (
+          <div
+            className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
+            style={{
+              left: `${hoveredRune.x}px`,
+              top: `${hoveredRune.y}px`,
+              transform: 'translate(-50%, -150%)',
+              zIndex: 10,
+            }}
+          >
+            <div className="font-bold mb-1">{hoveredRune.rune_name}</div>
+            <div>24h Volume: {formatNumber(hoveredRune.volume)}</div>
+            <div>Price Change: {hoveredRune.percentChange.toFixed(2)}%</div>
+            <div>Current Price: {formatNumber(hoveredRune.unit_price_sats)} sats</div>
+            <div>Holders: {formatNumber(hoveredRune.holder_count)}</div>
+          </div>
+        )}
       </div>
     </div>
   );

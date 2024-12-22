@@ -138,8 +138,8 @@ const TrendingRunes = () => {
     );
   }
 
-  // Define threshold for top of chart (e.g., top 25% of chart height)
-  const TOP_THRESHOLD = 600 * 0.25; // 25% of chart height (600px)
+  // Define threshold for top half of chart (50% of height)
+  const TOP_THRESHOLD = 600 * 0.5; // 300px - midpoint of chart height (600px)
 
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">

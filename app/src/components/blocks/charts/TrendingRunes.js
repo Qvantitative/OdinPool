@@ -23,8 +23,8 @@ const abbreviateName = (name, maxLength = 6) => {
 
 const getBubbleFill = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.4)'
-    : 'rgba(207, 43, 43, 0.4)';
+    ? 'rgba(22, 199, 132, 0.4)' // greenish
+    : 'rgba(207, 43, 43, 0.4)'; // reddish
 };
 
 const getBubbleStroke = (percentChange) => {
@@ -43,9 +43,7 @@ const TrendingRunes = () => {
     const fetchRunes = async () => {
       setLoading(true);
       try {
-        const response = await fetch(
-          '/api/runes/activities/summary?page=1&limit=100'
-        );
+        const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         setRunes(data.data);
@@ -62,6 +60,7 @@ const TrendingRunes = () => {
   const normalizedData = useMemo(() => {
     if (!runes?.length) return [];
 
+    // Sort by market cap so bigger caps are drawn behind (first in the array).
     const sortedRunes = [...runes].sort(
       (a, b) => (b.market_cap || 0) - (a.market_cap || 0)
     );
@@ -70,21 +69,18 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => r.market_cap || 0)
     );
 
-    const maxBubbles = 50;
-    const maxAttempts = 500;
-    // Increased size range by approximately 10x
+    // Bubble size range: scaled up by a factor of 10
     const MIN_SIZE = 500;
     const MAX_SIZE = 1000;
-    const margin = 50; // Increased margin to account for larger bubbles
 
     const placedBubbles = [];
+    const maxBubbles = 50; // Max bubbles to display
+    const maxAttempts = 1000; // Attempts per bubble
+    const margin = 10; // Extra margin from edges
 
     for (let i = 0; i < sortedRunes.length && placedBubbles.length < maxBubbles; i++) {
       const rune = sortedRunes[i];
-      const size =
-        MIN_SIZE + ((rune.market_cap || 0) / maxMarketCap) * (MAX_SIZE - MIN_SIZE);
-
-      // Adjusted radius calculation for the larger scale
+      const size = MIN_SIZE + ((rune.market_cap || 0) / maxMarketCap) * (MAX_SIZE - MIN_SIZE);
       const radius = size / 10;
 
       const percentChange =
@@ -110,10 +106,9 @@ const TrendingRunes = () => {
         if (!overlap) {
           placedBubbles.push({
             ...rune,
-            size,
+            x,
+            y,
             r: radius,
-            x: x / 10, // Convert back to percentage
-            y: y / 10,
             percentChange,
           });
           placed = true;
@@ -147,72 +142,69 @@ const TrendingRunes = () => {
 
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ minHeight: '600px' }}>
-        <svg
-          className="w-full h-[600px]"
-          viewBox="0 0 1000 1000"
-          preserveAspectRatio="xMidYMid meet"
-        >
+      <div className="relative w-full" style={{ minHeight: '1000px' }}>
+        <svg className="w-full h-full" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          {/* Background */}
           <rect width="1000" height="1000" fill="#111827" />
 
-          {normalizedData.map((rune) => {
-            const isHovered = hoveredRune?.rune_ticker === rune.rune_ticker;
-
-            return (
-              <g
-                key={rune.rune_ticker}
-                onMouseEnter={() => setHoveredRune(rune)}
-                onMouseLeave={() => setHoveredRune(null)}
-                className="cursor-pointer transition-transform duration-200"
-                style={{
-                  transform: `translate(${rune.x}%, ${rune.y}%) scale(${
-                    isHovered ? 1.1 : 1
-                  })`,
-                }}
+          {/* Bubbles */}
+          {normalizedData.map((rune) => (
+            <g
+              key={rune.rune_ticker}
+              onMouseEnter={() => setHoveredRune(rune)}
+              onMouseLeave={() => setHoveredRune(null)}
+              className="cursor-pointer transition-transform duration-200"
+            >
+              {/* Glow outline */}
+              <circle
+                cx={rune.x}
+                cy={rune.y}
+                r={rune.r + 2}
+                fill="transparent"
+                stroke={getBubbleStroke(rune.percentChange)}
+                strokeWidth="2"
+                style={{ filter: 'blur(3px)' }}
+              />
+              {/* Main bubble */}
+              <circle
+                cx={rune.x}
+                cy={rune.y}
+                r={rune.r}
+                fill={getBubbleFill(rune.percentChange)}
+                opacity={0.9}
+              />
+              {/* Bubble text */}
+              <text
+                x={rune.x}
+                y={rune.y - 10}
+                textAnchor="middle"
+                fontSize={Math.max(12, rune.r / 5)}
+                fill="#FFFFFF"
+                className="pointer-events-none select-none font-bold"
               >
-                <circle
-                  r={rune.r + 2}
-                  fill="transparent"
-                  stroke={getBubbleStroke(rune.percentChange)}
-                  strokeWidth="4"
-                  style={{ filter: 'blur(6px)' }}
-                />
-                <circle
-                  r={rune.r}
-                  fill={getBubbleFill(rune.percentChange)}
-                  opacity={0.9}
-                />
-
-                <text
-                  textAnchor="middle"
-                  dy="-0.3em"
-                  fontSize={Math.max(18, rune.size / 28)}
-                  fill="#FFFFFF"
-                  className="pointer-events-none select-none font-bold"
-                >
-                  {abbreviateName(rune.rune_name || '', 6)}
-                </text>
-
-                <text
-                  textAnchor="middle"
-                  dy="0.9em"
-                  fontSize={Math.max(14, rune.size / 32)}
-                  fill={rune.percentChange >= 0 ? '#16C784' : '#CF2B2B'}
-                  className="pointer-events-none select-none font-semibold"
-                >
-                  {rune.percentChange.toFixed(2)}%
-                </text>
-              </g>
-            );
-          })}
+                {abbreviateName(rune.rune_name, 6)}
+              </text>
+              <text
+                x={rune.x}
+                y={rune.y + 20}
+                textAnchor="middle"
+                fontSize={Math.max(10, rune.r / 6)}
+                fill={rune.percentChange >= 0 ? '#16C784' : '#CF2B2B'}
+                className="pointer-events-none select-none"
+              >
+                {rune.percentChange.toFixed(2)}%
+              </text>
+            </g>
+          ))}
         </svg>
 
+        {/* Tooltip */}
         {hoveredRune && (
           <div
             className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
             style={{
-              left: `${hoveredRune.x}%`,
-              top: `${hoveredRune.y}%`,
+              left: `${hoveredRune.x}px`,
+              top: `${hoveredRune.y}px`,
               transform: 'translate(-50%, -120%)',
               zIndex: 10,
             }}
@@ -222,11 +214,7 @@ const TrendingRunes = () => {
             <div>24h Volume: {formatNumber(hoveredRune.volume_24h)}</div>
             <div>Holders: {formatNumber(hoveredRune.holder_count)}</div>
             <div
-              className={
-                hoveredRune.percentChange >= 0
-                  ? 'text-green-400'
-                  : 'text-red-400'
-              }
+              className={hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}
             >
               {hoveredRune.percentChange.toFixed(2)}%
             </div>

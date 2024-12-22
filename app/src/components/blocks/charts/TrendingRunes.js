@@ -46,7 +46,6 @@ const TrendingRunes = () => {
         const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        console.log("Runes Activities:", data)
         setRunes(data.data);
       } catch (err) {
         setError('Error fetching runes data');
@@ -61,31 +60,32 @@ const TrendingRunes = () => {
   const normalizedData = useMemo(() => {
     if (!runes?.length) return [];
 
-    // Sort by market cap so bigger caps are drawn behind (first in the array).
+    // Sort by 24h volume so higher volume runes are drawn behind
     const sortedRunes = [...runes].sort(
-      (a, b) => (b.market_cap || 0) - (a.market_cap || 0)
+      (a, b) => (Number(b.volume_24h) || 0) - (Number(a.volume_24h) || 0)
     );
 
-    const maxMarketCap = Math.max(
-      ...sortedRunes.map((r) => r.market_cap || 0)
+    const maxVolume = Math.max(
+      ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    // Bubble size range: scaled up by a factor of 10
-    const MIN_SIZE = 500;
-    const MAX_SIZE = 1000;
+    // Bubble size range
+    const MIN_SIZE = 300;
+    const MAX_SIZE = 800;
 
     const placedBubbles = [];
-    const maxBubbles = 50; // Max bubbles to display
-    const maxAttempts = 1000; // Attempts per bubble
-    const margin = 10; // Extra margin from edges
+    const maxBubbles = 50;
+    const maxAttempts = 1000;
+    const margin = 10;
 
     for (let i = 0; i < sortedRunes.length && placedBubbles.length < maxBubbles; i++) {
       const rune = sortedRunes[i];
-      const size = MIN_SIZE + ((rune.market_cap || 0) / maxMarketCap) * (MAX_SIZE - MIN_SIZE);
+      const volume = Number(rune.volume_24h) || 0;
+      const size = MIN_SIZE + (volume / maxVolume) * (MAX_SIZE - MIN_SIZE);
       const radius = size / 10;
 
-      const percentChange =
-        ((rune.volume_24h || 0) / (rune.total_volume || 1) - 1) * 100;
+      // Use unit_price_change for percent change calculation
+      const percentChange = Number(rune.unit_price_change) || 0;
 
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -111,6 +111,7 @@ const TrendingRunes = () => {
             y,
             r: radius,
             percentChange,
+            volume
           });
           placed = true;
           break;
@@ -211,14 +212,10 @@ const TrendingRunes = () => {
             }}
           >
             <div className="font-bold mb-1">{hoveredRune.rune_name}</div>
-            <div>Market Cap: {formatNumber(hoveredRune.market_cap)}</div>
-            <div>24h Volume: {formatNumber(hoveredRune.volume_24h)}</div>
+            <div>24h Volume: {formatNumber(hoveredRune.volume)}</div>
+            <div>Price Change: {hoveredRune.unit_price_change}%</div>
+            <div>Current Price: {formatNumber(hoveredRune.unit_price_sats)} sats</div>
             <div>Holders: {formatNumber(hoveredRune.holder_count)}</div>
-            <div
-              className={hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}
-            >
-              {hoveredRune.percentChange.toFixed(2)}%
-            </div>
           </div>
         )}
       </div>

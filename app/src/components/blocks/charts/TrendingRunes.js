@@ -16,47 +16,57 @@ const formatNumber = (value, decimals = 2) => {
   }
 };
 
-const determineTooltipX = (x) => {
+const determineTooltipX = (x, containerWidth) => {
   const margin = 10;
-  const tooltipWidth = 300; // Approximate width of the tooltip
-  const containerWidth = 1600; // Chart width
+  const tooltipWidth = 300;
 
   if (x < tooltipWidth / 2 + margin) {
-    // Near the left edge
+    // Near left edge
     return x + margin;
   } else if (x > containerWidth - tooltipWidth / 2 - margin) {
-    // Near the right edge
-    return x - margin - tooltipWidth;
+    // Near right edge
+    return x - tooltipWidth - margin;
   } else {
-    // Default case (centered above/below)
+    // Default (centered)
     return x;
   }
 };
 
-const determineTooltipY = (y) => {
+const determineTooltipY = (y, containerHeight) => {
   const margin = 10;
-  const tooltipHeight = 120; // Approximate height of the tooltip
-  const containerHeight = 600; // Chart height
+  const tooltipHeight = 120;
+  const topThird = containerHeight / 3;
 
-  if (y < tooltipHeight + margin) {
-    // Near the top edge
+  if (y < topThird) {
+    // Top third of the chart
+    return y; // Keep the Y coordinate, position tooltip to the side
+  } else if (y < tooltipHeight + margin) {
+    // Near top edge
     return y + margin;
   } else if (y > containerHeight - tooltipHeight - margin) {
-    // Near the bottom edge
-    return y - margin - tooltipHeight;
+    // Near bottom edge
+    return y - tooltipHeight - margin;
   } else {
-    // Default case (centered above/below)
+    // Default (centered)
     return y;
   }
 };
 
-const determineTooltipTransform = (x, y) => {
+const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
   const tooltipWidth = 300;
-  const containerWidth = 1600;
   const tooltipHeight = 120;
-  const containerHeight = 600;
+  const topThird = containerHeight / 3;
 
-  if (x < tooltipWidth / 2) {
+  if (y < topThird) {
+    // Top third of the chart
+    if (x < containerWidth / 2) {
+      // Tooltip to the right for left-side bubbles
+      return 'translate(10%, -50%)';
+    } else {
+      // Tooltip to the left for right-side bubbles
+      return 'translate(-110%, -50%)';
+    }
+  } else if (x < tooltipWidth / 2) {
     // Near left edge
     return 'translate(0, -50%)';
   } else if (x > containerWidth - tooltipWidth / 2) {
@@ -69,7 +79,7 @@ const determineTooltipTransform = (x, y) => {
     // Near bottom edge
     return 'translate(-50%, -120%)';
   } else {
-    // Default case
+    // Default
     return 'translate(-50%, -120%)';
   }
 };
@@ -256,9 +266,9 @@ const TrendingRunes = () => {
           <div
             className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
             style={{
-              left: `${determineTooltipX(hoveredRune.x)}px`,
-              top: `${determineTooltipY(hoveredRune.y)}px`,
-              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y)}`,
+              left: `${determineTooltipX(hoveredRune.x, 1600)}px`, // Use container width dynamically
+              top: `${determineTooltipY(hoveredRune.y, 600)}px`, // Use container height dynamically
+              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, 600)}`,
             }}
           >
             <div className="space-y-2">

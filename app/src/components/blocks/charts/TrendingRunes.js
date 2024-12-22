@@ -203,8 +203,8 @@ const TrendingRunes = () => {
             className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
             style={{
               left: `${hoveredRune.x}px`,
-              top: hoveredRune.y < 100 ? `${hoveredRune.y + 40}px` : `${hoveredRune.y - 40}px`, // Adjust based on bubble position
-              transform: 'translate(-50%, -150)',
+              top: `${hoveredRune.y}px`,
+              transform: 'translate(-50%, -150%)',
               zIndex: 10,
             }}
           >

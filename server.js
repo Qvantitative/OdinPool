@@ -993,7 +993,7 @@ app.get('/api/runes/activities/summary', async (req, res) => {
         volume_24h,
         total_volume,
         unit_price_sats,
-        unit_price_sats,
+        unit_price_change,  -- Added in between unit_price_sats and market_cap
         market_cap,
         holder_count,
         is_verified,

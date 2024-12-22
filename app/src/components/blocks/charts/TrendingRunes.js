@@ -16,6 +16,64 @@ const formatNumber = (value, decimals = 2) => {
   }
 };
 
+const determineTooltipX = (x) => {
+  const margin = 10;
+  const tooltipWidth = 300; // Approximate width of the tooltip
+  const containerWidth = 1600; // Chart width
+
+  if (x < tooltipWidth / 2 + margin) {
+    // Near the left edge
+    return x + margin;
+  } else if (x > containerWidth - tooltipWidth / 2 - margin) {
+    // Near the right edge
+    return x - margin - tooltipWidth;
+  } else {
+    // Default case (centered above/below)
+    return x;
+  }
+};
+
+const determineTooltipY = (y) => {
+  const margin = 10;
+  const tooltipHeight = 120; // Approximate height of the tooltip
+  const containerHeight = 600; // Chart height
+
+  if (y < tooltipHeight + margin) {
+    // Near the top edge
+    return y + margin;
+  } else if (y > containerHeight - tooltipHeight - margin) {
+    // Near the bottom edge
+    return y - margin - tooltipHeight;
+  } else {
+    // Default case (centered above/below)
+    return y;
+  }
+};
+
+const determineTooltipTransform = (x, y) => {
+  const tooltipWidth = 300;
+  const containerWidth = 1600;
+  const tooltipHeight = 120;
+  const containerHeight = 600;
+
+  if (x < tooltipWidth / 2) {
+    // Near left edge
+    return 'translate(0, -50%)';
+  } else if (x > containerWidth - tooltipWidth / 2) {
+    // Near right edge
+    return 'translate(-100%, -50%)';
+  } else if (y < tooltipHeight) {
+    // Near top edge
+    return 'translate(-50%, 10%)';
+  } else if (y > containerHeight - tooltipHeight) {
+    // Near bottom edge
+    return 'translate(-50%, -120%)';
+  } else {
+    // Default case
+    return 'translate(-50%, -120%)';
+  }
+};
+
 const abbreviateName = (name, maxLength = 6) => {
   if (!name) return '';
   return name.length <= maxLength ? name : name.slice(0, maxLength - 1) + '…';
@@ -198,15 +256,9 @@ const TrendingRunes = () => {
           <div
             className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
             style={{
-              left: `${Math.min(
-                Math.max(hoveredRune.x, 10), // Add small margin for left edge
-                1600 - 310 // Adjust for tooltip width (300px + margin)
-              )}px`,
-              top: `${Math.min(
-                Math.max(hoveredRune.y, 10), // Add small margin for top edge
-                600 - 150 // Adjust for tooltip height (120px + margin)
-              )}px`,
-              transform: 'translate(-50%, -120%)', // Adjust offset
+              left: `${determineTooltipX(hoveredRune.x)}px`,
+              top: `${determineTooltipY(hoveredRune.y)}px`,
+              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y)}`,
             }}
           >
             <div className="space-y-2">

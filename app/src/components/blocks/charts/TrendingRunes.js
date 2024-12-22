@@ -196,25 +196,40 @@ const TrendingRunes = () => {
 
         {hoveredRune && (
           <div
-            className="absolute bg-gray-800 text-white p-3 rounded shadow-lg text-sm"
+            className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
             style={{
-              left: `${Math.min(
-                Math.max(hoveredRune.x, 50),
-                1600 - 150
-              )}px`, // Prevent overflow on X-axis
-              top: `${Math.min(
-                Math.max(hoveredRune.y, 50),
-                600 - 100
-              )}px`, // Prevent overflow on Y-axis
-              transform: 'translate(-50%, -50%)', // Center the tooltip
-              zIndex: 10,
+              left: `${Math.min(Math.max(hoveredRune.x, 50), 1600 - 150)}px`, // Prevent overflow on X-axis
+              top: `${Math.min(Math.max(hoveredRune.y, 50), 600 - 100)}px`, // Prevent overflow on Y-axis
+              transform: 'translate(-50%, -120%)', // Tooltip offset
             }}
           >
-            <div className="font-bold mb-1">{hoveredRune.rune_name}</div>
-            <div>24h Volume: {formatNumber(hoveredRune.volume)}</div>
-            <div>Price Change: {hoveredRune.percentChange.toFixed(2)}%</div>
-            <div>Current Price: {formatNumber(hoveredRune.unit_price_sats)} sats</div>
-            <div>Holders: {formatNumber(hoveredRune.holder_count)}</div>
+            <div className="space-y-2">
+              <div className="font-bold text-purple-400">{hoveredRune.rune_name}</div>
+              <div className="text-sm space-y-1">
+                <div>
+                  <span className="text-gray-400">24h Volume:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.volume)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Price Change:</span>{' '}
+                  <span
+                    className={`font-medium ${
+                      hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {hoveredRune.percentChange.toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Current Price:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.unit_price_sats)} sats</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Holders:</span>{' '}
+                  <span className="font-medium">{formatNumber(hoveredRune.holder_count)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

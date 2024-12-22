@@ -21,11 +21,11 @@ const determineTooltipX = (x, containerWidth) => {
   const tooltipWidth = 300;
 
   if (x < tooltipWidth / 2 + margin) {
-    return x + margin; // Near left edge
+    return x + margin;
   } else if (x > containerWidth - tooltipWidth / 2 - margin) {
-    return x - tooltipWidth - margin; // Near right edge
+    return x - tooltipWidth - margin;
   } else {
-    return x; // Default (centered)
+    return x;
   }
 };
 
@@ -35,13 +35,13 @@ const determineTooltipY = (y, containerHeight) => {
   const topThird = containerHeight / 3;
 
   if (y < topThird) {
-    return y; // Top third of the chart
+    return y;
   } else if (y < tooltipHeight + margin) {
-    return y + margin; // Near top edge
+    return y + margin;
   } else if (y > containerHeight - tooltipHeight - margin) {
-    return y - tooltipHeight - margin; // Near bottom edge
+    return y - tooltipHeight - margin;
   } else {
-    return y; // Default (centered)
+    return y;
   }
 };
 
@@ -52,20 +52,20 @@ const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
 
   if (y < topThird) {
     if (x < containerWidth / 2) {
-      return 'translate(10%, -50%)'; // Tooltip to the right for left-side bubbles
+      return 'translate(10%, -50%)';
     } else {
-      return 'translate(-110%, -50%)'; // Tooltip to the left for right-side bubbles
+      return 'translate(-110%, -50%)';
     }
   } else if (x < tooltipWidth / 2) {
-    return 'translate(0, -50%)'; // Near left edge
+    return 'translate(0, -50%)';
   } else if (x > containerWidth - tooltipWidth / 2) {
-    return 'translate(-100%, -50%)'; // Near right edge
+    return 'translate(-100%, -50%)';
   } else if (y < tooltipHeight) {
-    return 'translate(-50%, 10%)'; // Near top edge
+    return 'translate(-50%, 10%)';
   } else if (y > containerHeight - tooltipHeight) {
-    return 'translate(-50%, -120%)'; // Near bottom edge
+    return 'translate(-50%, -120%)';
   } else {
-    return 'translate(-50%, -120%)'; // Default
+    return 'translate(-50%, -120%)';
   }
 };
 
@@ -76,32 +76,21 @@ const abbreviateName = (name, maxLength = 6) => {
 
 const getBubbleFill = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.4)' // greenish
-    : 'rgba(207, 43, 43, 0.4)'; // reddish
+    ? 'rgba(22, 199, 132, 0.6)' // greenish
+    : 'rgba(207, 43, 43, 0.6)'; // reddish
 };
 
 const getBubbleStroke = (percentChange) => {
   return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.6)'
-    : 'rgba(207, 43, 43, 0.6)';
+    ? 'rgba(22, 199, 132, 1)'
+    : 'rgba(207, 43, 43, 1)';
 };
 
 const TrendingRunes = () => {
-  const [runes, setRunes] = useState([]); // Ensure runes is initialized
+  const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hoveredRune, setHoveredRune] = useState(null);
-  const [containerHeight, setContainerHeight] = useState(600);
-
-  useEffect(() => {
-    const updateHeight = () => {
-      const screenHeight = window.innerHeight;
-      setContainerHeight(Math.max(400, screenHeight * 0.6)); // Ensure a minimum height
-    };
-    updateHeight(); // Set initial height
-    window.addEventListener('resize', updateHeight); // Update on resize
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   useEffect(() => {
     const fetchRunes = async () => {
@@ -110,10 +99,10 @@ const TrendingRunes = () => {
         const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        setRunes(data.data || []); // Fallback to an empty array
+        setRunes(data.data);
       } catch (err) {
-        console.error('Error fetching runes:', err);
         setError('Error fetching runes data');
+        console.error('Fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -122,7 +111,7 @@ const TrendingRunes = () => {
   }, []);
 
   const normalizedData = useMemo(() => {
-    if (!runes || !runes.length) return [];
+    if (!runes?.length) return [];
 
     const sortedRunes = [...runes].sort(
       (a, b) => (Number(b.volume_24h) || 0) - (Number(a.volume_24h) || 0)
@@ -132,8 +121,8 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    const MIN_SIZE = 400;
-    const MAX_SIZE = 1000;
+    const MIN_SIZE = 20;
+    const MAX_SIZE = 80;
     const placedBubbles = [];
     const maxBubbles = 50;
     const maxAttempts = 1000;
@@ -143,14 +132,14 @@ const TrendingRunes = () => {
       const rune = sortedRunes[i];
       const volume = Number(rune.volume_24h) || 0;
       const size = MIN_SIZE + (volume / maxVolume) * (MAX_SIZE - MIN_SIZE);
-      const radius = size / 10;
+      const radius = size;
 
       const percentChange = Number(rune.unit_price_change) || 0;
 
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin));
-        const y = radius + margin + Math.random() * (containerHeight - 2 * (radius + margin));
+        const y = radius + margin + Math.random() * (600 - 2 * (radius + margin));
 
         let overlap = false;
         for (const pb of placedBubbles) {
@@ -171,7 +160,7 @@ const TrendingRunes = () => {
             y,
             r: radius,
             percentChange,
-            volume,
+            volume
           });
           placed = true;
           break;
@@ -184,7 +173,7 @@ const TrendingRunes = () => {
     }
 
     return placedBubbles;
-  }, [runes, containerHeight]);
+  }, [runes]);
 
   if (loading) {
     return (
@@ -204,9 +193,9 @@ const TrendingRunes = () => {
 
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
-        <svg className="w-full h-full" viewBox={`0 0 1600 ${containerHeight}`} preserveAspectRatio="none">
-          <rect width="1600" height={containerHeight} fill="#111827" />
+      <div className="relative w-full" style={{ minHeight: '600px' }}>
+        <svg className="w-full h-full" viewBox="0 0 1600 600" preserveAspectRatio="none">
+          <rect width="1600" height="600" fill="#111827" />
 
           {normalizedData.map((rune) => (
             <g
@@ -218,24 +207,16 @@ const TrendingRunes = () => {
               <circle
                 cx={rune.x}
                 cy={rune.y}
-                r={rune.r + 2}
-                fill="transparent"
+                r={rune.r + 3}
+                fill={getBubbleFill(rune.percentChange)}
                 stroke={getBubbleStroke(rune.percentChange)}
                 strokeWidth="2"
-                style={{ filter: 'blur(3px)' }}
-              />
-              <circle
-                cx={rune.x}
-                cy={rune.y}
-                r={rune.r}
-                fill={getBubbleFill(rune.percentChange)}
-                opacity={0.9}
               />
               <text
                 x={rune.x}
                 y={rune.y - 10}
                 textAnchor="middle"
-                fontSize={Math.max(12, rune.r / 5)}
+                fontSize={Math.max(12, rune.r / 4)}
                 fill="#FFFFFF"
                 className="pointer-events-none select-none font-bold"
               >

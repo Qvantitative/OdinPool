@@ -16,46 +16,61 @@ const formatNumber = (value, decimals = 2) => {
   }
 };
 
-const determineTooltipX = (x, containerWidth) => {
+const determineTooltipX = (x) => {
   const margin = 10;
-  const tooltipWidth = 300;
+  const tooltipWidth = 300; // Approximate width of the tooltip
+  const containerWidth = 1600; // Chart width
 
   if (x < tooltipWidth / 2 + margin) {
+    // Near the left edge
     return x + margin;
   } else if (x > containerWidth - tooltipWidth / 2 - margin) {
-    return x - tooltipWidth - margin;
+    // Near the right edge
+    return x - margin - tooltipWidth;
   } else {
+    // Default case (centered above/below)
     return x;
   }
 };
 
-const determineTooltipY = (y, containerHeight) => {
+const determineTooltipY = (y) => {
   const margin = 10;
-  const tooltipHeight = 120;
+  const tooltipHeight = 120; // Approximate height of the tooltip
+  const containerHeight = 600; // Chart height
 
   if (y < tooltipHeight + margin) {
+    // Near the top edge
     return y + margin;
   } else if (y > containerHeight - tooltipHeight - margin) {
-    return y - tooltipHeight - margin;
+    // Near the bottom edge
+    return y - margin - tooltipHeight;
   } else {
+    // Default case (centered above/below)
     return y;
   }
 };
 
-const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
+const determineTooltipTransform = (x, y) => {
   const tooltipWidth = 300;
+  const containerWidth = 1600;
   const tooltipHeight = 120;
+  const containerHeight = 600;
 
   if (x < tooltipWidth / 2) {
-    return 'translate(0, -50%)'; // Near left edge
+    // Near left edge
+    return 'translate(0, -50%)';
   } else if (x > containerWidth - tooltipWidth / 2) {
-    return 'translate(-100%, -50%)'; // Near right edge
+    // Near right edge
+    return 'translate(-100%, -50%)';
   } else if (y < tooltipHeight) {
-    return 'translate(-50%, 10%)'; // Near top edge
+    // Near top edge
+    return 'translate(-50%, 10%)';
   } else if (y > containerHeight - tooltipHeight) {
-    return 'translate(-50%, -120%)'; // Near bottom edge
+    // Near bottom edge
+    return 'translate(-50%, -120%)';
   } else {
-    return 'translate(-50%, -120%)'; // Default
+    // Default case
+    return 'translate(-50%, -120%)';
   }
 };
 
@@ -241,9 +256,9 @@ const TrendingRunes = () => {
           <div
             className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
             style={{
-              left: `${determineTooltipX(hoveredRune.x, 1600)}px`, // Use container width dynamically
-              top: `${determineTooltipY(hoveredRune.y, 600)}px`, // Use container height dynamically
-              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, 600)}`,
+              left: `${determineTooltipX(hoveredRune.x)}px`,
+              top: `${determineTooltipY(hoveredRune.y)}px`,
+              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y)}`,
             }}
           >
             <div className="space-y-2">

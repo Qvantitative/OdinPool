@@ -70,8 +70,8 @@ const TrendingRunes = () => {
     );
 
     // Bubble size range
-    const MIN_SIZE = 300;
-    const MAX_SIZE = 800;
+    const MIN_SIZE = 600;  // Doubled the minimum size
+    const MAX_SIZE = 1600;  // Doubled the maximum size
 
     const placedBubbles = [];
     const maxBubbles = 50;

@@ -198,9 +198,15 @@ const TrendingRunes = () => {
           <div
             className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
             style={{
-              left: `${Math.min(Math.max(hoveredRune.x, 50), 1600 - 150)}px`, // Prevent overflow on X-axis
-              top: `${Math.min(Math.max(hoveredRune.y, 50), 600 - 100)}px`, // Prevent overflow on Y-axis
-              transform: 'translate(-50%, -120%)', // Tooltip offset
+              left: `${Math.min(
+                Math.max(hoveredRune.x, 10), // Add small margin for left edge
+                1600 - 310 // Adjust for tooltip width (300px + margin)
+              )}px`,
+              top: `${Math.min(
+                Math.max(hoveredRune.y, 10), // Add small margin for top edge
+                600 - 150 // Adjust for tooltip height (120px + margin)
+              )}px`,
+              transform: 'translate(-50%, -120%)', // Adjust offset
             }}
           >
             <div className="space-y-2">

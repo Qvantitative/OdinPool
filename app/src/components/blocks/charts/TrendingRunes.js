@@ -135,7 +135,7 @@ const TrendingRunes = () => {
     const MIN_SIZE = 400;
     const MAX_SIZE = 1000;
     const placedBubbles = [];
-    const maxBubbles = 50;
+    const maxBubbles = 150;
     const maxAttempts = 1000;
     const margin = 10;
 

@@ -75,15 +75,21 @@ const abbreviateName = (name, maxLength = 6) => {
 };
 
 const getBubbleFill = (percentChange) => {
-  return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.4)'
-    : 'rgba(207, 43, 43, 0.4)';
+  if (percentChange === 0) {
+    return 'rgba(128, 128, 128, 0.4)'; // Gray for 0% change
+  }
+  return percentChange > 0
+    ? 'rgba(22, 199, 132, 0.4)' // Green for positive change
+    : 'rgba(207, 43, 43, 0.4)'; // Red for negative change
 };
 
 const getBubbleStroke = (percentChange) => {
-  return percentChange >= 0
-    ? 'rgba(22, 199, 132, 0.6)'
-    : 'rgba(207, 43, 43, 0.6)';
+  if (percentChange === 0) {
+    return 'rgba(128, 128, 128, 0.6)'; // Gray for 0% change
+  }
+  return percentChange > 0
+    ? 'rgba(22, 199, 132, 0.6)' // Green for positive change
+    : 'rgba(207, 43, 43, 0.6)'; // Red for negative change
 };
 
 const TrendingRunes = () => {
@@ -246,7 +252,13 @@ const TrendingRunes = () => {
                 y={rune.y + 20}
                 textAnchor="middle"
                 fontSize={Math.max(10, rune.r / 6)}
-                fill={rune.percentChange >= 0 ? '#16C784' : '#CF2B2B'}
+                fill={
+                  rune.percentChange === 0
+                    ? '#808080' // Gray for 0% change
+                    : rune.percentChange > 0
+                    ? '#16C784' // Green for positive change
+                    : '#CF2B2B' // Red for negative change
+                }
                 className="pointer-events-none select-none"
               >
                 {rune.percentChange.toFixed(2)}%

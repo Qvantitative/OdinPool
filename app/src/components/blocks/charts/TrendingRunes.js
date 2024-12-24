@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import * as d3 from 'd3';
 
 const formatNumber = (value, decimals = 2) => {
   if (!value) return 'N/A';
@@ -13,59 +14,6 @@ const formatNumber = (value, decimals = 2) => {
     return num.toFixed(decimals);
   } catch {
     return 'N/A';
-  }
-};
-
-const determineTooltipX = (x, containerWidth) => {
-  const margin = 10;
-  const tooltipWidth = 300;
-
-  if (x < tooltipWidth / 2 + margin) {
-    return x + margin;
-  } else if (x > containerWidth - tooltipWidth / 2 - margin) {
-    return x - tooltipWidth - margin;
-  } else {
-    return x;
-  }
-};
-
-const determineTooltipY = (y, containerHeight) => {
-  const margin = 10;
-  const tooltipHeight = 120;
-  const topThird = containerHeight / 3;
-
-  if (y < topThird) {
-    return y;
-  } else if (y < tooltipHeight + margin) {
-    return y + margin;
-  } else if (y > containerHeight - tooltipHeight - margin) {
-    return y - tooltipHeight - margin;
-  } else {
-    return y;
-  }
-};
-
-const determineTooltipTransform = (x, y, containerWidth, containerHeight) => {
-  const tooltipWidth = 300;
-  const tooltipHeight = 120;
-  const topThird = containerHeight / 3;
-
-  if (y < topThird) {
-    if (x < containerWidth / 2) {
-      return 'translate(10%, -50%)';
-    } else {
-      return 'translate(-110%, -50%)';
-    }
-  } else if (x < tooltipWidth / 2) {
-    return 'translate(0, -50%)';
-  } else if (x > containerWidth - tooltipWidth / 2) {
-    return 'translate(-100%, -50%)';
-  } else if (y < tooltipHeight) {
-    return 'translate(-50%, 10%)';
-  } else if (y > containerHeight - tooltipHeight) {
-    return 'translate(-50%, -120%)';
-  } else {
-    return 'translate(-50%, -120%)';
   }
 };
 
@@ -96,8 +44,8 @@ const TrendingRunes = () => {
   const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [hoveredRune, setHoveredRune] = useState(null);
   const [containerHeight, setContainerHeight] = useState(600);
+  const svgRef = useRef(null);
 
   useEffect(() => {
     const updateHeight = () => {
@@ -192,6 +140,133 @@ const TrendingRunes = () => {
     return placedBubbles;
   }, [runes, containerHeight]);
 
+  useEffect(() => {
+    if (!normalizedData.length) return;
+
+    // Remove any existing tooltips
+    d3.select('body').selectAll('.runes-tooltip').remove();
+
+    // Create tooltip
+    const tooltip = d3.select('body')
+      .append('div')
+      .attr('class', 'runes-tooltip')
+      .style('position', 'absolute')
+      .style('visibility', 'hidden')
+      .style('background-color', 'rgba(0, 0, 0, 0.9)')
+      .style('color', 'white')
+      .style('padding', '16px')
+      .style('border-radius', '8px')
+      .style('font-size', '14px')
+      .style('max-width', '300px')
+      .style('pointer-events', 'none')
+      .style('z-index', '1000')
+      .style('border', '1px solid rgba(168, 85, 247, 0.2)')
+      .style('backdrop-filter', 'blur(4px)');
+
+    const svg = d3.select(svgRef.current);
+
+    const groups = svg.selectAll('g')
+      .data(normalizedData)
+      .join('g')
+      .on('mouseover', (event, d) => {
+        tooltip
+          .style('visibility', 'visible')
+          .html(
+            `<div class="space-y-2">
+              <div class="font-bold text-purple-400">${d.rune_name}</div>
+              <div class="text-sm space-y-1">
+                <div>
+                  <span class="text-gray-400">24h Volume:</span>
+                  <span class="font-medium">${formatNumber(d.volume)}</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Price Change:</span>
+                  <span class="font-medium ${d.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}">
+                    ${d.percentChange.toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Current Price:</span>
+                  <span class="font-medium">${formatNumber(d.unit_price_sats)} sats</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Holders:</span>
+                  <span class="font-medium">${formatNumber(d.holder_count)}</span>
+                </div>
+              </div>
+            </div>`
+          );
+
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style('opacity', 0.8);
+      })
+      .on('mousemove', (event) => {
+        tooltip
+          .style('top', `${event.pageY + 10}px`)
+          .style('left', `${event.pageX + 10}px`);
+      })
+      .on('mouseout', (event) => {
+        tooltip.style('visibility', 'hidden');
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style('opacity', 1);
+      });
+
+    // Update circles and text
+    groups.selectAll('circle.glow')
+      .data(d => [d])
+      .join('circle')
+      .attr('class', 'glow')
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', d => d.r + 2)
+      .attr('fill', 'transparent')
+      .attr('stroke', d => getBubbleStroke(d.percentChange))
+      .attr('stroke-width', '2')
+      .style('filter', 'blur(3px)');
+
+    groups.selectAll('circle.main')
+      .data(d => [d])
+      .join('circle')
+      .attr('class', 'main')
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', d => d.r)
+      .attr('fill', d => getBubbleFill(d.percentChange))
+      .attr('opacity', 0.9);
+
+    groups.selectAll('text.name')
+      .data(d => [d])
+      .join('text')
+      .attr('class', 'name')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y - 10)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', d => Math.max(12, d.r / 5))
+      .attr('fill', '#FFFFFF')
+      .attr('pointer-events', 'none')
+      .text(d => abbreviateName(d.rune_name, 6));
+
+    groups.selectAll('text.percent')
+      .data(d => [d])
+      .join('text')
+      .attr('class', 'percent')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y + 20)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', d => Math.max(10, d.r / 6))
+      .attr('fill', d => d.percentChange === 0 ? '#808080' : d.percentChange > 0 ? '#16C784' : '#CF2B2B')
+      .attr('pointer-events', 'none')
+      .text(d => `${d.percentChange.toFixed(2)}%`);
+
+    return () => {
+      d3.select('body').selectAll('.runes-tooltip').remove();
+    };
+  }, [normalizedData]);
+
   if (loading) {
     return (
       <div className="w-full h-96 flex items-center justify-center text-gray-400">
@@ -211,100 +286,14 @@ const TrendingRunes = () => {
   return (
     <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
       <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
-        <svg className="w-full h-full" viewBox={`0 0 1600 ${containerHeight}`} preserveAspectRatio="none">
+        <svg
+          ref={svgRef}
+          className="w-full h-full"
+          viewBox={`0 0 1600 ${containerHeight}`}
+          preserveAspectRatio="none"
+        >
           <rect width="1600" height={containerHeight} fill="#111827" />
-
-          {normalizedData.map((rune) => (
-            <g
-              key={rune.rune_ticker}
-              onMouseEnter={() => setHoveredRune(rune)}
-              onMouseLeave={() => setHoveredRune(null)}
-              className="cursor-pointer transition-transform duration-200"
-            >
-              <circle
-                cx={rune.x}
-                cy={rune.y}
-                r={rune.r + 2}
-                fill="transparent"
-                stroke={getBubbleStroke(rune.percentChange)}
-                strokeWidth="2"
-                style={{ filter: 'blur(3px)' }}
-              />
-              <circle
-                cx={rune.x}
-                cy={rune.y}
-                r={rune.r}
-                fill={getBubbleFill(rune.percentChange)}
-                opacity={0.9}
-              />
-              <text
-                x={rune.x}
-                y={rune.y - 10}
-                textAnchor="middle"
-                fontSize={Math.max(12, rune.r / 5)}
-                fill="#FFFFFF"
-                className="pointer-events-none select-none font-bold"
-              >
-                {abbreviateName(rune.rune_name, 6)}
-              </text>
-              <text
-                x={rune.x}
-                y={rune.y + 20}
-                textAnchor="middle"
-                fontSize={Math.max(10, rune.r / 6)}
-                fill={
-                  rune.percentChange === 0
-                    ? '#808080' // Gray for 0% change
-                    : rune.percentChange > 0
-                    ? '#16C784' // Green for positive change
-                    : '#CF2B2B' // Red for negative change
-                }
-                className="pointer-events-none select-none"
-              >
-                {rune.percentChange.toFixed(2)}%
-              </text>
-            </g>
-          ))}
         </svg>
-
-        {hoveredRune && (
-          <div
-            className="absolute z-50 bg-black/90 rounded-lg p-4 shadow-xl border border-purple-500/20 backdrop-blur-sm text-white pointer-events-none"
-            style={{
-              left: `${determineTooltipX(hoveredRune.x, 1600)}px`,
-              top: `${determineTooltipY(hoveredRune.y, containerHeight)}px`,
-              transform: `${determineTooltipTransform(hoveredRune.x, hoveredRune.y, 1600, containerHeight)}`,
-            }}
-          >
-            <div className="space-y-2">
-              <div className="font-bold text-purple-400">{hoveredRune.rune_name}</div>
-              <div className="text-sm space-y-1">
-                <div>
-                  <span className="text-gray-400">24h Volume:</span>{' '}
-                  <span className="font-medium">{formatNumber(hoveredRune.volume)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Price Change:</span>{' '}
-                  <span
-                    className={`font-medium ${
-                      hoveredRune.percentChange >= 0 ? 'text-green-400' : 'text-red-400'
-                    }`}
-                  >
-                    {hoveredRune.percentChange.toFixed(2)}%
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Current Price:</span>{' '}
-                  <span className="font-medium">{formatNumber(hoveredRune.unit_price_sats)} sats</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Holders:</span>{' '}
-                  <span className="font-medium">{formatNumber(hoveredRune.holder_count)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

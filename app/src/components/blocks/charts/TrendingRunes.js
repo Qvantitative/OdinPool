@@ -24,41 +24,37 @@ const abbreviateName = (name, maxLength = 6) => {
 
 const getBubbleFill = (percentChange) => {
   if (percentChange === 0) {
-    return 'rgba(128, 128, 128, 0.4)';
+    return 'rgba(128, 128, 128, 0.4)'; // Gray for 0% change
   }
   return percentChange > 0
-    ? 'rgba(22, 199, 132, 0.4)'
-    : 'rgba(207, 43, 43, 0.4)';
+    ? 'rgba(22, 199, 132, 0.4)' // Green for positive change
+    : 'rgba(207, 43, 43, 0.4)'; // Red for negative change
 };
 
 const getBubbleStroke = (percentChange) => {
   if (percentChange === 0) {
-    return 'rgba(128, 128, 128, 0.6)';
+    return 'rgba(128, 128, 128, 0.6)'; // Gray for 0% change
   }
   return percentChange > 0
-    ? 'rgba(22, 199, 132, 0.6)'
-    : 'rgba(207, 43, 43, 0.6)';
+    ? 'rgba(22, 199, 132, 0.6)' // Green for positive change
+    : 'rgba(207, 43, 43, 0.6)'; // Red for negative change
 };
 
 const TrendingRunes = () => {
   const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [containerWidth, setContainerWidth] = useState(1600);
   const [containerHeight, setContainerHeight] = useState(600);
   const svgRef = useRef(null);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      const width = window.innerWidth;
-      const height = Math.max(400, window.innerHeight * 0.6);
-      setContainerWidth(width);
-      setContainerHeight(height);
+    const updateHeight = () => {
+      const screenHeight = window.innerHeight;
+      setContainerHeight(Math.max(400, screenHeight * 0.6));
     };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
   useEffect(() => {
@@ -107,7 +103,7 @@ const TrendingRunes = () => {
 
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const x = radius + margin + Math.random() * (containerWidth - 2 * (radius + margin));
+        const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin));
         const y = radius + margin + Math.random() * (containerHeight - 2 * (radius + margin));
 
         let overlap = false;
@@ -142,17 +138,95 @@ const TrendingRunes = () => {
     }
 
     return placedBubbles;
-  }, [runes, containerWidth, containerHeight]);
+  }, [runes, containerHeight]);
 
   useEffect(() => {
     if (!normalizedData.length) return;
 
+    // Remove any existing tooltips
+    d3.select('body').selectAll('.runes-tooltip').remove();
+
+    // Create tooltip
+    const tooltip = d3.select('body')
+      .append('div')
+      .attr('class', 'runes-tooltip')
+      .style('position', 'absolute')
+      .style('visibility', 'hidden')
+      .style('background-color', 'rgba(0, 0, 0, 0.9)')
+      .style('color', 'white')
+      .style('padding', '16px')
+      .style('border-radius', '8px')
+      .style('font-size', '14px')
+      .style('max-width', '300px')
+      .style('pointer-events', 'none')
+      .style('z-index', '1000')
+      .style('border', '1px solid rgba(168, 85, 247, 0.2)')
+      .style('backdrop-filter', 'blur(4px)');
+
     const svg = d3.select(svgRef.current);
-    svg.attr('viewBox', `0 0 ${containerWidth} ${containerHeight}`);
 
     const groups = svg.selectAll('g')
       .data(normalizedData)
-      .join('g');
+      .join('g')
+      .on('mouseover', (event, d) => {
+        tooltip
+          .style('visibility', 'visible')
+          .html(
+            `<div class="space-y-2">
+              <div class="font-bold text-purple-400">${d.rune_name}</div>
+              <div class="text-sm space-y-1">
+                <div>
+                  <span class="text-gray-400">24h Volume:</span>
+                  <span class="font-medium">${formatNumber(d.volume)}</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Price Change:</span>
+                  <span class="font-medium ${d.percentChange >= 0 ? 'text-green-400' : 'text-red-400'}">
+                    ${d.percentChange.toFixed(2)}%
+                  </span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Current Price:</span>
+                  <span class="font-medium">${formatNumber(d.unit_price_sats)} sats</span>
+                </div>
+                <div>
+                  <span class="text-gray-400">Holders:</span>
+                  <span class="font-medium">${formatNumber(d.holder_count)}</span>
+                </div>
+              </div>
+            </div>`
+          );
+
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style('opacity', 0.8);
+      })
+      .on('mousemove', (event) => {
+        tooltip
+          .style('top', `${event.pageY + 10}px`)
+          .style('left', `${event.pageX + 10}px`);
+      })
+      .on('mouseout', (event) => {
+        tooltip.style('visibility', 'hidden');
+        d3.select(event.currentTarget)
+          .transition()
+          .duration(200)
+          .style('opacity', 1);
+      });
+
+    // Update circles and text
+    groups.selectAll('circle.glow')
+      .data(d => [d])
+      .join('circle')
+      .attr('class', 'glow')
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', d => d.r + 2)
+      .attr('fill', 'transparent')
+      .attr('stroke', d => getBubbleStroke(d.percentChange))
+      .attr('stroke-width', '2')
+      .style('filter', 'blur(3px)');
 
     groups.selectAll('circle.main')
       .data(d => [d])
@@ -161,16 +235,37 @@ const TrendingRunes = () => {
       .attr('cx', d => d.x)
       .attr('cy', d => d.y)
       .attr('r', d => d.r)
-      .attr('fill', d => getBubbleFill(d.percentChange));
+      .attr('fill', d => getBubbleFill(d.percentChange))
+      .attr('opacity', 0.9);
 
-    groups.selectAll('text')
+    groups.selectAll('text.name')
       .data(d => [d])
       .join('text')
+      .attr('class', 'name')
       .attr('x', d => d.x)
-      .attr('y', d => d.y)
+      .attr('y', d => d.y - 10)
       .attr('text-anchor', 'middle')
-      .text(d => abbreviateName(d.rune_name));
-  }, [normalizedData, containerWidth, containerHeight]);
+      .attr('font-size', d => Math.max(12, d.r / 5))
+      .attr('fill', '#FFFFFF')
+      .attr('pointer-events', 'none')
+      .text(d => abbreviateName(d.rune_name, 6));
+
+    groups.selectAll('text.percent')
+      .data(d => [d])
+      .join('text')
+      .attr('class', 'percent')
+      .attr('x', d => d.x)
+      .attr('y', d => d.y + 20)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', d => Math.max(10, d.r / 6))
+      .attr('fill', d => d.percentChange === 0 ? '#808080' : d.percentChange > 0 ? '#16C784' : '#CF2B2B')
+      .attr('pointer-events', 'none')
+      .text(d => `${d.percentChange.toFixed(2)}%`);
+
+    return () => {
+      d3.select('body').selectAll('.runes-tooltip').remove();
+    };
+  }, [normalizedData]);
 
   if (loading) {
     return (
@@ -194,7 +289,10 @@ const TrendingRunes = () => {
         <svg
           ref={svgRef}
           className="w-full h-full"
+          viewBox={`0 0 1600 ${containerHeight}`}
+          preserveAspectRatio="none"
         >
+          <rect width="1600" height={containerHeight} fill="#111827" />
         </svg>
       </div>
     </div>

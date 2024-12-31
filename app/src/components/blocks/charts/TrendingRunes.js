@@ -92,11 +92,9 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    // Adjust bubble sizes based on container dimensions with dynamic scaling
-    const containerSize = Math.min(dimensions.width, dimensions.height);
-    const scaleFactor = containerSize < 600 ? 0.08 : 0.1;
-    const MIN_SIZE = containerSize * scaleFactor;
-    const MAX_SIZE = containerSize * (scaleFactor * 2.5);
+    // Use original bubble sizes
+    const MIN_SIZE = 400;
+    const MAX_SIZE = 1000;
 
     const placedBubbles = [];
     const maxBubbles = 150;

@@ -250,17 +250,23 @@ const TrendingRunes = () => {
       .attr('fill', d => getBubbleFill(d.percentChange))
       .attr('opacity', 0.9);
 
-    groups.selectAll('text.name')
-      .data(d => [d])
-      .join('text')
-      .attr('class', 'name')
-      .attr('x', d => d.x)
-      .attr('y', d => d.y - 10)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', d => Math.max(12, d.r / 5))
-      .attr('fill', '#FFFFFF')
-      .attr('pointer-events', 'none')
-      .text(d => abbreviateName(d.rune_name, 6));
+    // Only show names if screen width is large enough
+    if (dimensions.width >= 768) {  // 768px is a common tablet breakpoint
+      groups.selectAll('text.name')
+        .data(d => [d])
+        .join('text')
+        .attr('class', 'name')
+        .attr('x', d => d.x)
+        .attr('y', d => d.y - 10)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', d => Math.max(12, d.r / 5))
+        .attr('fill', '#FFFFFF')
+        .attr('pointer-events', 'none')
+        .text(d => abbreviateName(d.rune_name, 6));
+    } else {
+      // Remove name texts if screen is too small
+      groups.selectAll('text.name').remove();
+    }
 
     groups.selectAll('text.percent')
       .data(d => [d])

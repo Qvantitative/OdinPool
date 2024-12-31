@@ -92,9 +92,13 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    // Use original bubble sizes
-    const MIN_SIZE = 400;
-    const MAX_SIZE = 1000;
+    // Scale bubble sizes based on screen width
+    const baseMinSize = 400;
+    const baseMaxSize = 1000;
+    const baseWidth = 1600;  // Our reference width
+    const scaleFactor = dimensions.width / baseWidth;
+    const MIN_SIZE = baseMinSize * scaleFactor;
+    const MAX_SIZE = baseMaxSize * scaleFactor;
 
     const placedBubbles = [];
     const maxBubbles = 150;

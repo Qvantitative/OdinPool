@@ -290,7 +290,6 @@ const TrendingRunes = () => {
           ref={svgRef}
           className="w-full h-full"
           viewBox={`0 0 1600 ${containerHeight}`}
-          preserveAspectRatio="none"
         >
           <rect width="1600" height={containerHeight} fill="#111827" />
         </svg>

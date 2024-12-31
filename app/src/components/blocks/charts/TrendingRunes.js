@@ -44,17 +44,23 @@ const TrendingRunes = () => {
   const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [containerHeight, setContainerHeight] = useState(600);
+  const [dimensions, setDimensions] = useState({ width: 1600, height: 600 });
+  const containerRef = useRef(null);
   const svgRef = useRef(null);
 
+  // Update dimensions based on container size
   useEffect(() => {
-    const updateHeight = () => {
-      const screenHeight = window.innerHeight;
-      setContainerHeight(Math.max(400, screenHeight * 0.6));
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        const containerHeight = Math.max(400, window.innerHeight * 0.6);
+        setDimensions({ width: containerWidth, height: containerHeight });
+      }
     };
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
   useEffect(() => {
@@ -86,8 +92,12 @@ const TrendingRunes = () => {
       ...sortedRunes.map((r) => Number(r.volume_24h) || 0)
     );
 
-    const MIN_SIZE = 400;
-    const MAX_SIZE = 1000;
+    // Adjust bubble sizes based on container dimensions with dynamic scaling
+    const containerSize = Math.min(dimensions.width, dimensions.height);
+    const scaleFactor = containerSize < 600 ? 0.08 : 0.1;
+    const MIN_SIZE = containerSize * scaleFactor;
+    const MAX_SIZE = containerSize * (scaleFactor * 2.5);
+
     const placedBubbles = [];
     const maxBubbles = 150;
     const maxAttempts = 1000;
@@ -103,8 +113,8 @@ const TrendingRunes = () => {
 
       let placed = false;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const x = radius + margin + Math.random() * (1600 - 2 * (radius + margin));
-        const y = radius + margin + Math.random() * (containerHeight - 2 * (radius + margin));
+        const x = radius + margin + Math.random() * (dimensions.width - 2 * (radius + margin));
+        const y = radius + margin + Math.random() * (dimensions.height - 2 * (radius + margin));
 
         let overlap = false;
         for (const pb of placedBubbles) {
@@ -138,7 +148,7 @@ const TrendingRunes = () => {
     }
 
     return placedBubbles;
-  }, [runes, containerHeight]);
+  }, [runes, dimensions]);
 
   useEffect(() => {
     if (!normalizedData.length) return;
@@ -284,15 +294,18 @@ const TrendingRunes = () => {
   }
 
   return (
-    <div className="relative w-full bg-gray-900 rounded-lg overflow-hidden">
-      <div className="relative w-full" style={{ height: `${containerHeight}px` }}>
+    <div
+      ref={containerRef}
+      className="relative w-full bg-gray-900 rounded-lg overflow-hidden"
+    >
+      <div className="relative w-full" style={{ height: `${dimensions.height}px` }}>
         <svg
           ref={svgRef}
           className="w-full h-full"
-          viewBox={`0 0 1600 ${containerHeight}`}
-          preserveAspectRatio="none"
+          viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
+          preserveAspectRatio="xMidYMid meet"
         >
-          <rect width="1600" height={containerHeight} fill="#111827" />
+          <rect width={dimensions.width} height={dimensions.height} fill="#111827" />
         </svg>
       </div>
     </div>

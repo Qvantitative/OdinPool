@@ -993,7 +993,7 @@ app.get('/api/runes/activities/summary', async (req, res) => {
         volume_24h,
         total_volume,
         unit_price_sats,
-        unit_price_change,  -- Added in between unit_price_sats and market_cap
+        unit_price_change,
         market_cap,
         holder_count,
         is_verified,
@@ -1036,6 +1036,35 @@ app.get('/api/runes/activities/summary', async (req, res) => {
     });
   } finally {
     client.release();
+  }
+});
+
+app.get('/api/trades/:runeTicker', async (req, res) => {
+  try {
+    const { runeTicker } = req.params;
+
+    const query = `
+      SELECT
+        old_owner,
+        new_owner,
+        COUNT(*) as trade_count,
+        MIN(created_at) as first_trade,
+        MAX(created_at) as last_trade
+      FROM rune_activities_details
+      WHERE
+        rune_ticker = $1
+        AND old_owner IS NOT NULL
+        AND new_owner IS NOT NULL
+      GROUP BY old_owner, new_owner
+      ORDER BY trade_count DESC
+      LIMIT 10
+    `;
+
+    const result = await pool.query(query, [runeTicker]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching trade data:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

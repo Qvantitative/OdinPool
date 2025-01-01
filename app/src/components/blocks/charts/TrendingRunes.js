@@ -40,7 +40,7 @@ const getBubbleStroke = (percentChange) => {
     : 'rgba(207, 43, 43, 0.6)'; // Red for negative change
 };
 
-const TrendingRunes = () => {
+const TrendingRunes = ({ onRuneClick }) => {
   const [runes, setRunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

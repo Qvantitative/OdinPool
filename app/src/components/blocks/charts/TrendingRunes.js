@@ -225,6 +225,11 @@ const TrendingRunes = () => {
           .transition()
           .duration(200)
           .style('opacity', 1);
+      })
+      .on('click', (event, d) => {
+        if (onRuneClick) {
+          onRuneClick(d.rune_ticker); // Notify parent of the selected rune ticker
+        }
       });
 
     // Update circles and text
@@ -283,7 +288,7 @@ const TrendingRunes = () => {
     return () => {
       d3.select('body').selectAll('.runes-tooltip').remove();
     };
-  }, [normalizedData]);
+  }, [normalizedData, onRuneClick]);
 
   if (loading) {
     return (

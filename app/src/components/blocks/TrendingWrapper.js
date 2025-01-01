@@ -1,6 +1,7 @@
 import React, { useState, memo } from 'react';
 import TrendingCollections from './TrendingCollections';
 import TrendingRunes from './charts/TrendingRunes';
+import RunesDetails from './RunesDetails';
 
 const TABS = {
   COLLECTIONS: 'collections',
@@ -9,22 +10,29 @@ const TABS = {
 
 function TrendingWrapper() {
   const [activeView, setActiveView] = useState(TABS.COLLECTIONS);
+  const [selectedRuneTicker, setSelectedRuneTicker] = useState(null); // Track the selected rune ticker
 
   const handleViewChange = (view) => {
-    console.log(`Switching to ${view} view`);
     setActiveView(view);
+    setSelectedRuneTicker(null); // Reset rune selection when switching tabs
   };
 
-  const isCollections = activeView === TABS.COLLECTIONS;
-  const isRunes = activeView === TABS.RUNES;
+  const handleRuneClick = (runeTicker) => {
+    setSelectedRuneTicker(runeTicker); // Set the selected rune ticker
+  };
+
+  const handleBackToRunes = () => {
+    setSelectedRuneTicker(null); // Clear selected rune to return to TrendingRunes
+  };
 
   return (
     <div className="w-full max-w-[1600px] mx-auto">
+      {/* Tab Selection */}
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => handleViewChange(TABS.COLLECTIONS)}
           className={`px-4 py-2 rounded ${
-            isCollections
+            activeView === TABS.COLLECTIONS
               ? 'bg-blue-500 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
@@ -34,7 +42,7 @@ function TrendingWrapper() {
         <button
           onClick={() => handleViewChange(TABS.RUNES)}
           className={`px-4 py-2 rounded ${
-            isRunes
+            activeView === TABS.RUNES
               ? 'bg-blue-500 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
@@ -43,7 +51,19 @@ function TrendingWrapper() {
         </button>
       </div>
 
-      {isCollections ? <TrendingCollections /> : <TrendingRunes />}
+      {/* Conditional Rendering */}
+      {activeView === TABS.COLLECTIONS && <TrendingCollections />}
+      {activeView === TABS.RUNES && (
+        <>
+          {!selectedRuneTicker ? (
+            // Show TrendingRunes if no rune is selected
+            <TrendingRunes onRuneClick={handleRuneClick} />
+          ) : (
+            // Show RunesDetails if a rune is selected
+            <RunesDetails runeTicker={selectedRuneTicker} onBack={handleBackToRunes} />
+          )}
+        </>
+      )}
     </div>
   );
 }

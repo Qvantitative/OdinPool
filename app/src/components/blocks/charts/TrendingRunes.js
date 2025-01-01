@@ -70,6 +70,7 @@ const TrendingRunes = ({ onRuneClick }) => {
         const response = await fetch('/api/runes/activities/summary?page=1&limit=100');
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
+        console.log("Runes Data: ", data)
         setRunes(data.data || []);
       } catch (err) {
         console.error('Error fetching runes:', err);

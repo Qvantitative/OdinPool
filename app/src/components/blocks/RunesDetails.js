@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 
 const RunesDetails = ({ runeTicker, onBack }) => {
@@ -36,21 +35,23 @@ const RunesDetails = ({ runeTicker, onBack }) => {
   }
 
   return (
-    <Card className="bg-gray-900 text-gray-200">
-      <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-        <button
-          onClick={onBack}
-          className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="h-6 w-6" />
-        </button>
-        <CardTitle className="text-2xl">
-          Trade Details for {runeTicker.toUpperCase()}
-        </CardTitle>
-      </CardHeader>
+    <div className="bg-gray-900 text-gray-200 rounded-lg shadow-lg">
+      <div className="p-6 border-b border-gray-800">
+        <div className="flex flex-row items-center space-x-4">
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </button>
+          <h2 className="text-2xl font-bold">
+            Trade Details for {runeTicker.toUpperCase()}
+          </h2>
+        </div>
+      </div>
 
-      <CardContent>
+      <div className="p-6">
         {loading && (
           <div className="p-4 text-center text-gray-400">Loading...</div>
         )}
@@ -92,8 +93,8 @@ const RunesDetails = ({ runeTicker, onBack }) => {
             </table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

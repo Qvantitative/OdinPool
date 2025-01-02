@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { ArrowLeft } from 'lucide-react';
 
-const RunesDetails = () => {
-  const { runeTicker } = useParams();
+const RunesDetails = ({ runeTicker, onBack }) => {
   const [tradeData, setTradeData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchTradeData = async () => {
+      if (!runeTicker) return;
+
       setLoading(true);
       setError(null);
       try {
@@ -26,54 +28,72 @@ const RunesDetails = () => {
       }
     };
 
-    if (runeTicker) {
-      fetchTradeData();
-    }
+    fetchTradeData();
   }, [runeTicker]);
 
-  if (loading) {
-    return <div className="p-4 text-gray-400">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="p-4 text-red-500">{error}</div>;
+  if (!runeTicker) {
+    return <div className="p-4 text-gray-400">No rune selected</div>;
   }
 
   return (
-    <div className="p-4 text-gray-200">
-      <h1 className="text-2xl font-bold mb-4">
-        Rune Trade Details for {runeTicker.toUpperCase()}
-      </h1>
-      {tradeData.length === 0 ? (
-        <div>No trade data found.</div>
-      ) : (
-        <table className="min-w-full bg-gray-800 rounded overflow-hidden">
-          <thead>
-            <tr className="bg-gray-700">
-              <th className="p-2 text-left">Old Owner</th>
-              <th className="p-2 text-left">New Owner</th>
-              <th className="p-2 text-left">Trade Count</th>
-              <th className="p-2 text-left">First Trade</th>
-              <th className="p-2 text-left">Last Trade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tradeData.map((trade, i) => (
-              <tr
-                key={i}
-                className="border-b border-gray-700 hover:bg-gray-900"
-              >
-                <td className="p-2">{trade.old_owner}</td>
-                <td className="p-2">{trade.new_owner}</td>
-                <td className="p-2">{trade.trade_count}</td>
-                <td className="p-2">{trade.first_trade}</td>
-                <td className="p-2">{trade.last_trade}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+    <Card className="bg-gray-900 text-gray-200">
+      <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+        <button
+          onClick={onBack}
+          className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-6 w-6" />
+        </button>
+        <CardTitle className="text-2xl">
+          Trade Details for {runeTicker.toUpperCase()}
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent>
+        {loading && (
+          <div className="p-4 text-center text-gray-400">Loading...</div>
+        )}
+
+        {error && (
+          <div className="p-4 text-center text-red-500">{error}</div>
+        )}
+
+        {!loading && !error && tradeData.length === 0 && (
+          <div className="p-4 text-center text-gray-400">No trade data found.</div>
+        )}
+
+        {!loading && !error && tradeData.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="p-3 text-left font-medium text-gray-400">Old Owner</th>
+                  <th className="p-3 text-left font-medium text-gray-400">New Owner</th>
+                  <th className="p-3 text-left font-medium text-gray-400">Trade Count</th>
+                  <th className="p-3 text-left font-medium text-gray-400">First Trade</th>
+                  <th className="p-3 text-left font-medium text-gray-400">Last Trade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tradeData.map((trade, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors"
+                  >
+                    <td className="p-3 font-mono text-sm">{trade.old_owner}</td>
+                    <td className="p-3 font-mono text-sm">{trade.new_owner}</td>
+                    <td className="p-3">{trade.trade_count?.toLocaleString()}</td>
+                    <td className="p-3">{new Date(trade.first_trade).toLocaleDateString()}</td>
+                    <td className="p-3">{new Date(trade.last_trade).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

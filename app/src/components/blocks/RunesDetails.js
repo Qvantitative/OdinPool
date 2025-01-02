@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Activity, ArrowLeft } from 'lucide-react';
 
 const RunesDetails = ({ runeTicker, onBack }) => {
@@ -60,7 +60,7 @@ const RunesDetails = ({ runeTicker, onBack }) => {
   }
 
   const totalTrades = tradeData.reduce((sum, trade) => sum + trade.trade_count, 0);
-  const maxTrades = Math.max(...tradeData.map(trade => trade.trade_count));
+  const maxTrades = Math.max(...tradeData.map(trade => trade.trade_count || 0));
 
   return (
     <div className="bg-gray-900 p-6 rounded-xl w-full">

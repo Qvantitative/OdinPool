@@ -3,9 +3,10 @@
 import cron from 'node-cron';
 import { updateWalletActivities } from './runesWallet.js';
 import { updateRunesActivities } from './RunesActivities.js';
+import { updateRunesActivities2 } from './RunesActivities2.js';
 
-// ***** NEW IMPORT ADDED BELOW *****
 import { updateRunesActivities as updateNewRuneActivities } from './RuneActivities.js';
+import { updateRunesActivities2 as updateNewRuneActivities2 } from './RuneActivities2.js';
 
 const WALLETS_TO_TRACK = [
   'bc1pt65exley6pv6uqws7xr3ku7u922tween0nfyz257rnl5300cjnrsjp9er6' // Add or replace wallet addresses as needed
@@ -13,12 +14,15 @@ const WALLETS_TO_TRACK = [
 
 const runningState = {
   walletActivities: new Set(),
-  runesActivitiesUpdate: false
+  runesActivitiesUpdate: false,
+  newRuneActivitiesUpdate: false, // Track new runes activities state
+  newRuneActivities2Update: false, // Track new RunesActivities2 update state
 };
 
 const TIMEOUTS = {
   WALLET_ACTIVITIES_UPDATE: 600000, // 10 minutes for wallet activities update
-  RUNES_ACTIVITIES_UPDATE: 300000   // 5 minutes for runes activities update
+  RUNES_ACTIVITIES_UPDATE: 300000,  // 5 minutes for runes activities update
+  RUNES_ACTIVITIES2_UPDATE: 300000 // 5 minutes for the second runes activities update
 };
 
 const withTimeout = (promise, timeoutMs, operationName) => {
@@ -71,6 +75,31 @@ async function updateActivitiesForWallet(walletAddr) {
   }
 }
 
+// Runes activities update for the second type of runes activities
+async function updateRunesActivities2WithState() {
+  if (runningState.newRuneActivities2Update) {
+    console.log(`[${new Date().toISOString()}] New Runes activities 2 update already running. Skipping.`);
+    return;
+  }
+
+  runningState.newRuneActivities2Update = true;
+  console.log(`[${new Date().toISOString()}] Starting new Runes activities 2 update`);
+
+  try {
+    await withTimeout(
+      updateNewRuneActivities2(),
+      TIMEOUTS.RUNES_ACTIVITIES2_UPDATE,
+      'New Runes activities 2 update'
+    );
+    console.log(`[${new Date().toISOString()}] Completed new Runes activities 2 update`);
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error in new Runes activities 2 update:`, error);
+    await handleTimeout(error);
+  } finally {
+    runningState.newRuneActivities2Update = false;
+  }
+}
+
 // New function to handle runes activities update
 async function updateRunesActivitiesWithState() {
   if (runningState.runesActivitiesUpdate) {
@@ -96,6 +125,7 @@ async function updateRunesActivitiesWithState() {
   }
 }
 
+// Process all wallets
 async function processAllWallets(operation) {
   for (const walletAddr of WALLETS_TO_TRACK) {
     await operation(walletAddr);
@@ -117,13 +147,20 @@ function startCronJobs() {
     await updateRunesActivitiesWithState();
   });
 
+  // Run new Runes activities 2 update every 5 minutes
+  cron.schedule('*/5 * * * *', async () => {
+    console.log(`[${new Date().toISOString()}] Running new Runes activities 2 update`);
+    await updateRunesActivities2WithState();
+  });
+
   // Initial runs after startup
   (async () => {
     try {
       console.log(`[${new Date().toISOString()}] Running initial updates`);
       await Promise.all([
         processAllWallets(updateActivitiesForWallet),
-        updateRunesActivitiesWithState()
+        updateRunesActivitiesWithState(),
+        updateRunesActivities2WithState()
       ]);
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Error in initial setup:`, error);
@@ -145,49 +182,3 @@ process.on('SIGINT', () => {
 
 startCronJobs();
 process.stdin.resume();
-
-// ***** NEW CODE ADDED BELOW *****
-// This code adds similar logic for the new RuneActivities.js
-
-// Running state for the new RuneActivities (not altering existing keys, just adding a new variable)
-let runningNewRuneActivitiesUpdate = false;
-
-async function updateNewRuneActivitiesWithState() {
-  if (runningNewRuneActivitiesUpdate) {
-    console.log(`[${new Date().toISOString()}] New Rune activities update already running. Skipping.`);
-    return;
-  }
-
-  runningNewRuneActivitiesUpdate = true;
-  console.log(`[${new Date().toISOString()}] Starting new Rune activities update`);
-
-  try {
-    await withTimeout(
-      updateNewRuneActivities(), // from RuneActivities.js
-      TIMEOUTS.RUNES_ACTIVITIES_UPDATE,
-      'New Rune activities update'
-    );
-    console.log(`[${new Date().toISOString()}] Completed new Rune activities update`);
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error in new Rune activities update:`, error);
-    await handleTimeout(error);
-  } finally {
-    runningNewRuneActivitiesUpdate = false;
-  }
-}
-
-// Schedule the new Rune activities update every 5 minutes (or another interval as desired)
-cron.schedule('*/5 * * * *', async () => {
-  console.log(`[${new Date().toISOString()}] Running new Rune activities update`);
-  await updateNewRuneActivitiesWithState();
-});
-
-// Also run it once on startup
-(async () => {
-  try {
-    console.log(`[${new Date().toISOString()}] Running initial updates for new Rune activities`);
-    await updateNewRuneActivitiesWithState();
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error in initial setup for new Rune activities:`, error);
-  }
-})();

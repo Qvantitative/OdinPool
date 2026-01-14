@@ -31,8 +31,8 @@ export const config = {
   // SSL Configuration
   ssl: {
     enabled: process.env.SSL_ENABLED === 'true' || isProduction,
-    keyPath: process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/odinpool.ai/privkey.pem',
-    certPath: process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/odinpool.ai/fullchain.pem',
+    keyPath: process.env.SSL_KEY_PATH,
+    certPath: process.env.SSL_CERT_PATH,
   },
 
   // CORS Configuration
@@ -66,21 +66,19 @@ export const config = {
     network: process.env.BITCOIN_NETWORK || 'mainnet',
     rpcUser: process.env.BITCOIN_RPC_USER,
     rpcPassword: process.env.BITCOIN_RPC_PASSWORD,
-    rpcHost: process.env.BITCOIN_RPC_HOST || '68.9.235.71',
+    rpcHost: process.env.BITCOIN_RPC_HOST || 'localhost',
     rpcPort: parseInt(process.env.BITCOIN_RPC_PORT || '8332', 10),
   },
 
   // Ord Server Configuration
   ord: {
-    baseUrl: isDevelopment
-      ? process.env.ORD_SERVER_URL || 'http://localhost:3000'
-      : process.env.ORD_SERVER_URL || 'http://68.9.235.71:3000',
+    baseUrl: process.env.ORD_SERVER_URL || (isDevelopment ? 'http://localhost:3000' : undefined),
   },
 
   // External Services
   services: {
     localInstance: {
-      baseUrl: process.env.LOCAL_INSTANCE_URL || 'http://143.198.17.64:3001',
+      baseUrl: process.env.LOCAL_INSTANCE_URL,
     },
   },
 
@@ -98,7 +96,7 @@ export const config = {
 
   // Security
   security: {
-    bodyLimit: process.env.BODY_LIMIT || '10mb', // Reduced from 50mb
+    bodyLimit: process.env.BODY_LIMIT || '5mb', // Reduced from 50mb, use 5mb for better security
     rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
     rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
   },
@@ -109,10 +107,16 @@ const requiredEnvVars = [
   'DATABASE_URL',
   'BITCOIN_RPC_USER',
   'BITCOIN_RPC_PASSWORD',
+  'BITCOIN_RPC_HOST',
+  'ORD_SERVER_URL',
 ];
 
 if (isProduction) {
-  requiredEnvVars.push('SSL_KEY_PATH', 'SSL_CERT_PATH');
+  requiredEnvVars.push(
+    'SSL_KEY_PATH', 
+    'SSL_CERT_PATH',
+    'LOCAL_INSTANCE_URL'
+  );
 }
 
 const missingEnvVars = requiredEnvVars.filter(
